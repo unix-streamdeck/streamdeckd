@@ -106,8 +106,6 @@ func setPage() {
 			}
 			if currentKey.Text != "" {
 				img := gg.NewContextForImage(currentKey.buff)
-				img.SetRGB(0, 0, 0)
-				img.Clear()
 				img.SetRGB(1, 1, 1)
 				img.SetFontFace(inconsolata.Regular8x16)
 				img.DrawStringAnchored(currentKey.Text, 72/2, 72/2, 0.5, 0.5)
