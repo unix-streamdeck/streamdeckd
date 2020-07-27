@@ -60,7 +60,7 @@ func main() {
 }
 
 func readConfig() (Config, error) {
-	data, err := ioutil.ReadFile("/home/jonsey/.streamdeck-config.json")
+	data, err := ioutil.ReadFile(os.Getenv("HOME") + "/.streamdeck-config.json")
 	if err != nil {
 		return Config{}, err
 	}
