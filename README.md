@@ -2,9 +2,6 @@
 
 ### Installation  
   
-As this uses the [Elgato Stream Deck Library](https://www.npmjs.com/package/elgato-stream-deck), you will need to follow   
-the installation process for that, which includes taking steps to allow node to access the streamdeck via udev. these steps include:  
-  
 - create the file `/etc/udev/rules.d/50-elgato.rules` with the following config  
 ```  
 SUBSYSTEM=="input", GROUP="input", MODE="0666"  
