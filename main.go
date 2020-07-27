@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/streamdeck-lib"
 	"image"
@@ -54,7 +53,6 @@ func main() {
 				continue
 			}
 			if k.Pressed == true {
-				fmt.Print(config.Pages[page][k.Index])
 				handleInput(config.Pages[page][k.Index])
 			}
 		}
@@ -118,7 +116,6 @@ func handleInput(key Key) {
 		runCommand("xdotool key " + key.Keybind)
 	}
 	if key.SwitchPage != nil {
-		fmt.Print("Switching to: " + string(*key.SwitchPage))
 		page = (*key.SwitchPage) -1
 		setPage()
 	}
