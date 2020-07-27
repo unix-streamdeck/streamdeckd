@@ -93,6 +93,8 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/ungerik/go-cairo v0.0.0-20191014050614-4a03f432a432 h1:luu+HbKrZKlIjiaclwrldreEEvVPYX/ujRbTGkKz61c=
 github.com/ungerik/go-cairo v0.0.0-20191014050614-4a03f432a432/go.mod h1:0ErpLiOxxE1oY+R4stiKut6/DbUJHnOp6U+e4d8zcTs=
+github.com/unix-streamdeck/streamdeck v0.0.0-20200727161137-d2d416a422d2 h1:rLVbYju4iaW8jP64Pafffu9T0wXitOOtu3+qCxzGV1c=
+github.com/unix-streamdeck/streamdeck v0.0.0-20200727161137-d2d416a422d2/go.mod h1:Tm8jArLxpQy5vGBbHSreHpNRAIYtDV3J3U3UMGRWTXc=
 github.com/unix-streamdeck/streamdeck-lib v0.0.0-20200720132322-072961fa1fdd h1:oX6jtZ+/gBcryYn49alkMPbCzqqwyo/7VA17mA4khrQ=
 github.com/unix-streamdeck/streamdeck-lib v0.0.0-20200720132322-072961fa1fdd/go.mod h1:EPLAk+jRYZ0zGW7S7bJctr3CLc4bc+tgBrJN7+G1bvc=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=

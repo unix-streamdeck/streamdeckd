@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
-	"github.com/unix-streamdeck/streamdeck-lib"
+	"github.com/unix-streamdeck/streamdeck"
 	"golang.org/x/image/font/inconsolata"
 	"image"
 	"image/color"
