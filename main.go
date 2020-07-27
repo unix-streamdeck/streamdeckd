@@ -37,8 +37,11 @@ func main() {
 		log.Fatal(err)
 	}
 	config, err = readConfig()
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
+	}
+	if len(config.Pages) == 0 {
+		config.Pages = append(config.Pages, Page{})
 	}
 	cleanupHook()
 	setPage()
@@ -57,7 +60,9 @@ func main() {
 				continue
 			}
 			if k.Pressed == true {
-				handleInput(config.Pages[page][k.Index])
+				if len(config.Pages)-1 >= page && len(config.Pages[page])-1 >= int(k.Index) {
+					handleInput(config.Pages[page][k.Index])
+				}
 			}
 		}
 	}
@@ -84,8 +89,7 @@ func setImage(img image.Image, i int, p int) {
 
 func setPage() {
 	currentPage := config.Pages[page]
-	for i := range currentPage {
-		currentKey := currentPage[i]
+	for i, currentKey := range currentPage {
 		if currentKey.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
 			draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{0, 0, 0, 255}), image.ZP, draw.Src)
