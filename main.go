@@ -14,7 +14,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 )
 
 var page = 0
@@ -38,8 +40,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	cleanupHook()
 	setPage()
-
 	kch, err := dev.ReadKeys()
 	if err != nil {
 		log.Fatal(err)
@@ -144,4 +146,14 @@ func runCommand(command string) {
 	if err != nil {
 		log.Printf("command failed: %s", err)
 	}
+}
+
+func cleanupHook() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+	go func() {
+		<- sigs
+		_ = dev.Reset()
+		os.Exit(0)
+	}()
 }
