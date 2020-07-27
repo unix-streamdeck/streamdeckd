@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/streamdeck-lib"
+	"golang.org/x/image/font/inconsolata"
 	"image"
 	"image/color"
 	"image/draw"
@@ -86,17 +88,28 @@ func setPage() {
 	currentPage := config.Pages[page]
 	for i := range currentPage {
 		currentKey := currentPage[i]
-		if currentKey.Icon == "" {
-			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
-			draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{0, 0, 0, 255}), image.ZP, draw.Src)
-			currentKey.buff = img
-		}
 		if currentKey.buff == nil {
-			img, err := loadImage(currentKey.Icon)
-			if err != nil {
-				log.Fatal(err)
+			if currentKey.Icon == "" {
+				img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
+				draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{0, 0, 0, 255}), image.ZP, draw.Src)
+				currentKey.buff = img
+			} else {
+				img, err := loadImage(currentKey.Icon)
+				if err != nil {
+					log.Fatal(err)
+				}
+				currentKey.buff = img
 			}
-			currentKey.buff = img
+			if currentKey.Text != "" {
+				img := gg.NewContextForImage(currentKey.buff)
+				img.SetRGB(0, 0, 0)
+				img.Clear()
+				img.SetRGB(1, 1, 1)
+				img.SetFontFace(inconsolata.Regular8x16)
+				img.DrawStringAnchored(currentKey.Text, 72/2, 72/2, 0.5, 0.5)
+				img.Clip()
+				currentKey.buff = img.Image()
+			}
 		}
 		setImage(currentKey.buff, i, page)
 	}
@@ -125,7 +138,7 @@ func handleInput(key Key) {
 		runCommand("xdotool key " + key.Keybind)
 	}
 	if key.SwitchPage != nil {
-		page = (*key.SwitchPage) -1
+		page = (*key.SwitchPage) - 1
 		setPage()
 	}
 	if key.Brightness != nil {
@@ -152,7 +165,7 @@ func cleanupHook() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 	go func() {
-		<- sigs
+		<-sigs
 		_ = dev.Reset()
 		os.Exit(0)
 	}()
