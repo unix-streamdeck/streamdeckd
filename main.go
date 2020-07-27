@@ -122,6 +122,9 @@ func handleInput(key Key) {
 	if key.Brightness != nil {
 		_ = dev.SetBrightness(uint8(*key.Brightness))
 	}
+	if key.Url != "" {
+		runCommand("xdg-open " + key.Url)
+	}
 }
 
 func runCommand(command string) {

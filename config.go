@@ -7,6 +7,7 @@ type Pages [][] struct {
 	Keybind     string `json:"keybind,omitempty"`
 	Command     string `json:"command,omitempty"`
 	Brightness  *int    `json:"brightness,omitempty"`
+	Url 		string	`json:"url,omitempty"`
 }
 
 type Config struct {
@@ -21,4 +22,5 @@ type Key struct {
 	Keybind     string `json:"keybind,omitempty"`
 	Command     string `json:"command,omitempty"`
 	Brightness  *int    `json:"brightness,omitempty"`
+	Url 		string	`json:"url,omitempty"`
 }
