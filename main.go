@@ -5,6 +5,8 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/streamdeck-lib"
 	"image"
+	"image/color"
+	"image/draw"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -83,13 +85,18 @@ func setPage() {
 	for i := range currentPage {
 		currentKey := currentPage[i]
 		if currentKey.Icon == "" {
-			currentKey.Icon = "blank.png"
+			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
+			draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{0, 0, 0, 255}), image.ZP, draw.Src)
+			currentKey.buff = img
 		}
-		img, err := loadImage(currentKey.Icon)
-		if err != nil {
-			log.Fatal(err)
+		if currentKey.buff == nil {
+			img, err := loadImage(currentKey.Icon)
+			if err != nil {
+				log.Fatal(err)
+			}
+			currentKey.buff = img
 		}
-		setImage(img, i, page)
+		setImage(currentKey.buff, i, page)
 	}
 }
 

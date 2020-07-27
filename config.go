@@ -1,5 +1,7 @@
 package main
 
+import "image"
+
 type Pages [][] struct {
 	Icon        string `json:"icon,omitempty"`
 	SwitchPage  *int    `json:"switch_page,omitempty"`
@@ -8,6 +10,7 @@ type Pages [][] struct {
 	Command     string `json:"command,omitempty"`
 	Brightness  *int    `json:"brightness,omitempty"`
 	Url 		string	`json:"url,omitempty"`
+	buff image.Image
 }
 
 type Config struct {
@@ -23,4 +26,5 @@ type Key struct {
 	Command     string `json:"command,omitempty"`
 	Brightness  *int    `json:"brightness,omitempty"`
 	Url 		string	`json:"url,omitempty"`
+	buff image.Image
 }
