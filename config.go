@@ -16,5 +16,9 @@ type Key struct {
 	Command    string `json:"command,omitempty"`
 	Brightness *int   `json:"brightness,omitempty"`
 	Url        string `json:"url,omitempty"`
-	buff       image.Image
+	IconHandler    string `json:"icon_handler,omitempty"`
+	IconHandlerStruct IconHandler
+	KeyHandler string `json:"key_handler,omitempty"`
+	KeyHandlerStruct KeyHandler
+	Buff       image.Image
 }
