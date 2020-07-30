@@ -1,4 +1,4 @@
-module streamdeckd
+module github.com/unix-streamdeck/streamdeckd
 
 go 1.14
 
