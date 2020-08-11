@@ -39,6 +39,7 @@ func main() {
 	}
 	cleanupHook()
 	SetPage(config, 0, dev)
+	go InitDBUS()
 	Listen()
 }
 
@@ -76,4 +77,67 @@ func cleanupHook() {
 		_ = dev.Reset()
 		os.Exit(0)
 	}()
+}
+
+func SetConfig(configString string) error {
+	unmountHandlers()
+	var err error
+	config = nil
+	err = json.Unmarshal([]byte(configString), &config)
+	if err != nil {
+		return err
+	}
+	if len(config.Pages) == 0 {
+		config.Pages = append(config.Pages, Page{})
+	}
+	SetPage(config, p, dev)
+	return nil
+}
+
+func ReloadConfig() error {
+	unmountHandlers()
+	var err error
+	config, err = readConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if len(config.Pages) == 0 {
+		config.Pages = append(config.Pages, Page{})
+	}
+	SetPage(config, p, dev)
+	return nil
+}
+
+func SaveConfig() error {
+	f, err := os.OpenFile(os.Getenv("HOME") + "/.streamdeck-config.json", os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0755)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	var configString []byte
+	configString, err = json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(configString)
+	if err != nil {
+		return err
+	}
+	err = f.Sync()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func unmountHandlers() {
+	for i := range config.Pages {
+		page := config.Pages[i]
+		for i2 := range page {
+			key := page[i2]
+			if key.IconHandlerStruct != nil {
+				key.IconHandlerStruct.Stop()
+			}
+		}
+	}
 }
