@@ -6,6 +6,7 @@ import (
 
 type IconHandler interface {
 	Icon(page int, index int, key *Key, dev streamdeck.Device)
+	Stop()
 }
 
 type KeyHandler interface {

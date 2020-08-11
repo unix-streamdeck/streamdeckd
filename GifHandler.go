@@ -8,23 +8,29 @@ import (
 	"time"
 )
 
-type GifIconHandler struct{
+type GifIconHandler struct {
+	running bool
 }
 
-func (GifIconHandler) Icon(page int, index int, key *Key, dev streamdeck.Device) {
+func (s *GifIconHandler) Icon(page int, index int, key *Key, dev streamdeck.Device) {
+	s.running = true
 	f, err := os.Open(key.Icon)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 		return
 	}
 	gifs, err := gif.DecodeAll(f)
 	timeDelay := gifs.Delay[0]
 	gifIndex := 0
-	go loop(gifs, gifIndex, timeDelay, page, index, dev, key)
+	go loop(gifs, gifIndex, timeDelay, page, index, dev, key, s)
 }
 
-func loop(gifs *gif.GIF, gifIndex int, timeDelay int, page int, index int, dev streamdeck.Device, key *Key) {
-	for true {
+func (s *GifIconHandler) Stop() {
+	s.running = false
+}
+
+func loop(gifs *gif.GIF, gifIndex int, timeDelay int, page int, index int, dev streamdeck.Device, key *Key, s *GifIconHandler) {
+	for s.running {
 		img := ResizeImage(gifs.Image[gifIndex])
 		SetImage(img, index, page, dev)
 		key.Buff = img

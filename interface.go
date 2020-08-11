@@ -76,11 +76,11 @@ func SetPage(config *Config, page int, dev streamdeck.Device) {
 			} else if currentKey.IconHandlerStruct == nil {
 				var handler IconHandler
 				if currentKey.IconHandler == "Gif" {
-					handler = GifIconHandler{}
+					handler = &GifIconHandler{true}
 				} else if currentKey.IconHandler == "Counter" {
-					handler = &CounterIconHandler{0}
+					handler = &CounterIconHandler{0, true}
 				} else if currentKey.IconHandler == "Time" {
-					handler = TimeIconHandler{}
+					handler = &TimeIconHandler{true}
 				}
 				if handler == nil {
 					continue
