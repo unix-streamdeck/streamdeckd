@@ -4,36 +4,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/godbus/dbus/v5"
-	"github.com/godbus/dbus/v5/introspect"
 	"log"
 	"os"
 )
 
-const intro = `
-<node>
-	<interface name="com.thejonsey.streamdeckd">
-		<method name="GetDeckInfo">
-			<arg direction="out" type="s"/>
-		</method>
-		<method name="GetConfig">
-			<arg direction="out" type="s"/>
-		</method>
-		<method name="ReloadConfig">
-		</method>
-		<method name="SetPage">
-			<arg direction="in" type"i"/>
-		</method>
-		<method name="SetConfig">
-			<arg direction="in" type="s"/>
-		</method>
-		<method name="CommitConfig">
-		</method>
-	</interface>` + introspect.IntrospectDataString + `</node> `
+//const intro = `
+//<node>
+//	<interface name="com.thejonsey.streamdeckd">
+//		<method name="GetDeckInfo">
+//			<arg direction="out" type="s"/>
+//		</method>
+//		<method name="GetConfig">
+//			<arg direction="out" type="s"/>
+//		</method>
+//		<method name="ReloadConfig">
+//		</method>
+//		<method name="SetPage">
+//			<arg direction="in" type"i"/>
+//		</method>
+//		<method name="SetConfig">
+//			<arg direction="in" type="s"/>
+//		</method>
+//		<method name="CommitConfig">
+//		</method>
+//	</interface>` + introspect.IntrospectDataString + `</node> `
+
+var conn *dbus.Conn
+
+var s *StreamDeckDBus
 
 type StreamDeckDBus struct {
 	Cols int `json:"cols,omitempty"`
 	Rows int `json:"rows,omitempty"`
-	IconSize uint `json:"icon_size,omitempty"`
+	IconSize int `json:"icon_size,omitempty"`
+	Page int `json:"page"`
 }
 
 func (s StreamDeckDBus) GetDeckInfo() (string, *dbus.Error) {
@@ -82,20 +86,20 @@ func (StreamDeckDBus) CommitConfig() *dbus.Error {
 }
 
 func InitDBUS() {
-	conn, err := dbus.SessionBus()
+	var err error
+	conn, err = dbus.SessionBus()
 	if err != nil {
 		log.Println(err)
 	}
 	defer conn.Close()
 
-	s := StreamDeckDBus{
+	s = &StreamDeckDBus{
 		Cols: int(dev.Columns),
 		Rows: int(dev.Rows),
-		IconSize: dev.Pixels,
+		IconSize: int(dev.Pixels),
+		Page: p,
 	}
-	conn.Export(s, "/com/thejonsey/streamdeckd", "com.thejonsey.streamdeckd")
-	conn.Export(introspect.Introspectable(intro), "/com/thejonsey/streamdeckd",
-		"org.freedesktop.DBus.Introspectable")
+	conn.ExportAll(s, "/com/thejonsey/streamdeckd", "com.thejonsey.streamdeckd")
 	reply, err := conn.RequestName("com.thejonsey.streamdeckd",
 		dbus.NameFlagDoNotQueue)
 	if err != nil {
@@ -106,4 +110,13 @@ func InitDBUS() {
 		os.Exit(1)
 	}
 		select {}
+}
+
+func EmitPage(page int) {
+	if conn != nil {
+		conn.Emit("/com/thejonsey/streamdeckd", "com.thejonsey.streamdeckd.Page", page)
+	}
+	if s != nil {
+		s.Page = page
+	}
 }
