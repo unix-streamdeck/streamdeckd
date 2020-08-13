@@ -48,7 +48,7 @@ func SetKey(currentKey *Key, i int) {
 		} else {
 			img, err := LoadImage(currentKey.Icon)
 			if err != nil {
-				log.Fatal(err)
+				log.Panic(err)
 			}
 			currentKey.Buff = img
 		}
@@ -92,6 +92,7 @@ func SetPage(config *Config, page int, dev streamdeck.Device) {
 			SetImage(currentKey.Buff, i, p, dev)
 		}
 	}
+	EmitPage(p)
 }
 
 func HandleInput(key *Key, page int, index int, dev streamdeck.Device) {
