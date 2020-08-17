@@ -2,7 +2,8 @@ package main
 
 import (
 	"github.com/fogleman/gg"
-	"github.com/unix-streamdeck/streamdeck"
+	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/driver"
 	"golang.org/x/image/font/inconsolata"
 	"strconv"
 	"time"
@@ -12,7 +13,7 @@ type TimeIconHandler struct{
 	running bool
 }
 
-func (t *TimeIconHandler) Icon(page int, index int, key *Key, dev streamdeck.Device) {
+func (t *TimeIconHandler) Icon(page int, index int, key *api.Key, dev streamdeck.Device) {
 	t.running = true
 	go timeLoop(page, index, dev, key, t)
 }
@@ -21,7 +22,7 @@ func (t *TimeIconHandler) Stop() {
 	t.running = false
 }
 
-func timeLoop(page int, index int, dev streamdeck.Device, key *Key, handler *TimeIconHandler) {
+func timeLoop(page int, index int, dev streamdeck.Device, key *api.Key, handler *TimeIconHandler) {
 	for handler.running {
 		img := gg.NewContext(72, 72)
 		img.SetRGB(0, 0, 0)

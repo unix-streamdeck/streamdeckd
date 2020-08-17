@@ -2,32 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/godbus/dbus/v5"
 	"log"
 	"os"
 )
 
-//const intro = `
-//<node>
-//	<interface name="com.thejonsey.streamdeckd">
-//		<method name="GetDeckInfo">
-//			<arg direction="out" type="s"/>
-//		</method>
-//		<method name="GetConfig">
-//			<arg direction="out" type="s"/>
-//		</method>
-//		<method name="ReloadConfig">
-//		</method>
-//		<method name="SetPage">
-//			<arg direction="in" type"i"/>
-//		</method>
-//		<method name="SetConfig">
-//			<arg direction="in" type="s"/>
-//		</method>
-//		<method name="CommitConfig">
-//		</method>
-//	</interface>` + introspect.IntrospectDataString + `</node> `
 
 var conn *dbus.Conn
 
@@ -99,14 +78,14 @@ func InitDBUS() {
 		IconSize: int(dev.Pixels),
 		Page: p,
 	}
-	conn.ExportAll(s, "/com/thejonsey/streamdeckd", "com.thejonsey.streamdeckd")
-	reply, err := conn.RequestName("com.thejonsey.streamdeckd",
+	conn.ExportAll(s, "/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd")
+	reply, err := conn.RequestName("com.unixstreamdeck.streamdeckd",
 		dbus.NameFlagDoNotQueue)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
-		fmt.Fprintln(os.Stderr, "name already taken")
+		log.Println("name already taken")
 		os.Exit(1)
 	}
 		select {}
@@ -114,7 +93,7 @@ func InitDBUS() {
 
 func EmitPage(page int) {
 	if conn != nil {
-		conn.Emit("/com/thejonsey/streamdeckd", "com.thejonsey.streamdeckd.Page", page)
+		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", page)
 	}
 	if s != nil {
 		s.Page = page
