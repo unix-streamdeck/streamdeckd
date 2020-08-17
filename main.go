@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/unix-streamdeck/streamdeck"
+	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/driver"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -15,27 +16,51 @@ import (
 )
 
 var dev streamdeck.Device
-var config *Config
+var config *api.Config
+var configPath = os.Getenv("HOME") + "/.streamdeck-config.json"
+
+var basicConfig = api.Config{
+	Pages: []api.Page{
+		{
+			api.Key{
+			},
+		},
+	},
+}
 
 func main() {
 	d, err := streamdeck.Devices()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	if len(d) == 0 {
-		log.Fatal("No Stream Deck devices found.")
+		log.Println("No Stream Deck devices found.")
 	}
 	dev = d[0]
 	err = dev.Open()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	config, err = readConfig()
 	if err != nil && !os.IsNotExist(err) {
-		log.Fatal(err)
+		log.Println(err)
+	} else if os.IsNotExist(err) {
+		file, err := os.Create(configPath)
+		if err != nil {
+			log.Println(err)
+		}
+		err = file.Close()
+		if err != nil {
+			log.Println(err)
+		}
+		config = &basicConfig
+		err = SaveConfig()
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, Page{})
+		config.Pages = append(config.Pages, api.Page{})
 	}
 	cleanupHook()
 	SetPage(config, 0, dev)
@@ -43,15 +68,15 @@ func main() {
 	Listen()
 }
 
-func readConfig() (*Config, error) {
-	data, err := ioutil.ReadFile(os.Getenv("HOME") + "/.streamdeck-config.json")
+func readConfig() (*api.Config, error) {
+	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		return &Config{}, err
+		return &api.Config{}, err
 	}
-	var config Config
+	var config api.Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-		return &Config{}, err
+		return &api.Config{}, err
 	}
 	return &config, nil
 }
@@ -61,7 +86,7 @@ func runCommand(command string) {
 	//args := strings.Split(command, " ")
 	c := exec.Command("/bin/sh", "-c", command)
 	if err := c.Start(); err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	err := c.Wait()
 	if err != nil {
@@ -88,7 +113,7 @@ func SetConfig(configString string) error {
 		return err
 	}
 	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, Page{})
+		config.Pages = append(config.Pages, api.Page{})
 	}
 	SetPage(config, p, dev)
 	return nil
@@ -102,18 +127,18 @@ func ReloadConfig() error {
 		return err
 	}
 	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, Page{})
+		config.Pages = append(config.Pages, api.Page{})
 	}
 	SetPage(config, p, dev)
 	return nil
 }
 
 func SaveConfig() error {
-	f, err := os.OpenFile(os.Getenv("HOME") + "/.streamdeck-config.json", os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0755)
-	defer f.Close()
+	f, err := os.OpenFile(configPath, os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	var configString []byte
 	configString, err = json.Marshal(config)
 	if err != nil {

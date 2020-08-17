@@ -3,7 +3,8 @@ package main
 import (
 	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
-	"github.com/unix-streamdeck/streamdeck"
+	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/driver"
 	"golang.org/x/image/font/inconsolata"
 	"image"
 	"image/color"
@@ -30,7 +31,7 @@ func LoadImage(path string) (image.Image, error) {
 }
 
 func ResizeImage(img image.Image) image.Image {
-	return resize.Resize(72, 72, img, resize.Lanczos3)
+	return resize.Resize(dev.Pixels, dev.Pixels, img, resize.Lanczos3)
 }
 
 func SetImage(img image.Image, i int, page int, dev streamdeck.Device) {
@@ -39,7 +40,7 @@ func SetImage(img image.Image, i int, page int, dev streamdeck.Device) {
 	}
 }
 
-func SetKey(currentKey *Key, i int) {
+func SetKey(currentKey *api.Key, i int) {
 	if currentKey.Buff == nil {
 		if currentKey.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
@@ -48,7 +49,7 @@ func SetKey(currentKey *Key, i int) {
 		} else {
 			img, err := LoadImage(currentKey.Icon)
 			if err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			currentKey.Buff = img
 		}
@@ -64,17 +65,17 @@ func SetKey(currentKey *Key, i int) {
 	SetImage(currentKey.Buff, i, p, dev)
 }
 
-func SetPage(config *Config, page int, dev streamdeck.Device) {
+func SetPage(config *api.Config, page int, dev streamdeck.Device) {
 	p = page
 	currentPage := config.Pages[page]
-	for i := 0; i < 15; i++ {
+	for i := 0; i < len(currentPage); i++ {
 		currentKey := &currentPage[i]
 		if currentKey.Buff == nil {
 			if currentKey.IconHandler == "" {
 				SetKey(currentKey, i)
 
 			} else if currentKey.IconHandlerStruct == nil {
-				var handler IconHandler
+				var handler api.IconHandler
 				if currentKey.IconHandler == "Gif" {
 					handler = &GifIconHandler{true}
 				} else if currentKey.IconHandler == "Counter" {
@@ -95,7 +96,7 @@ func SetPage(config *Config, page int, dev streamdeck.Device) {
 	EmitPage(p)
 }
 
-func HandleInput(key *Key, page int, index int, dev streamdeck.Device) {
+func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 	if key.Command != "" {
 		runCommand(key.Command)
 	}
@@ -114,7 +115,7 @@ func HandleInput(key *Key, page int, index int, dev streamdeck.Device) {
 	}
 	if key.KeyHandler != "" {
 		if key.KeyHandlerStruct == nil {
-			var handler KeyHandler
+			var handler api.KeyHandler
 			if key.KeyHandler == "Counter" {
 				handler = CounterKeyHandler{}
 			}
@@ -130,7 +131,7 @@ func HandleInput(key *Key, page int, index int, dev streamdeck.Device) {
 func Listen() {
 	kch, err := dev.ReadKeys()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	for {
 		select {
@@ -138,7 +139,7 @@ func Listen() {
 			if !ok {
 				err = dev.Open()
 				if err != nil {
-					log.Fatal(err)
+					log.Println(err)
 				}
 				continue
 			}

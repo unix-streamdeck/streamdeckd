@@ -2,7 +2,8 @@ package main
 
 import (
 	"github.com/fogleman/gg"
-	"github.com/unix-streamdeck/streamdeck"
+	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/driver"
 	"golang.org/x/image/font/inconsolata"
 	"strconv"
 )
@@ -12,7 +13,7 @@ type CounterIconHandler struct {
 	running bool
 }
 
-func (c *CounterIconHandler) Icon(page int, index int, key *Key, dev streamdeck.Device) {
+func (c *CounterIconHandler) Icon(page int, index int, key *api.Key, dev streamdeck.Device) {
 	if c.running {
 		img := gg.NewContext(72, 72)
 		img.SetRGB(0, 0, 0)
@@ -33,7 +34,7 @@ func (c CounterIconHandler) Stop()  {
 
 type CounterKeyHandler struct{}
 
-func (CounterKeyHandler) Key(page int, index int, key *Key, dev streamdeck.Device) {
+func (CounterKeyHandler) Key(page int, index int, key *api.Key, dev streamdeck.Device) {
 	if key.IconHandler != "Counter" {
 		return
 	}
