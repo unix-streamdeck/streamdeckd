@@ -69,6 +69,7 @@ func InitDBUS() error {
 	conn, err = dbus.SessionBus()
 	if err != nil {
 		log.Println(err)
+		return err
 	}
 	defer conn.Close()
 
