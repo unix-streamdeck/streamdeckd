@@ -93,6 +93,8 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/unix-streamdeck/api v0.0.0-20200817173730-eb6b93fc8a53 h1:os1SjFbe2h6kfDsGRtzFBtjks1o7kjZqx2siCJkJAlQ=
 github.com/unix-streamdeck/api v0.0.0-20200817173730-eb6b93fc8a53/go.mod h1:H8KAWZfeqmeUe2aqj882c6w1GzSRZl7kskXK6VS4FMo=
+github.com/unix-streamdeck/api v0.0.0-20200818180846-6942d99617b2 h1:du+OoTUOp1mf/VRdQ8xQMWdR6JrOGbZvDG1nb9BBxHM=
+github.com/unix-streamdeck/api v0.0.0-20200818180846-6942d99617b2/go.mod h1:rweAXRgCWdCACCuVhmleidq7HnJEO38zBGDe8uQqZ0w=
 github.com/unix-streamdeck/driver v0.0.0-20200817173808-cdaf123c076b h1:27gVti9+OevmBC2BnWlKC0dQ0eiIHh7PvYTWxt4vb6A=
 github.com/unix-streamdeck/driver v0.0.0-20200817173808-cdaf123c076b/go.mod h1:i3Eg6kJBslgUk2VIPJ3Cclta2fpV1KJrOnOnR8gnVKY=
 github.com/unix-streamdeck/streamdeck v0.0.0-20200727161137-d2d416a422d2 h1:rLVbYju4iaW8jP64Pafffu9T0wXitOOtu3+qCxzGV1c=

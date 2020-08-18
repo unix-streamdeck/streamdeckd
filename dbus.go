@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/godbus/dbus/v5"
 	"log"
-	"os"
 )
 
 
@@ -64,7 +64,7 @@ func (StreamDeckDBus) CommitConfig() *dbus.Error {
 	return nil
 }
 
-func InitDBUS() {
+func InitDBUS() error {
 	var err error
 	conn, err = dbus.SessionBus()
 	if err != nil {
@@ -83,10 +83,10 @@ func InitDBUS() {
 		dbus.NameFlagDoNotQueue)
 	if err != nil {
 		log.Println(err)
+		return err
 	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
-		log.Println("name already taken")
-		os.Exit(1)
+		return errors.New("DBus: Name already taken")
 	}
 		select {}
 }

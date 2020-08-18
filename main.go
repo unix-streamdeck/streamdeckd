@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
+	"github.com/unix-streamdeck/api"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
