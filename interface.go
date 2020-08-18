@@ -103,12 +103,12 @@ func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 	if key.Keybind != "" {
 		runCommand("xdotool key " + key.Keybind)
 	}
-	if key.SwitchPage != nil {
-		page = (*key.SwitchPage) - 1
+	if key.SwitchPage != 0 {
+		page = key.SwitchPage - 1
 		SetPage(config, page, dev)
 	}
-	if key.Brightness != nil {
-		_ = dev.SetBrightness(uint8(*key.Brightness))
+	if key.Brightness != 0 {
+		_ = dev.SetBrightness(uint8(key.Brightness))
 	}
 	if key.Url != "" {
 		runCommand("xdg-open " + key.Url)
