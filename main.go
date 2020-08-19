@@ -2,13 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/fogleman/gg"
-	"github.com/nfnt/resize"
-	"github.com/unix-streamdeck/streamdeck"
-	"golang.org/x/image/font/inconsolata"
-	"image"
-	"image/color"
-	"image/draw"
+	"github.com/unix-streamdeck/driver"
+	"github.com/unix-streamdeck/api"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -17,145 +12,81 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 )
 
-var page = 0
 var dev streamdeck.Device
-var config Config
+var config *api.Config
+var configPath = os.Getenv("HOME") + "/.streamdeck-config.json"
+
+var basicConfig = api.Config{
+	Pages: []api.Page{
+		{
+			api.Key{
+			},
+		},
+	},
+}
 
 func main() {
 	d, err := streamdeck.Devices()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	if len(d) == 0 {
-		log.Fatal("No Stream Deck devices found.")
+		log.Println("No Stream Deck devices found.")
 	}
 	dev = d[0]
 	err = dev.Open()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	config, err = readConfig()
 	if err != nil && !os.IsNotExist(err) {
-		log.Fatal(err)
+		log.Println(err)
+	} else if os.IsNotExist(err) {
+		file, err := os.Create(configPath)
+		if err != nil {
+			log.Println(err)
+		}
+		err = file.Close()
+		if err != nil {
+			log.Println(err)
+		}
+		config = &basicConfig
+		err = SaveConfig()
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, Page{})
+		config.Pages = append(config.Pages, api.Page{})
 	}
 	cleanupHook()
-	setPage()
-	kch, err := dev.ReadKeys()
-	if err != nil {
-		log.Fatal(err)
-	}
-	for {
-		select {
-		case k, ok := <-kch:
-			if !ok {
-				err = dev.Open()
-				if err != nil {
-					log.Fatal(err)
-				}
-				continue
-			}
-			if k.Pressed == true {
-				if len(config.Pages)-1 >= page && len(config.Pages[page])-1 >= int(k.Index) {
-					handleInput(config.Pages[page][k.Index])
-				}
-			}
-		}
-	}
+	SetPage(config, 0, dev)
+	go InitDBUS()
+	Listen()
 }
 
-func readConfig() (Config, error) {
-	data, err := ioutil.ReadFile(os.Getenv("HOME") + "/.streamdeck-config.json")
+func readConfig() (*api.Config, error) {
+	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		return Config{}, err
+		return &api.Config{}, err
 	}
-	var config Config
+	var config api.Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-		return Config{}, err
+		return &api.Config{}, err
 	}
-	return config, nil
+	return &config, nil
 }
 
-func setImage(img image.Image, i int, p int) {
-	if p == page {
-		dev.SetImage(uint8(i), img)
-	}
-}
-
-func setPage() {
-	currentPage := config.Pages[page]
-	for i, currentKey := range currentPage {
-		if currentKey.buff == nil {
-			if currentKey.Icon == "" {
-				img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
-				draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{0, 0, 0, 255}), image.ZP, draw.Src)
-				currentKey.buff = img
-			} else {
-				img, err := loadImage(currentKey.Icon)
-				if err != nil {
-					log.Fatal(err)
-				}
-				currentKey.buff = img
-			}
-			if currentKey.Text != "" {
-				img := gg.NewContextForImage(currentKey.buff)
-				img.SetRGB(1, 1, 1)
-				img.SetFontFace(inconsolata.Regular8x16)
-				img.DrawStringAnchored(currentKey.Text, 72/2, 72/2, 0.5, 0.5)
-				img.Clip()
-				currentKey.buff = img.Image()
-			}
-		}
-		setImage(currentKey.buff, i, page)
-	}
-}
-
-func loadImage(path string) (image.Image, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	img, _, err := image.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return resize.Resize(72, 72, img, resize.Lanczos3), nil
-}
-
-func handleInput(key Key) {
-	if key.Command != "" {
-		runCommand(key.Command)
-	}
-	if key.Keybind != "" {
-		runCommand("xdotool key " + key.Keybind)
-	}
-	if key.SwitchPage != nil {
-		page = (*key.SwitchPage) - 1
-		setPage()
-	}
-	if key.Brightness != nil {
-		_ = dev.SetBrightness(uint8(*key.Brightness))
-	}
-	if key.Url != "" {
-		runCommand("xdg-open " + key.Url)
-	}
-}
 
 func runCommand(command string) {
-	args := strings.Split(command, " ")
-	c := exec.Command(args[0], args[1:]...)
+	//args := strings.Split(command, " ")
+	c := exec.Command("/bin/sh", "-c", command)
 	if err := c.Start(); err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	err := c.Wait()
 	if err != nil {
@@ -171,4 +102,67 @@ func cleanupHook() {
 		_ = dev.Reset()
 		os.Exit(0)
 	}()
+}
+
+func SetConfig(configString string) error {
+	unmountHandlers()
+	var err error
+	config = nil
+	err = json.Unmarshal([]byte(configString), &config)
+	if err != nil {
+		return err
+	}
+	if len(config.Pages) == 0 {
+		config.Pages = append(config.Pages, api.Page{})
+	}
+	SetPage(config, p, dev)
+	return nil
+}
+
+func ReloadConfig() error {
+	unmountHandlers()
+	var err error
+	config, err = readConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if len(config.Pages) == 0 {
+		config.Pages = append(config.Pages, api.Page{})
+	}
+	SetPage(config, p, dev)
+	return nil
+}
+
+func SaveConfig() error {
+	f, err := os.OpenFile(configPath, os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	var configString []byte
+	configString, err = json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(configString)
+	if err != nil {
+		return err
+	}
+	err = f.Sync()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func unmountHandlers() {
+	for i := range config.Pages {
+		page := config.Pages[i]
+		for i2 := range page {
+			key := page[i2]
+			if key.IconHandlerStruct != nil {
+				key.IconHandlerStruct.Stop()
+			}
+		}
+	}
 }

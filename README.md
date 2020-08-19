@@ -54,3 +54,29 @@ The actions you can have on a button are:
 - `url`: opens a url in your default browser via xdg
 - `brightness`: set the brightness of the streamdeck as a percentage
 - `switch_page`: change the active page on the streamdeck
+
+
+### D-Bus
+
+There is a D-Bus interface built into the daemon, the service name and interface for D-Bus are `com.thejonsey.streamdeck` and `com/thejonsey/streamdeck` respectively, and is made up of the following methods/signals
+
+#### Methods
+
+- GetConfig  - returns the current running config
+- SetConfig  - sets the config, without saving to disk, takes in Stringified json, returns an error if anything breaks
+- ReloadConfig  - reloads the config from disk
+- GetDeckInfo  - Returns information about the active streamdeck in the format of 
+```json
+{
+  "icon_size": 72,
+  "rows": 3,
+  "cols": 5,
+  "page": 0
+}
+```
+- SetPage - Set the page on the streamdeck to the number passed to it, returns an error if anything breaks
+- CommitConfig  - Commits the currently active config to disk, returns an error if anything breaks
+
+#### Signals
+
+- Page - sends the number of the page switched to on the StreamDeck
