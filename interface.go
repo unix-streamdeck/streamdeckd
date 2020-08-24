@@ -50,6 +50,7 @@ func SetKey(currentKey *api.Key, i int) {
 			img, err := LoadImage(currentKey.Icon)
 			if err != nil {
 				log.Println(err)
+				return
 			}
 			currentKey.Buff = img
 		}
@@ -62,7 +63,9 @@ func SetKey(currentKey *api.Key, i int) {
 			currentKey.Buff = img.Image()
 		}
 	}
-	SetImage(currentKey.Buff, i, p, dev)
+	if currentKey.Buff != nil {
+		SetImage(currentKey.Buff, i, p, dev)
+	}
 }
 
 func SetPage(config *api.Config, page int, dev streamdeck.Device) {
