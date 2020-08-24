@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/unix-streamdeck/driver"
+	"errors"
+	"fmt"
 	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/driver"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -17,30 +19,19 @@ import (
 
 var dev streamdeck.Device
 var config *api.Config
-var configPath = os.Getenv("HOME") + "/.streamdeck-config.json"
+var configPath = os.Getenv("HOME") + string(os.PathSeparator) + ".streamdeck-config.json"
+var isOpen = false
 
 var basicConfig = api.Config{
 	Pages: []api.Page{
 		{
-			api.Key{
-			},
+			api.Key{},
 		},
 	},
 }
 
 func main() {
-	d, err := streamdeck.Devices()
-	if err != nil {
-		log.Println(err)
-	}
-	if len(d) == 0 {
-		log.Println("No Stream Deck devices found.")
-	}
-	dev = d[0]
-	err = dev.Open()
-	if err != nil {
-		log.Println(err)
-	}
+	var err error
 	config, err = readConfig()
 	if err != nil && !os.IsNotExist(err) {
 		log.Println(err)
@@ -63,9 +54,43 @@ func main() {
 		config.Pages = append(config.Pages, api.Page{})
 	}
 	cleanupHook()
-	SetPage(config, 0, dev)
 	go InitDBUS()
-	Listen()
+	attemptConnection()
+}
+
+func attemptConnection() {
+	for {
+		if !isOpen {
+			_ = openDevice()
+			if isOpen {
+				go Listen()
+				SetPage(config, p, dev)
+				if sDbus != nil {
+					sDbus.IconSize = int(dev.Pixels)
+					sDbus.Rows = int(dev.Rows)
+					sDbus.Cols = int(dev.Columns)
+				}
+			}
+		}
+	}
+}
+
+func openDevice() error {
+	d, err := streamdeck.Devices()
+	if err != nil {
+		return err
+	}
+	if len(d) == 0 {
+		return errors.New("No streamdeck devices found")
+	}
+	dev = d[0]
+	err = dev.Open()
+	if err != nil {
+		return err
+	}
+	isOpen = true
+	fmt.Println("Device (" + dev.Serial + ") connected")
+	return err
 }
 
 func readConfig() (*api.Config, error) {
@@ -80,7 +105,6 @@ func readConfig() (*api.Config, error) {
 	}
 	return &config, nil
 }
-
 
 func runCommand(command string) {
 	//args := strings.Split(command, " ")
@@ -158,10 +182,12 @@ func SaveConfig() error {
 func unmountHandlers() {
 	for i := range config.Pages {
 		page := config.Pages[i]
-		for i2 := range page {
-			key := page[i2]
+		for i2 := 0; i2 < len(page); i2++ {
+			key := &page[i2]
 			if key.IconHandlerStruct != nil {
 				key.IconHandlerStruct.Stop()
+				key.IconHandlerStruct = nil
+				key.Buff = nil
 			}
 		}
 	}

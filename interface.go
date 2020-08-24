@@ -11,6 +11,7 @@ import (
 	"image/draw"
 	"log"
 	"os"
+	"strings"
 )
 
 var p int
@@ -35,8 +36,18 @@ func ResizeImage(img image.Image) image.Image {
 }
 
 func SetImage(img image.Image, i int, page int, dev streamdeck.Device) {
-	if p == page {
-		dev.SetImage(uint8(i), img)
+	if p == page && isOpen {
+		err := dev.SetImage(uint8(i), img)
+		if err != nil {
+			if strings.Contains(err.Error(), "hidapi") {
+				log.Println("Device disconnected")
+				_ = dev.Close()
+				isOpen = false
+				unmountHandlers()
+			} else {
+				log.Println(err)
+			}
+		}
 	}
 }
 
@@ -136,14 +147,14 @@ func Listen() {
 	if err != nil {
 		log.Println(err)
 	}
-	for {
+	for isOpen {
 		select {
 		case k, ok := <-kch:
 			if !ok {
-				err = dev.Open()
-				if err != nil {
-					log.Println(err)
-				}
+				log.Println("Device disconnected")
+				_ = dev.Close()
+				isOpen = false
+				unmountHandlers()
 				continue
 			}
 			if k.Pressed == true {
