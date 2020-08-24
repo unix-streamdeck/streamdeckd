@@ -7,16 +7,15 @@ import (
 	"log"
 )
 
-
 var conn *dbus.Conn
 
-var s *StreamDeckDBus
+var sDbus *StreamDeckDBus
 
 type StreamDeckDBus struct {
-	Cols int `json:"cols,omitempty"`
-	Rows int `json:"rows,omitempty"`
+	Cols     int `json:"cols,omitempty"`
+	Rows     int `json:"rows,omitempty"`
 	IconSize int `json:"icon_size,omitempty"`
-	Page int `json:"page"`
+	Page     int `json:"page"`
 }
 
 func (s StreamDeckDBus) GetDeckInfo() (string, *dbus.Error) {
@@ -43,7 +42,7 @@ func (StreamDeckDBus) ReloadConfig() *dbus.Error {
 	return nil
 }
 
-func (StreamDeckDBus) SetPage(page int) *dbus.Error  {
+func (StreamDeckDBus) SetPage(page int) *dbus.Error {
 	SetPage(config, page, dev)
 	return nil
 }
@@ -73,13 +72,10 @@ func InitDBUS() error {
 	}
 	defer conn.Close()
 
-	s = &StreamDeckDBus{
-		Cols: int(dev.Columns),
-		Rows: int(dev.Rows),
-		IconSize: int(dev.Pixels),
+	sDbus = &StreamDeckDBus{
 		Page: p,
 	}
-	conn.ExportAll(s, "/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd")
+	conn.ExportAll(sDbus, "/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd")
 	reply, err := conn.RequestName("com.unixstreamdeck.streamdeckd",
 		dbus.NameFlagDoNotQueue)
 	if err != nil {
@@ -89,14 +85,14 @@ func InitDBUS() error {
 	if reply != dbus.RequestNameReplyPrimaryOwner {
 		return errors.New("DBus: Name already taken")
 	}
-		select {}
+	select {}
 }
 
 func EmitPage(page int) {
 	if conn != nil {
 		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", page)
 	}
-	if s != nil {
-		s.Page = page
+	if sDbus != nil {
+		sDbus.Page = page
 	}
 }
