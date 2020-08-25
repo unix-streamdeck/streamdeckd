@@ -50,7 +50,7 @@ func SetImage(img image.Image, i int, page int, dev streamdeck.Device) {
 	}
 }
 
-func SetKey(currentKey *api.Key, i int) {
+func SetKeyImage(currentKey *api.Key, i int) {
 	if currentKey.Buff == nil {
 		if currentKey.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
@@ -83,30 +83,34 @@ func SetPage(config *api.Config, page int, dev streamdeck.Device) {
 	currentPage := config.Pages[page]
 	for i := 0; i < len(currentPage); i++ {
 		currentKey := &currentPage[i]
-		if currentKey.Buff == nil {
-			if currentKey.IconHandler == "" {
-				SetKey(currentKey, i)
-
-			} else if currentKey.IconHandlerStruct == nil {
-				var handler api.IconHandler
-				if currentKey.IconHandler == "Gif" {
-					handler = &GifIconHandler{true}
-				} else if currentKey.IconHandler == "Counter" {
-					handler = &CounterIconHandler{0, true}
-				} else if currentKey.IconHandler == "Time" {
-					handler = &TimeIconHandler{true}
-				}
-				if handler == nil {
-					continue
-				}
-				handler.Icon(page, i, currentKey, dev)
-				currentKey.IconHandlerStruct = handler
-			}
-		} else {
-			SetImage(currentKey.Buff, i, p, dev)
-		}
+		go SetKey(currentKey, i, page, dev)
 	}
 	EmitPage(p)
+}
+
+func SetKey(currentKey *api.Key, i int, page int, dev streamdeck.Device) {
+	if currentKey.Buff == nil {
+		if currentKey.IconHandler == "" {
+			SetKeyImage(currentKey, i)
+
+		} else if currentKey.IconHandlerStruct == nil {
+			var handler api.IconHandler
+			if currentKey.IconHandler == "Gif" {
+				handler = &GifIconHandler{true}
+			} else if currentKey.IconHandler == "Counter" {
+				handler = &CounterIconHandler{0, true}
+			} else if currentKey.IconHandler == "Time" {
+				handler = &TimeIconHandler{true}
+			}
+			if handler == nil {
+				return
+			}
+			handler.Icon(page, i, currentKey, dev)
+			currentKey.IconHandlerStruct = handler
+		}
+	} else {
+		SetImage(currentKey.Buff, i, p, dev)
+	}
 }
 
 func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
@@ -121,7 +125,10 @@ func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 		SetPage(config, page, dev)
 	}
 	if key.Brightness != 0 {
-		_ = dev.SetBrightness(uint8(key.Brightness))
+		err := dev.SetBrightness(uint8(key.Brightness))
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	if key.Url != "" {
 		runCommand("xdg-open " + key.Url)
