@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
 	"golang.org/x/image/font/inconsolata"
+	"golang.org/x/sync/semaphore"
 	"image"
 	"image/color"
 	"image/draw"
@@ -14,6 +16,7 @@ import (
 )
 
 var p int
+var sem = semaphore.NewWeighted(int64(1))
 
 func LoadImage(path string) (image.Image, error) {
 	f, err := os.Open(path)
@@ -35,6 +38,13 @@ func ResizeImage(img image.Image) image.Image {
 }
 
 func SetImage(img image.Image, i int, page int, dev streamdeck.Device) {
+	ctx := context.Background()
+	err := sem.Acquire(ctx, 1)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer sem.Release(1)
 	if p == page {
 		dev.SetImage(uint8(i), img)
 	}
