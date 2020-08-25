@@ -58,7 +58,7 @@ The actions you can have on a button are:
 
 ### D-Bus
 
-There is a D-Bus interface built into the daemon, the service name and interface for D-Bus are `com.unixstreamdeck.streamdeck` and `com/unixstreamdeck/streamdeck` respectively, and is made up of the following methods/signals
+There is a D-Bus interface built into the daemon, the service name and interface for D-Bus are `com.unixstreamdeck.streamdeckd` and `com/unixstreamdeck/streamdeckd` respectively, and is made up of the following methods/signals
 
 #### Methods
 
