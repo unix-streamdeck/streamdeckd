@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
+	"golang.org/x/sync/semaphore"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -21,6 +23,8 @@ var dev streamdeck.Device
 var config *api.Config
 var configPath = os.Getenv("HOME") + string(os.PathSeparator) + ".streamdeck-config.json"
 var isOpen = false
+var disconnectSem = semaphore.NewWeighted(1)
+var connectSem = semaphore.NewWeighted(1)
 
 var basicConfig = api.Config{
 	Pages: []api.Page{
@@ -59,23 +63,43 @@ func main() {
 }
 
 func attemptConnection() {
-	for {
-		if !isOpen {
-			_ = openDevice()
-			if isOpen {
-				go Listen()
-				SetPage(config, p, dev)
-				if sDbus != nil {
-					sDbus.IconSize = int(dev.Pixels)
-					sDbus.Rows = int(dev.Rows)
-					sDbus.Cols = int(dev.Columns)
-				}
+	for !isOpen {
+		_ = openDevice()
+		if isOpen {
+			SetPage(config, p)
+			if sDbus != nil {
+				sDbus.IconSize = int(dev.Pixels)
+				sDbus.Rows = int(dev.Rows)
+				sDbus.Cols = int(dev.Columns)
 			}
+			Listen()
 		}
 	}
 }
 
+func disconnect() {
+	ctx := context.Background()
+	err := disconnectSem.Acquire(ctx, 1)
+	if err != nil {
+		return
+	}
+	defer disconnectSem.Release(1)
+	if !isOpen {
+		return
+	}
+	log.Println("Device disconnected")
+	_ = dev.Close()
+	isOpen = false
+	unmountHandlers()
+}
+
 func openDevice() error {
+	ctx := context.Background()
+	err := connectSem.Acquire(ctx, 1)
+	if err != nil {
+		return err
+	}
+	defer connectSem.Release(1)
 	d, err := streamdeck.Devices()
 	if err != nil {
 		return err
@@ -83,14 +107,14 @@ func openDevice() error {
 	if len(d) == 0 {
 		return errors.New("No streamdeck devices found")
 	}
-	dev = d[0]
-	err = dev.Open()
+	err = d[0].Open()
 	if err != nil {
 		return err
 	}
+	dev = d[0]
 	isOpen = true
 	fmt.Println("Device (" + dev.Serial + ") connected")
-	return err
+	return nil
 }
 
 func readConfig() (*api.Config, error) {
@@ -139,7 +163,7 @@ func SetConfig(configString string) error {
 	if len(config.Pages) == 0 {
 		config.Pages = append(config.Pages, api.Page{})
 	}
-	SetPage(config, p, dev)
+	SetPage(config, p)
 	return nil
 }
 
@@ -153,7 +177,7 @@ func ReloadConfig() error {
 	if len(config.Pages) == 0 {
 		config.Pages = append(config.Pages, api.Page{})
 	}
-	SetPage(config, p, dev)
+	SetPage(config, p)
 	return nil
 }
 

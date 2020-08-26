@@ -43,7 +43,7 @@ func (StreamDeckDBus) ReloadConfig() *dbus.Error {
 }
 
 func (StreamDeckDBus) SetPage(page int) *dbus.Error {
-	SetPage(config, page, dev)
+	SetPage(config, page)
 	return nil
 }
 

@@ -35,15 +35,12 @@ func ResizeImage(img image.Image) image.Image {
 	return resize.Resize(dev.Pixels, dev.Pixels, img, resize.Lanczos3)
 }
 
-func SetImage(img image.Image, i int, page int, dev streamdeck.Device) {
+func SetImage(img image.Image, i int, page int, _ streamdeck.Device) {
 	if p == page && isOpen {
 		err := dev.SetImage(uint8(i), img)
 		if err != nil {
 			if strings.Contains(err.Error(), "hidapi") {
-				log.Println("Device disconnected")
-				_ = dev.Close()
-				isOpen = false
-				unmountHandlers()
+				disconnect()
 			} else {
 				log.Println(err)
 			}
@@ -79,7 +76,7 @@ func SetKey(currentKey *api.Key, i int) {
 	}
 }
 
-func SetPage(config *api.Config, page int, dev streamdeck.Device) {
+func SetPage(config *api.Config, page int) {
 	p = page
 	currentPage := config.Pages[page]
 	for i := 0; i < len(currentPage); i++ {
@@ -100,7 +97,7 @@ func SetPage(config *api.Config, page int, dev streamdeck.Device) {
 				if handler == nil {
 					continue
 				}
-				handler.Icon(page, i, currentKey, dev)
+				handler.Icon(page, i, currentKey, streamdeck.Device{})
 				currentKey.IconHandlerStruct = handler
 			}
 		} else {
@@ -110,7 +107,7 @@ func SetPage(config *api.Config, page int, dev streamdeck.Device) {
 	EmitPage(p)
 }
 
-func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
+func HandleInput(key *api.Key, page int, index int) {
 	if key.Command != "" {
 		runCommand(key.Command)
 	}
@@ -119,7 +116,7 @@ func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 	}
 	if key.SwitchPage != 0 {
 		page = key.SwitchPage - 1
-		SetPage(config, page, dev)
+		SetPage(config, page)
 	}
 	if key.Brightness != 0 {
 		_ = dev.SetBrightness(uint8(key.Brightness))
@@ -138,7 +135,7 @@ func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 			}
 			key.KeyHandlerStruct = handler
 		}
-		key.KeyHandlerStruct.Key(page, index, key, dev)
+		key.KeyHandlerStruct.Key(page, index, key, streamdeck.Device{})
 	}
 }
 
@@ -151,15 +148,12 @@ func Listen() {
 		select {
 		case k, ok := <-kch:
 			if !ok {
-				log.Println("Device disconnected")
-				_ = dev.Close()
-				isOpen = false
-				unmountHandlers()
-				continue
+				disconnect()
+				return
 			}
 			if k.Pressed == true {
 				if len(config.Pages)-1 >= p && len(config.Pages[p])-1 >= int(k.Index) {
-					HandleInput(&config.Pages[p][k.Index], p, int(k.Index), dev)
+					HandleInput(&config.Pages[p][k.Index], p, int(k.Index))
 				}
 			}
 		}
