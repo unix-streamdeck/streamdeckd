@@ -10,4 +10,5 @@ require (
 	github.com/unix-streamdeck/api v0.0.0-20200818180846-6942d99617b2
 	github.com/unix-streamdeck/driver v0.0.0-20200817173808-cdaf123c076b
 	golang.org/x/image v0.0.0-20200119044424-58c23975cae1
+	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4
 )
