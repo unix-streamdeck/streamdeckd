@@ -9,16 +9,16 @@ import (
 )
 
 
-func (t *TimeIconHandler) Icon(key *api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (t *TimeIconHandler) Icon(_ api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	t.Running = true
-	go timeLoop(key, info, callback, t)
+	go timeLoop(info, callback, t)
 }
 
 func (t *TimeIconHandler) Stop() {
 	t.Running = false
 }
 
-func timeLoop(key *api.Key, info api.StreamDeckInfo, callback func(image image.Image), handler *TimeIconHandler) {
+func timeLoop(info api.StreamDeckInfo, callback func(image image.Image), handler *TimeIconHandler) {
 	for handler.Running {
 		img := gg.NewContext(info.IconSize, info.IconSize)
 		img.SetRGB(0, 0, 0)
@@ -30,7 +30,6 @@ func timeLoop(key *api.Key, info api.StreamDeckInfo, callback func(image image.I
 		img.DrawStringAnchored(tString, float64(info.IconSize)/2, float64(info.IconSize)/2, 0.5, 0.5)
 		img.Clip()
 		callback(img.Image())
-		key.Buff = img.Image()
 		time.Sleep(time.Second)
 	}
 }

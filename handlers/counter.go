@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (c *CounterIconHandler) Icon(key *api.Key, _ api.StreamDeckInfo, callback func(image image.Image)) {
+func (c *CounterIconHandler) Icon(_ api.Key, _ api.StreamDeckInfo, callback func(image image.Image)) {
 	if c.Callback == nil {
 		c.Callback = callback
 	}
@@ -23,7 +23,6 @@ func (c *CounterIconHandler) Icon(key *api.Key, _ api.StreamDeckInfo, callback f
 		img.DrawStringAnchored(Count, 72/2, 72/2, 0.5, 0.5)
 		img.Clip()
 		callback(img.Image())
-		key.Buff = img.Image()
 		time.Sleep(250 * time.Millisecond)
 	}
 }
@@ -34,7 +33,7 @@ func (c CounterIconHandler) Stop()  {
 
 type CounterKeyHandler struct{}
 
-func (CounterKeyHandler) Key(key *api.Key, info api.StreamDeckInfo) {
+func (CounterKeyHandler) Key(key api.Key, info api.StreamDeckInfo) {
 	if key.IconHandler != "Counter" {
 		return
 	}
