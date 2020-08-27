@@ -4,18 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/godbus/dbus/v5"
+	"github.com/unix-streamdeck/api"
 	"log"
 )
 
 var conn *dbus.Conn
 
 var sDbus *StreamDeckDBus
+var sDInfo api.StreamDeckInfo
 
 type StreamDeckDBus struct {
-	Cols     int `json:"cols,omitempty"`
-	Rows     int `json:"rows,omitempty"`
-	IconSize int `json:"icon_size,omitempty"`
-	Page     int `json:"page"`
 }
 
 func (s StreamDeckDBus) GetDeckInfo() (string, *dbus.Error) {
@@ -72,7 +70,8 @@ func InitDBUS() error {
 	}
 	defer conn.Close()
 
-	sDbus = &StreamDeckDBus{
+	sDbus = &StreamDeckDBus{}
+	sDInfo = api.StreamDeckInfo{
 		Page: p,
 	}
 	conn.ExportAll(sDbus, "/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd")
@@ -93,6 +92,6 @@ func EmitPage(page int) {
 		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", page)
 	}
 	if sDbus != nil {
-		sDbus.Page = page
+		sDInfo.Page = page
 	}
 }
