@@ -113,7 +113,7 @@ func SetKey(currentKey *api.Key, i int, page int) {
 			if handler == nil {
 				return
 			}
-			handler.Icon(*currentKey, sDInfo, func(image image.Image) {
+			handler.Start(*currentKey, sDInfo, func(image image.Image) {
 				SetImage(image, i, page)
 				currentKey.Buff = image
 			})
@@ -121,6 +121,13 @@ func SetKey(currentKey *api.Key, i int, page int) {
 		}
 	} else {
 		SetImage(currentKey.Buff, i, p)
+	}
+	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
+		currentKey.IconHandlerStruct.SetRunning(true)
+		currentKey.IconHandlerStruct.Start(*currentKey, sDInfo, func(image image.Image) {
+			SetImage(image, i, page)
+			currentKey.Buff = image
+		})
 	}
 }
 

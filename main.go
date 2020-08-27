@@ -210,8 +210,6 @@ func unmountHandlers() {
 			key := &page[i2]
 			if key.IconHandlerStruct != nil {
 				key.IconHandlerStruct.Stop()
-				key.IconHandlerStruct = nil
-				key.Buff = nil
 			}
 		}
 	}
