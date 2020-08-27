@@ -6,6 +6,7 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
+	"github.com/unix-streamdeck/streamdeckd/handlers"
 	"golang.org/x/image/font/inconsolata"
 	"golang.org/x/sync/semaphore"
 	"image"
@@ -96,11 +97,11 @@ func SetKey(currentKey *api.Key, i int, page int, dev streamdeck.Device) {
 		} else if currentKey.IconHandlerStruct == nil {
 			var handler api.IconHandler
 			if currentKey.IconHandler == "Gif" {
-				handler = &GifIconHandler{true}
+				handler = &handlers.GifIconHandler{Running:true, OnSetImage: SetImage}
 			} else if currentKey.IconHandler == "Counter" {
-				handler = &CounterIconHandler{0, true}
+				handler = &handlers.CounterIconHandler{Count:0, Running: true, OnSetImage: SetImage}
 			} else if currentKey.IconHandler == "Time" {
-				handler = &TimeIconHandler{true}
+				handler = &handlers.TimeIconHandler{Running:true, OnSetImage: SetImage}
 			}
 			if handler == nil {
 				return
@@ -137,7 +138,7 @@ func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 		if key.KeyHandlerStruct == nil {
 			var handler api.KeyHandler
 			if key.KeyHandler == "Counter" {
-				handler = CounterKeyHandler{}
+				handler = handlers.CounterKeyHandler{}
 			}
 			if handler == nil {
 				return

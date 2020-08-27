@@ -1,6 +1,7 @@
-package main
+package handlers
 
 import (
+	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
 	"image"
@@ -10,12 +11,8 @@ import (
 	"time"
 )
 
-type GifIconHandler struct {
-	running bool
-}
-
 func (s *GifIconHandler) Icon(page int, index int, key *api.Key, dev streamdeck.Device) {
-	s.running = true
+	s.Running = true
 	f, err := os.Open(key.Icon)
 	if err != nil {
 		log.Println(err)
@@ -29,20 +26,20 @@ func (s *GifIconHandler) Icon(page int, index int, key *api.Key, dev streamdeck.
 	timeDelay := gifs.Delay[0]
 	frames := make([]image.Image, len(gifs.Image))
 	for i, frame := range gifs.Image {
-		frames[i] = ResizeImage(frame)
+		frames[i] = resize.Resize(dev.Pixels, dev.Pixels, frame, resize.Lanczos3)
 	}
 	go loop(frames, timeDelay, page, index, dev, key, s)
 }
 
 func (s *GifIconHandler) Stop() {
-	s.running = false
+	s.Running = false
 }
 
 func loop(frames []image.Image, timeDelay int, page int, index int, dev streamdeck.Device, key *api.Key, s *GifIconHandler) {
 	gifIndex := 0
-	for s.running {
+	for s.Running {
 		img := frames[gifIndex]
-		SetImage(img, index, page, dev)
+		s.OnSetImage(img, index, page, dev)
 		key.Buff = img
 		gifIndex++
 		if gifIndex >= len(frames) {
