@@ -68,9 +68,9 @@ func attemptConnection() {
 		if isOpen {
 			SetPage(config, p)
 			if sDbus != nil {
-				sDbus.IconSize = int(dev.Pixels)
-				sDbus.Rows = int(dev.Rows)
-				sDbus.Cols = int(dev.Columns)
+				sDInfo.IconSize = int(dev.Pixels)
+				sDInfo.Rows = int(dev.Rows)
+				sDInfo.Cols = int(dev.Columns)
 			}
 			Listen()
 		}
