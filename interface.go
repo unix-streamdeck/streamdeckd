@@ -113,8 +113,9 @@ func SetKey(currentKey *api.Key, i int, page int) {
 			if handler == nil {
 				return
 			}
-			handler.Icon(currentKey, sDInfo, func(image image.Image) {
+			handler.Icon(*currentKey, sDInfo, func(image image.Image) {
 				SetImage(image, i, page)
+				currentKey.Buff = image
 			})
 			currentKey.IconHandlerStruct = handler
 		}
@@ -154,7 +155,7 @@ func HandleInput(key *api.Key, page int) {
 			}
 			key.KeyHandlerStruct = handler
 		}
-		key.KeyHandlerStruct.Key(key, sDInfo)
+		key.KeyHandlerStruct.Key(*key, sDInfo)
 	}
 }
 

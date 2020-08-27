@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (s *GifIconHandler) Icon(key *api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (s *GifIconHandler) Icon(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	s.Running = true
 	f, err := os.Open(key.Icon)
 	if err != nil {
@@ -27,19 +27,18 @@ func (s *GifIconHandler) Icon(key *api.Key, info api.StreamDeckInfo, callback fu
 	for i, frame := range gifs.Image {
 		frames[i] = resize.Resize(uint(info.IconSize), uint(info.IconSize), frame, resize.Lanczos3)
 	}
-	go loop(frames, timeDelay, callback, key, s)
+	go loop(frames, timeDelay, callback, s)
 }
 
 func (s *GifIconHandler) Stop() {
 	s.Running = false
 }
 
-func loop(frames []image.Image, timeDelay int, callback func(image image.Image), key *api.Key, s *GifIconHandler) {
+func loop(frames []image.Image, timeDelay int, callback func(image image.Image), s *GifIconHandler) {
 	gifIndex := 0
 	for s.Running {
 		img := frames[gifIndex]
 		callback(img)
-		key.Buff = img
 		gifIndex++
 		if gifIndex >= len(frames) {
 			gifIndex = 0
