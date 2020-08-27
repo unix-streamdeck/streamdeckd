@@ -5,8 +5,8 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
-	"golang.org/x/image/font/inconsolata"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"golang.org/x/image/font/inconsolata"
 	"image"
 	"image/color"
 	"image/draw"
@@ -98,7 +98,7 @@ func SetPage(config *api.Config, page int) {
 				if handler == nil {
 					continue
 				}
-				handler.Icon(page, i, currentKey, streamdeck.Device{})
+				handler.Icon(page, i, currentKey, dev)
 				currentKey.IconHandlerStruct = handler
 			}
 		} else {
