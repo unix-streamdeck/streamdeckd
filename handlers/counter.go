@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (c *CounterIconHandler) Icon(_ api.Key, _ api.StreamDeckInfo, callback func(image image.Image)) {
+func (c *CounterIconHandler) Start(_ api.Key, _ api.StreamDeckInfo, callback func(image image.Image)) {
 	if c.Callback == nil {
 		c.Callback = callback
 	}
@@ -27,6 +27,14 @@ func (c *CounterIconHandler) Icon(_ api.Key, _ api.StreamDeckInfo, callback func
 	}
 }
 
+func (c *CounterIconHandler) IsRunning() bool {
+	return c.Running
+}
+
+func (c *CounterIconHandler) SetRunning(running bool)  {
+	c.Running = running
+}
+
 func (c CounterIconHandler) Stop()  {
 	c.Running = false
 }
@@ -40,6 +48,6 @@ func (CounterKeyHandler) Key(key api.Key, info api.StreamDeckInfo) {
 	handler := key.IconHandlerStruct.(*CounterIconHandler)
 	handler.Count += 1
 	if handler.Callback != nil {
-		handler.Icon(key, info, handler.Callback)
+		handler.Start(key, info, handler.Callback)
 	}
 }

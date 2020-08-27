@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (s *GifIconHandler) Icon(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (s *GifIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	s.Running = true
 	f, err := os.Open(key.Icon)
 	if err != nil {
@@ -28,6 +28,14 @@ func (s *GifIconHandler) Icon(key api.Key, info api.StreamDeckInfo, callback fun
 		frames[i] = resize.Resize(uint(info.IconSize), uint(info.IconSize), frame, resize.Lanczos3)
 	}
 	go loop(frames, timeDelay, callback, s)
+}
+
+func (s *GifIconHandler) IsRunning() bool {
+	return s.Running
+}
+
+func (s *GifIconHandler) SetRunning(running bool)  {
+	s.Running = running
 }
 
 func (s *GifIconHandler) Stop() {

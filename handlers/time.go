@@ -9,9 +9,17 @@ import (
 )
 
 
-func (t *TimeIconHandler) Icon(_ api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (t *TimeIconHandler) Start(_ api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	t.Running = true
 	go timeLoop(info, callback, t)
+}
+
+func (t *TimeIconHandler) IsRunning() bool {
+	return t.Running
+}
+
+func (t *TimeIconHandler) SetRunning(running bool)  {
+	t.Running = running
 }
 
 func (t *TimeIconHandler) Stop() {
