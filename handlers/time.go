@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"github.com/fogleman/gg"
@@ -9,21 +9,18 @@ import (
 	"time"
 )
 
-type TimeIconHandler struct{
-	running bool
-}
 
 func (t *TimeIconHandler) Icon(page int, index int, key *api.Key, dev streamdeck.Device) {
-	t.running = true
+	t.Running = true
 	go timeLoop(page, index, dev, key, t)
 }
 
 func (t *TimeIconHandler) Stop() {
-	t.running = false
+	t.Running = false
 }
 
 func timeLoop(page int, index int, dev streamdeck.Device, key *api.Key, handler *TimeIconHandler) {
-	for handler.running {
+	for handler.Running {
 		img := gg.NewContext(72, 72)
 		img.SetRGB(0, 0, 0)
 		img.Clear()
@@ -33,7 +30,7 @@ func timeLoop(page int, index int, dev streamdeck.Device, key *api.Key, handler 
 		tString := t.Format("15:04:05")
 		img.DrawStringAnchored(tString, 72/2, 72/2, 0.5, 0.5)
 		img.Clip()
-		SetImage(img.Image(), index, page, dev)
+		handler.OnSetImage(img.Image(), index, page, dev)
 		key.Buff = img.Image()
 		time.Sleep(time.Second)
 	}
