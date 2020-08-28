@@ -1,20 +1,23 @@
 package main
 
 import (
+	"context"
 	"github.com/fogleman/gg"
 	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/api"
-	"github.com/unix-streamdeck/driver"
-	"golang.org/x/image/font/inconsolata"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"golang.org/x/image/font/inconsolata"
+	"golang.org/x/sync/semaphore"
 	"image"
 	"image/color"
 	"image/draw"
 	"log"
 	"os"
+	"strings"
 )
 
 var p int
+var sem = semaphore.NewWeighted(int64(1))
 
 func LoadImage(path string) (image.Image, error) {
 	f, err := os.Open(path)
@@ -35,13 +38,27 @@ func ResizeImage(img image.Image) image.Image {
 	return resize.Resize(dev.Pixels, dev.Pixels, img, resize.Lanczos3)
 }
 
-func SetImage(img image.Image, i int, page int, dev streamdeck.Device) {
-	if p == page {
-		dev.SetImage(uint8(i), img)
+func SetImage(img image.Image, i int, page int) {
+	ctx := context.Background()
+	err := sem.Acquire(ctx, 1)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer sem.Release(1)
+	if p == page && isOpen {
+		err := dev.SetImage(uint8(i), img)
+		if err != nil {
+			if strings.Contains(err.Error(), "hidapi") {
+				disconnect()
+			} else {
+				log.Println(err)
+			}
+		}
 	}
 }
 
-func SetKey(currentKey *api.Key, i int) {
+func SetKeyImage(currentKey *api.Key, i int) {
 	if currentKey.Buff == nil {
 		if currentKey.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
@@ -65,42 +82,56 @@ func SetKey(currentKey *api.Key, i int) {
 		}
 	}
 	if currentKey.Buff != nil {
-		SetImage(currentKey.Buff, i, p, dev)
+		SetImage(currentKey.Buff, i, p)
 	}
 }
 
-func SetPage(config *api.Config, page int, dev streamdeck.Device) {
+func SetPage(config *api.Config, page int) {
 	p = page
 	currentPage := config.Pages[page]
 	for i := 0; i < len(currentPage); i++ {
 		currentKey := &currentPage[i]
-		if currentKey.Buff == nil {
-			if currentKey.IconHandler == "" {
-				SetKey(currentKey, i)
-
-			} else if currentKey.IconHandlerStruct == nil {
-				var handler api.IconHandler
-				if currentKey.IconHandler == "Gif" {
-					handler = &handlers.GifIconHandler{Running:true, OnSetImage: SetImage}
-				} else if currentKey.IconHandler == "Counter" {
-					handler = &handlers.CounterIconHandler{Count:0, Running: true, OnSetImage: SetImage}
-				} else if currentKey.IconHandler == "Time" {
-					handler = &handlers.TimeIconHandler{Running:true, OnSetImage: SetImage}
-				}
-				if handler == nil {
-					continue
-				}
-				handler.Icon(page, i, currentKey, dev)
-				currentKey.IconHandlerStruct = handler
-			}
-		} else {
-			SetImage(currentKey.Buff, i, p, dev)
-		}
+		go SetKey(currentKey, i, page)
 	}
 	EmitPage(p)
 }
 
-func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
+func SetKey(currentKey *api.Key, i int, page int) {
+	if currentKey.Buff == nil {
+		if currentKey.IconHandler == "" {
+			SetKeyImage(currentKey, i)
+
+		} else if currentKey.IconHandlerStruct == nil {
+			var handler api.IconHandler
+			if currentKey.IconHandler == "Gif" {
+				handler = &handlers.GifIconHandler{Running:true}
+			} else if currentKey.IconHandler == "Counter" {
+				handler = &handlers.CounterIconHandler{Count:0, Running: true}
+			} else if currentKey.IconHandler == "Time" {
+				handler = &handlers.TimeIconHandler{Running:true}
+			}
+			if handler == nil {
+				return
+			}
+			handler.Start(*currentKey, sDInfo, func(image image.Image) {
+				SetImage(image, i, page)
+				currentKey.Buff = image
+			})
+			currentKey.IconHandlerStruct = handler
+		}
+	} else {
+		SetImage(currentKey.Buff, i, p)
+	}
+	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
+		currentKey.IconHandlerStruct.SetRunning(true)
+		currentKey.IconHandlerStruct.Start(*currentKey, sDInfo, func(image image.Image) {
+			SetImage(image, i, page)
+			currentKey.Buff = image
+		})
+	}
+}
+
+func HandleInput(key *api.Key, page int) {
 	if key.Command != "" {
 		runCommand(key.Command)
 	}
@@ -109,10 +140,13 @@ func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 	}
 	if key.SwitchPage != 0 {
 		page = key.SwitchPage - 1
-		SetPage(config, page, dev)
+		SetPage(config, page)
 	}
 	if key.Brightness != 0 {
-		_ = dev.SetBrightness(uint8(key.Brightness))
+		err := dev.SetBrightness(uint8(key.Brightness))
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	if key.Url != "" {
 		runCommand("xdg-open " + key.Url)
@@ -128,7 +162,7 @@ func HandleInput(key *api.Key, page int, index int, dev streamdeck.Device) {
 			}
 			key.KeyHandlerStruct = handler
 		}
-		key.KeyHandlerStruct.Key(page, index, key, dev)
+		key.KeyHandlerStruct.Key(*key, sDInfo)
 	}
 }
 
@@ -137,19 +171,16 @@ func Listen() {
 	if err != nil {
 		log.Println(err)
 	}
-	for {
+	for isOpen {
 		select {
 		case k, ok := <-kch:
 			if !ok {
-				err = dev.Open()
-				if err != nil {
-					log.Println(err)
-				}
-				continue
+				disconnect()
+				return
 			}
 			if k.Pressed == true {
 				if len(config.Pages)-1 >= p && len(config.Pages[p])-1 >= int(k.Index) {
-					HandleInput(&config.Pages[p][k.Index], p, int(k.Index), dev)
+					HandleInput(&config.Pages[p][k.Index], p)
 				}
 			}
 		}
