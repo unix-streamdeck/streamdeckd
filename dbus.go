@@ -17,7 +17,7 @@ type StreamDeckDBus struct {
 }
 
 func (s StreamDeckDBus) GetDeckInfo() (string, *dbus.Error) {
-	infoString, err := json.Marshal(s)
+	infoString, err := json.Marshal(sDInfo)
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
 	}
