@@ -1,29 +1,27 @@
 package handlers
 
 import (
-	"github.com/fogleman/gg"
 	"github.com/unix-streamdeck/api"
-	"golang.org/x/image/font/inconsolata"
 	"image"
+	"image/draw"
+	"log"
 	"strconv"
-	"time"
 )
 
-func (c *CounterIconHandler) Start(_ api.Key, _ api.StreamDeckInfo, callback func(image image.Image)) {
+func (c *CounterIconHandler) Start(_ api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	if c.Callback == nil {
 		c.Callback = callback
 	}
 	if c.Running {
-		img := gg.NewContext(72, 72)
-		img.SetRGB(0, 0, 0)
-		img.Clear()
-		img.SetRGB(1, 1, 1)
-		img.SetFontFace(inconsolata.Regular8x16)
+		img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+		draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 		Count := strconv.Itoa(c.Count)
-		img.DrawStringAnchored(Count, 72/2, 72/2, 0.5, 0.5)
-		img.Clip()
-		callback(img.Image())
-		time.Sleep(250 * time.Millisecond)
+		imgParsed, err := api.DrawText(img, Count)
+		if err != nil {
+			log.Println(err)
+		} else {
+			callback(imgParsed)
+		}
 	}
 }
 

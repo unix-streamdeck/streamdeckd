@@ -2,14 +2,10 @@ package main
 
 import (
 	"context"
-	"github.com/fogleman/gg"
-	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
-	"golang.org/x/image/font/inconsolata"
 	"golang.org/x/sync/semaphore"
 	"image"
-	"image/color"
 	"image/draw"
 	"log"
 	"os"
@@ -31,11 +27,7 @@ func LoadImage(path string) (image.Image, error) {
 		return nil, err
 	}
 
-	return ResizeImage(img), nil
-}
-
-func ResizeImage(img image.Image) image.Image {
-	return resize.Resize(dev.Pixels, dev.Pixels, img, resize.Lanczos3)
+	return api.ResizeImage(img, sDInfo.IconSize), nil
 }
 
 func SetImage(img image.Image, i int, page int) {
@@ -62,7 +54,7 @@ func SetKeyImage(currentKey *api.Key, i int) {
 	if currentKey.Buff == nil {
 		if currentKey.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
-			draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{0, 0, 0, 255}), image.ZP, draw.Src)
+			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			currentKey.Buff = img
 		} else {
 			img, err := LoadImage(currentKey.Icon)
@@ -73,12 +65,12 @@ func SetKeyImage(currentKey *api.Key, i int) {
 			currentKey.Buff = img
 		}
 		if currentKey.Text != "" {
-			img := gg.NewContextForImage(currentKey.Buff)
-			img.SetRGB(1, 1, 1)
-			img.SetFontFace(inconsolata.Regular8x16)
-			img.DrawStringAnchored(currentKey.Text, 72/2, 72/2, 0.5, 0.5)
-			img.Clip()
-			currentKey.Buff = img.Image()
+			img, err := api.DrawText(currentKey.Buff, currentKey.Text)
+			if err != nil {
+				log.Println(err)
+			} else {
+				currentKey.Buff = img
+			}
 		}
 	}
 	if currentKey.Buff != nil {
@@ -109,11 +101,16 @@ func SetKey(currentKey *api.Key, i int, page int) {
 				handler = &handlers.CounterIconHandler{Count:0, Running: true}
 			} else if currentKey.IconHandler == "Time" {
 				handler = &handlers.TimeIconHandler{Running:true}
+			} else if currentKey.IconHandler == "Spotify" {
+				handler = &handlers.SpotifyIconHandler{Running: true}
 			}
 			if handler == nil {
 				return
 			}
 			handler.Start(*currentKey, sDInfo, func(image image.Image) {
+				if image.Bounds().Max.X != 72 || image.Bounds().Max.Y != 72 {
+					image = api.ResizeImage(image, sDInfo.IconSize)
+				}
 				SetImage(image, i, page)
 				currentKey.Buff = image
 			})
@@ -125,6 +122,9 @@ func SetKey(currentKey *api.Key, i int, page int) {
 	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
 		currentKey.IconHandlerStruct.SetRunning(true)
 		currentKey.IconHandlerStruct.Start(*currentKey, sDInfo, func(image image.Image) {
+			if image.Bounds().Max.X != 72 || image.Bounds().Max.Y != 72 {
+				image = api.ResizeImage(image, sDInfo.IconSize)
+			}
 			SetImage(image, i, page)
 			currentKey.Buff = image
 		})
