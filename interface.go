@@ -109,6 +109,8 @@ func SetKey(currentKey *api.Key, i int, page int) {
 				handler = &handlers.CounterIconHandler{Count:0, Running: true}
 			} else if currentKey.IconHandler == "Time" {
 				handler = &handlers.TimeIconHandler{Running:true}
+			} else if currentKey.IconHandler == "Spotify" {
+				handler = &handlers.SpotifyIconHandler{Running: true}
 			}
 			if handler == nil {
 				return
