@@ -15,7 +15,3 @@ type GifIconHandler struct {
 type TimeIconHandler struct {
 	Running bool
 }
-type SpotifyIconHandler struct {
-	Running bool
-	oldUrl string
-}
