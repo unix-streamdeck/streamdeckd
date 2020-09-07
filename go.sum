@@ -91,8 +91,8 @@ github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
-github.com/unix-streamdeck/api v0.0.0-20200828000516-c734a9f6cec5 h1:8WlgvTJMHvfxqmQYyTbfM9TL/BYIm/WfrbDhyA8ihQo=
-github.com/unix-streamdeck/api v0.0.0-20200828000516-c734a9f6cec5/go.mod h1:rweAXRgCWdCACCuVhmleidq7HnJEO38zBGDe8uQqZ0w=
+github.com/unix-streamdeck/api v0.0.0-20200907181211-2f2cfdad366e h1:/stJJT3mpg42pmda9mJocaeWIPc2RHAYe5no8yNrzz4=
+github.com/unix-streamdeck/api v0.0.0-20200907181211-2f2cfdad366e/go.mod h1:Z8bzDHQnWv/2hx9wQXp0/qw6Fp4ty5pFRsgaBG5WYAI=
 github.com/unix-streamdeck/driver v0.0.0-20200817173808-cdaf123c076b h1:27gVti9+OevmBC2BnWlKC0dQ0eiIHh7PvYTWxt4vb6A=
 github.com/unix-streamdeck/driver v0.0.0-20200817173808-cdaf123c076b/go.mod h1:i3Eg6kJBslgUk2VIPJ3Cclta2fpV1KJrOnOnR8gnVKY=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
@@ -105,6 +105,8 @@ golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnf
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/image v0.0.0-20200119044424-58c23975cae1 h1:5h3ngYt7+vXCDZCup/HkCQgW5XwmSvR/nA2JmJ0RErg=
 golang.org/x/image v0.0.0-20200119044424-58c23975cae1/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
+golang.org/x/image v0.0.0-20200801110659-972c09e46d76 h1:U7GPaoQyQmX+CBRWXKrvRzWTbd+slqeSh8uARsIyhAw=
+golang.org/x/image v0.0.0-20200801110659-972c09e46d76/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
 golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3/go.mod h1:6SW0HCj/g11FgYtHlgUYUwCkIfeOF89ocIRzGO/8vkc=
 golang.org/x/net v0.0.0-20180826012351-8a410e7b638d/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=

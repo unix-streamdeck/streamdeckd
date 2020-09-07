@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"github.com/fogleman/gg"
 	"github.com/unix-streamdeck/api"
-	"golang.org/x/image/font/inconsolata"
 	"image"
+	"image/draw"
+	"log"
 	"time"
 )
 
@@ -28,16 +28,16 @@ func (t *TimeIconHandler) Stop() {
 
 func timeLoop(info api.StreamDeckInfo, callback func(image image.Image), handler *TimeIconHandler) {
 	for handler.Running {
-		img := gg.NewContext(info.IconSize, info.IconSize)
-		img.SetRGB(0, 0, 0)
-		img.Clear()
-		img.SetRGB(1, 1, 1)
-		img.SetFontFace(inconsolata.Regular8x16)
+		img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+		draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 		t := time.Now()
 		tString := t.Format("15:04:05")
-		img.DrawStringAnchored(tString, float64(info.IconSize)/2, float64(info.IconSize)/2, 0.5, 0.5)
-		img.Clip()
-		callback(img.Image())
+		imgParsed, err := api.DrawText(img, tString)
+		if err != nil {
+			log.Println(err)
+		} else {
+			callback(imgParsed)
+		}
 		time.Sleep(time.Second)
 	}
 }

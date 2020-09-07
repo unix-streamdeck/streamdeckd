@@ -29,34 +29,11 @@ var connectSem = semaphore.NewWeighted(1)
 var basicConfig = api.Config{
 	Pages: []api.Page{
 		{
-			api.Key{},
 		},
 	},
 }
 
 func main() {
-	var err error
-	config, err = readConfig()
-	if err != nil && !os.IsNotExist(err) {
-		log.Println(err)
-	} else if os.IsNotExist(err) {
-		file, err := os.Create(configPath)
-		if err != nil {
-			log.Println(err)
-		}
-		err = file.Close()
-		if err != nil {
-			log.Println(err)
-		}
-		config = &basicConfig
-		err = SaveConfig()
-		if err != nil {
-			log.Println(err)
-		}
-	}
-	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, api.Page{})
-	}
 	cleanupHook()
 	go InitDBUS()
 	attemptConnection()
@@ -66,6 +43,9 @@ func attemptConnection() {
 	for !isOpen {
 		_ = openDevice()
 		if isOpen {
+			if config == nil {
+				loadConfig()
+			}
 			SetPage(config, p)
 			if sDbus != nil {
 				sDInfo.IconSize = int(dev.Pixels)
@@ -115,6 +95,36 @@ func openDevice() error {
 	isOpen = true
 	fmt.Println("Device (" + dev.Serial + ") connected")
 	return nil
+}
+
+func loadConfig() {
+	var err error
+	config, err = readConfig()
+	if err != nil && !os.IsNotExist(err) {
+		log.Println(err)
+	} else if os.IsNotExist(err) {
+		file, err := os.Create(configPath)
+		if err != nil {
+			log.Println(err)
+		}
+		err = file.Close()
+		if err != nil {
+			log.Println(err)
+		}
+		config = &basicConfig
+		page := config.Pages[0]
+		for i := 0; i < int(dev.Rows)*int(dev.Columns); i++ {
+			page = append(page, api.Key{})
+		}
+		config.Pages[0] = page
+		err = SaveConfig()
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	if len(config.Pages) == 0 {
+		config.Pages = append(config.Pages, api.Page{})
+	}
 }
 
 func readConfig() (*api.Config, error) {
@@ -169,14 +179,7 @@ func SetConfig(configString string) error {
 
 func ReloadConfig() error {
 	unmountHandlers()
-	var err error
-	config, err = readConfig()
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, api.Page{})
-	}
+	loadConfig()
 	SetPage(config, p)
 	return nil
 }

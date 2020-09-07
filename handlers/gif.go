@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/nfnt/resize"
 	"github.com/unix-streamdeck/api"
 	"image"
 	"image/gif"
@@ -25,7 +24,14 @@ func (s *GifIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback fu
 	timeDelay := gifs.Delay[0]
 	frames := make([]image.Image, len(gifs.Image))
 	for i, frame := range gifs.Image {
-		frames[i] = resize.Resize(uint(info.IconSize), uint(info.IconSize), frame, resize.Lanczos3)
+		img := api.ResizeImage(frame, info.IconSize)
+		if key.Text != "" {
+			img, err = api.DrawText(img, key.Text)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+		frames[i] = img
 	}
 	go loop(frames, timeDelay, callback, s)
 }
