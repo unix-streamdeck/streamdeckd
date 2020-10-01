@@ -207,12 +207,14 @@ func SaveConfig() error {
 }
 
 func unmountHandlers() {
-	for i := range config.Pages {
-		page := config.Pages[i]
-		for i2 := 0; i2 < len(page); i2++ {
-			key := &page[i2]
-			if key.IconHandlerStruct != nil {
-				key.IconHandlerStruct.Stop()
+	if config != nil && len(config.Pages) > 0 {
+		for i := range config.Pages {
+			page := config.Pages[i]
+			for i2 := 0; i2 < len(page); i2++ {
+				key := &page[i2]
+				if key.IconHandlerStruct != nil {
+					key.IconHandlerStruct.Stop()
+				}
 			}
 		}
 	}
