@@ -96,7 +96,7 @@ func SetKey(currentKey *api.Key, i int, page int) {
 		} else if currentKey.IconHandlerStruct == nil {
 			var handler api.IconHandler
 			if currentKey.IconHandler == "Gif" {
-				handler = &handlers.GifIconHandler{Running:true}
+				handler = &handlers.GifIconHandler{Running:true, Lock:semaphore.NewWeighted(1)}
 			} else if currentKey.IconHandler == "Counter" {
 				handler = &handlers.CounterIconHandler{Count:0, Running: true}
 			} else if currentKey.IconHandler == "Time" {
@@ -118,7 +118,6 @@ func SetKey(currentKey *api.Key, i int, page int) {
 		SetImage(currentKey.Buff, i, p)
 	}
 	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
-		currentKey.IconHandlerStruct.SetRunning(true)
 		currentKey.IconHandlerStruct.Start(*currentKey, sDInfo, func(image image.Image) {
 			if image.Bounds().Max.X != 72 || image.Bounds().Max.Y != 72 {
 				image = api.ResizeImage(image, sDInfo.IconSize)

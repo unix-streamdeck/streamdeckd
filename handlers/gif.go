@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"github.com/unix-streamdeck/api"
 	"image"
 	"image/gif"
@@ -49,6 +50,12 @@ func (s *GifIconHandler) Stop() {
 }
 
 func loop(frames []image.Image, timeDelay int, callback func(image image.Image), s *GifIconHandler) {
+	ctx := context.Background()
+	err := s.Lock.Acquire(ctx, 1)
+	if err != nil {
+		return
+	}
+	defer s.Lock.Release(1)
 	gifIndex := 0
 	for s.Running {
 		img := frames[gifIndex]
