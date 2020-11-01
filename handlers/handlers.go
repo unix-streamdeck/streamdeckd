@@ -1,6 +1,9 @@
 package handlers
 
-import "image"
+import (
+	"golang.org/x/sync/semaphore"
+	"image"
+)
 
 type CounterIconHandler struct {
 	Count    int
@@ -10,6 +13,7 @@ type CounterIconHandler struct {
 
 type GifIconHandler struct {
 	Running bool
+	Lock *semaphore.Weighted
 }
 
 type TimeIconHandler struct {
