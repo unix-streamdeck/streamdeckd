@@ -9,9 +9,9 @@ import (
 )
 
 
-func (t *TimeIconHandler) Start(_ api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (t *TimeIconHandler) Start(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	t.Running = true
-	go timeLoop(info, callback, t)
+	go timeLoop(k, info, callback, t)
 }
 
 func (t *TimeIconHandler) IsRunning() bool {
@@ -26,13 +26,13 @@ func (t *TimeIconHandler) Stop() {
 	t.Running = false
 }
 
-func timeLoop(info api.StreamDeckInfo, callback func(image image.Image), handler *TimeIconHandler) {
+func timeLoop(k api.Key, info api.StreamDeckInfo, callback func(image image.Image), handler *TimeIconHandler) {
 	for handler.Running {
 		img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
 		draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 		t := time.Now()
 		tString := t.Format("15:04:05")
-		imgParsed, err := api.DrawText(img, tString)
+		imgParsed, err := api.DrawText(img, tString, k.TextSize, k.TextAlignment)
 		if err != nil {
 			log.Println(err)
 		} else {

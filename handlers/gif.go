@@ -27,7 +27,7 @@ func (s *GifIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback fu
 	for i, frame := range gifs.Image {
 		img := api.ResizeImage(frame, info.IconSize)
 		if key.Text != "" {
-			img, err = api.DrawText(img, key.Text)
+			img, err = api.DrawText(img, key.Text, key.TextSize, key.TextAlignment)
 			if err != nil {
 				log.Println(err)
 			}
