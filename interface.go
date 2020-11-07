@@ -65,7 +65,7 @@ func SetKeyImage(currentKey *api.Key, i int) {
 			currentKey.Buff = img
 		}
 		if currentKey.Text != "" {
-			img, err := api.DrawText(currentKey.Buff, currentKey.Text)
+			img, err := api.DrawText(currentKey.Buff, currentKey.Text, currentKey.TextSize, currentKey.TextAlignment)
 			if err != nil {
 				log.Println(err)
 			} else {

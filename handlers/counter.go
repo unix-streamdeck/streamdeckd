@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func (c *CounterIconHandler) Start(_ api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (c *CounterIconHandler) Start(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	if c.Callback == nil {
 		c.Callback = callback
 	}
@@ -16,7 +16,7 @@ func (c *CounterIconHandler) Start(_ api.Key, info api.StreamDeckInfo, callback 
 		img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
 		draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 		Count := strconv.Itoa(c.Count)
-		imgParsed, err := api.DrawText(img, Count)
+		imgParsed, err := api.DrawText(img, Count, k.TextSize, k.TextAlignment)
 		if err != nil {
 			log.Println(err)
 		} else {
