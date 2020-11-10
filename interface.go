@@ -95,12 +95,11 @@ func SetKey(currentKey *api.Key, i int, page int) {
 
 		} else if currentKey.IconHandlerStruct == nil {
 			var handler api.IconHandler
-			if currentKey.IconHandler == "Gif" {
-				handler = &handlers.GifIconHandler{Running:true, Lock:semaphore.NewWeighted(1)}
-			} else if currentKey.IconHandler == "Counter" {
-				handler = &handlers.CounterIconHandler{Count:0, Running: true}
-			} else if currentKey.IconHandler == "Time" {
-				handler = &handlers.TimeIconHandler{Running:true}
+			modules := handlers.AvailableModules()
+			for _, module := range modules {
+				if module.Name == currentKey.IconHandler {
+					handler = module.NewIcon()
+				}
 			}
 			if handler == nil {
 				return
@@ -151,8 +150,11 @@ func HandleInput(key *api.Key, page int) {
 	if key.KeyHandler != "" {
 		if key.KeyHandlerStruct == nil {
 			var handler api.KeyHandler
-			if key.KeyHandler == "Counter" {
-				handler = handlers.CounterKeyHandler{}
+			modules := handlers.AvailableModules()
+			for _, module := range modules {
+				if module.Name == key.KeyHandler {
+					handler = module.NewKey()
+				}
 			}
 			if handler == nil {
 				return
