@@ -1,13 +1,17 @@
-package handlers
+package examples
 
 import (
 	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/streamdeckd/handlers"
 	"image"
 	"image/draw"
 	"log"
 	"time"
 )
 
+type TimeIconHandler struct {
+	Running bool
+}
 
 func (t *TimeIconHandler) Start(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	t.Running = true
@@ -40,4 +44,10 @@ func timeLoop(k api.Key, info api.StreamDeckInfo, callback func(image image.Imag
 		}
 		time.Sleep(time.Second)
 	}
+}
+
+func RegisterTime() handlers.Module {
+	return handlers.Module{NewIcon: func() api.IconHandler {
+		return &TimeIconHandler{Running: true}
+	}, Name: "Time"}
 }
