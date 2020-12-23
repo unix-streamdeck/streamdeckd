@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
+	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"github.com/unix-streamdeck/streamdeckd/handlers/examples"
 	"golang.org/x/sync/semaphore"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -27,6 +29,7 @@ var disconnectSem = semaphore.NewWeighted(1)
 var connectSem = semaphore.NewWeighted(1)
 
 var basicConfig = api.Config{
+	Modules: []string{},
 	Pages: []api.Page{
 		{
 		},
@@ -36,6 +39,7 @@ var basicConfig = api.Config{
 func main() {
 	cleanupHook()
 	go InitDBUS()
+	examples.RegisterBaseModules()
 	attemptConnection()
 }
 
@@ -124,6 +128,11 @@ func loadConfig() {
 	}
 	if len(config.Pages) == 0 {
 		config.Pages = append(config.Pages, api.Page{})
+	}
+	if len(config.Modules) > 0 {
+		for _, module := range config.Modules {
+			handlers.LoadModule(module)
+		}
 	}
 }
 

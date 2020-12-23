@@ -1,8 +1,10 @@
-package handlers
+package examples
 
 import (
 	"context"
 	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"golang.org/x/sync/semaphore"
 	"image"
 	"image/gif"
 	"log"
@@ -10,7 +12,15 @@ import (
 	"time"
 )
 
+type GifIconHandler struct {
+	Running bool
+	Lock *semaphore.Weighted
+}
+
 func (s *GifIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+	if s.Lock == nil {
+		s.Lock = semaphore.NewWeighted(1)
+	}
 	s.Running = true
 	f, err := os.Open(key.Icon)
 	if err != nil {
@@ -66,4 +76,10 @@ func loop(frames []image.Image, timeDelay int, callback func(image image.Image),
 		}
 		time.Sleep(time.Duration(timeDelay * 10000000))
 	}
+}
+
+func RegisterGif() handlers.Module {
+	return handlers.Module{NewIcon: func() api.IconHandler {
+		return &GifIconHandler{Running: true, Lock: semaphore.NewWeighted(1)}
+	}, Name: "Gif"}
 }

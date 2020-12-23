@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/godbus/dbus/v5"
 	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/streamdeckd/handlers"
 	"log"
 )
 
@@ -59,6 +60,18 @@ func (StreamDeckDBus) CommitConfig() *dbus.Error {
 		return dbus.MakeFailedError(err)
 	}
 	return nil
+}
+
+func (StreamDeckDBus) GetModules() (string, *dbus.Error) {
+	var modules []api.Module
+	for _, module := range handlers.AvailableModules() {
+		modules = append(modules, api.Module{Name: module.Name, IconFields: module.IconFields, KeyFields: module.KeyFields, IsIcon: module.NewIcon != nil, IsKey: module.NewKey != nil})
+	}
+	modulesString, err := json.Marshal(modules)
+	if err != nil {
+		return "", dbus.MakeFailedError(err)
+	}
+	return string(modulesString), nil
 }
 
 func InitDBUS() error {

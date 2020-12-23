@@ -1,21 +1,56 @@
 package handlers
 
 import (
-	"golang.org/x/sync/semaphore"
-	"image"
+	"github.com/unix-streamdeck/api"
+	"log"
+	"plugin"
 )
 
-type CounterIconHandler struct {
-	Count    int
-	Running  bool
-	Callback func(image image.Image)
+type Module struct {
+	Name	string
+	NewIcon func() api.IconHandler
+	NewKey func() api.KeyHandler
+	IconFields []api.Field
+	KeyFields []api.Field
 }
 
-type GifIconHandler struct {
-	Running bool
-	Lock *semaphore.Weighted
+
+
+var modules []Module
+
+
+func AvailableModules() []Module {
+	return modules
 }
 
-type TimeIconHandler struct {
-	Running bool
+func RegisterModule(m Module) {
+	for _, module := range modules {
+		if module.Name == m.Name {
+			log.Println("Module already loaded: " + m.Name)
+			return
+		}
+	}
+	log.Println("Loaded module " + m.Name)
+	modules = append(modules, m)
+}
+
+func LoadModule(path string) {
+	plug, err := plugin.Open(path)
+	if err != nil {
+		//log.Println("Failed to load module: " + path)
+		log.Println(err)
+		return
+	}
+	mod, err := plug.Lookup("GetModule")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	var modMethod func() Module
+	modMethod, ok := mod.(func() Module)
+	if !ok {
+		log.Println("Failed to load module: " + path)
+		return
+	}
+	RegisterModule(modMethod())
 }
