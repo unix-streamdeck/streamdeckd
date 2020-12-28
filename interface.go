@@ -105,7 +105,7 @@ func SetKey(currentKey *api.Key, i int, page int) {
 				return
 			}
 			handler.Start(*currentKey, sDInfo, func(image image.Image) {
-				if image.Bounds().Max.X != 72 || image.Bounds().Max.Y != 72 {
+				if image.Bounds().Max.X != sDInfo.IconSize || image.Bounds().Max.Y != sDInfo.IconSize {
 					image = api.ResizeImage(image, sDInfo.IconSize)
 				}
 				SetImage(image, i, page)
@@ -118,7 +118,7 @@ func SetKey(currentKey *api.Key, i int, page int) {
 	}
 	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
 		currentKey.IconHandlerStruct.Start(*currentKey, sDInfo, func(image image.Image) {
-			if image.Bounds().Max.X != 72 || image.Bounds().Max.Y != 72 {
+			if image.Bounds().Max.X != sDInfo.IconSize || image.Bounds().Max.Y != sDInfo.IconSize {
 				image = api.ResizeImage(image, sDInfo.IconSize)
 			}
 			SetImage(image, i, page)
