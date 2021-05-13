@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/unix-streamdeck/api"
+	_ "github.com/unix-streamdeck/driver"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
 	"golang.org/x/sync/semaphore"
 	"image"
@@ -12,10 +13,10 @@ import (
 	"strings"
 )
 
-var p int
+
 var sem = semaphore.NewWeighted(int64(1))
 
-func LoadImage(path string) (image.Image, error) {
+func LoadImage(dev *VirtualDev, path string) (image.Image, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -27,10 +28,10 @@ func LoadImage(path string) (image.Image, error) {
 		return nil, err
 	}
 
-	return api.ResizeImage(img, sDInfo.IconSize), nil
+	return api.ResizeImage(img, int(dev.Deck.Pixels)), nil
 }
 
-func SetImage(img image.Image, i int, page int) {
+func SetImage(dev *VirtualDev, img image.Image, i int, page int) {
 	ctx := context.Background()
 	err := sem.Acquire(ctx, 1)
 	if err != nil {
@@ -38,26 +39,28 @@ func SetImage(img image.Image, i int, page int) {
 		return
 	}
 	defer sem.Release(1)
-	if p == page && isOpen {
-		err := dev.SetImage(uint8(i), img)
+	if dev.Page == page && dev.IsOpen {
+		err := dev.Deck.SetImage(uint8(i), img)
 		if err != nil {
 			if strings.Contains(err.Error(), "hidapi") {
-				disconnect()
-			} else {
+				disconnect(dev)
+			} else if strings.Contains(err.Error(), "dimensions") {
+				log.Println(err)
+			}else {
 				log.Println(err)
 			}
 		}
 	}
 }
 
-func SetKeyImage(currentKey *api.Key, i int) {
+func SetKeyImage(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 	if currentKey.Buff == nil {
 		if currentKey.Icon == "" {
-			img := image.NewRGBA(image.Rect(0, 0, int(dev.Pixels), int(dev.Pixels)))
+			img := image.NewRGBA(image.Rect(0, 0, int(dev.Deck.Pixels), int(dev.Deck.Pixels)))
 			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			currentKey.Buff = img
 		} else {
-			img, err := LoadImage(currentKey.Icon)
+			img, err := LoadImage(dev, currentKey.Icon)
 			if err != nil {
 				log.Println(err)
 				return
@@ -74,24 +77,30 @@ func SetKeyImage(currentKey *api.Key, i int) {
 		}
 	}
 	if currentKey.Buff != nil {
-		SetImage(currentKey.Buff, i, p)
+		SetImage(dev, currentKey.Buff, i, page)
 	}
 }
 
-func SetPage(config *api.Config, page int) {
-	p = page
-	currentPage := config.Pages[page]
+func SetPage(dev *VirtualDev, page int) {
+	dev.Page = page
+	currentPage := dev.Config[page]
 	for i := 0; i < len(currentPage); i++ {
 		currentKey := &currentPage[i]
-		go SetKey(currentKey, i, page)
+		go SetKey(dev, currentKey, i, page)
 	}
-	EmitPage(p)
+	EmitPage(dev, page)
 }
 
-func SetKey(currentKey *api.Key, i int, page int) {
+func SetKey(dev *VirtualDev, currentKey *api.Key, i int, page int) {
+	var deckInfo api.StreamDeckInfo
+	for i := range sDInfo {
+		if sDInfo[i].Serial == dev.Deck.Serial {
+			deckInfo = sDInfo[i]
+		}
+	}
 	if currentKey.Buff == nil {
 		if currentKey.IconHandler == "" {
-			SetKeyImage(currentKey, i)
+			SetKeyImage(dev, currentKey, i, page)
 
 		} else if currentKey.IconHandlerStruct == nil {
 			var handler api.IconHandler
@@ -104,30 +113,30 @@ func SetKey(currentKey *api.Key, i int, page int) {
 			if handler == nil {
 				return
 			}
-			handler.Start(*currentKey, sDInfo, func(image image.Image) {
-				if image.Bounds().Max.X != sDInfo.IconSize || image.Bounds().Max.Y != sDInfo.IconSize {
-					image = api.ResizeImage(image, sDInfo.IconSize)
+			handler.Start(*currentKey, deckInfo, func(image image.Image) {
+				if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
+					image = api.ResizeImage(image, int(dev.Deck.Pixels))
 				}
-				SetImage(image, i, page)
+				SetImage(dev, image, i, page)
 				currentKey.Buff = image
 			})
 			currentKey.IconHandlerStruct = handler
 		}
 	} else {
-		SetImage(currentKey.Buff, i, p)
+		SetImage(dev, currentKey.Buff, i, page)
 	}
 	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
-		currentKey.IconHandlerStruct.Start(*currentKey, sDInfo, func(image image.Image) {
-			if image.Bounds().Max.X != sDInfo.IconSize || image.Bounds().Max.Y != sDInfo.IconSize {
-				image = api.ResizeImage(image, sDInfo.IconSize)
+		currentKey.IconHandlerStruct.Start(*currentKey, deckInfo, func(image image.Image) {
+			if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
+				image = api.ResizeImage(image, int(dev.Deck.Pixels))
 			}
-			SetImage(image, i, page)
+			SetImage(dev, image, i, page)
 			currentKey.Buff = image
 		})
 	}
 }
 
-func HandleInput(key *api.Key, page int) {
+func HandleInput(dev *VirtualDev, key *api.Key, page int) {
 	if key.Command != "" {
 		runCommand(key.Command)
 	}
@@ -136,10 +145,10 @@ func HandleInput(key *api.Key, page int) {
 	}
 	if key.SwitchPage != 0 {
 		page = key.SwitchPage - 1
-		SetPage(config, page)
+		SetPage(dev, page)
 	}
 	if key.Brightness != 0 {
-		err := dev.SetBrightness(uint8(key.Brightness))
+		err := dev.Deck.SetBrightness(uint8(key.Brightness))
 		if err != nil {
 			log.Println(err)
 		}
@@ -148,6 +157,12 @@ func HandleInput(key *api.Key, page int) {
 		runCommand("xdg-open " + key.Url)
 	}
 	if key.KeyHandler != "" {
+		var deckInfo api.StreamDeckInfo
+		for i := range sDInfo {
+			if sDInfo[i].Serial == dev.Deck.Serial {
+				deckInfo = sDInfo[i]
+			}
+		}
 		if key.KeyHandlerStruct == nil {
 			var handler api.KeyHandler
 			modules := handlers.AvailableModules()
@@ -161,25 +176,25 @@ func HandleInput(key *api.Key, page int) {
 			}
 			key.KeyHandlerStruct = handler
 		}
-		key.KeyHandlerStruct.Key(*key, sDInfo)
+		key.KeyHandlerStruct.Key(*key, deckInfo)
 	}
 }
 
-func Listen() {
-	kch, err := dev.ReadKeys()
+func Listen(dev *VirtualDev) {
+	kch, err := dev.Deck.ReadKeys()
 	if err != nil {
 		log.Println(err)
 	}
-	for isOpen {
+	for dev.IsOpen {
 		select {
 		case k, ok := <-kch:
 			if !ok {
-				disconnect()
+				disconnect(dev)
 				return
 			}
 			if k.Pressed == true {
-				if len(config.Pages)-1 >= p && len(config.Pages[p])-1 >= int(k.Index) {
-					HandleInput(&config.Pages[p][k.Index], p)
+				if len(dev.Config)-1 >= dev.Page && len(dev.Config[dev.Page])-1 >= int(k.Index) {
+					HandleInput(dev, &dev.Config[dev.Page][k.Index], dev.Page)
 				}
 			}
 		}

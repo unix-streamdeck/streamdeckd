@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"flag"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
@@ -21,84 +21,137 @@ import (
 	"syscall"
 )
 
-var dev streamdeck.Device
+type VirtualDev struct {
+	Deck streamdeck.Device
+	Page int
+	IsOpen bool
+	Config []api.Page
+}
+
+var devs map[string]*VirtualDev
 var config *api.Config
 var configPath = os.Getenv("HOME") + string(os.PathSeparator) + ".streamdeck-config.json"
-var isOpen = false
 var disconnectSem = semaphore.NewWeighted(1)
 var connectSem = semaphore.NewWeighted(1)
-
 var basicConfig = api.Config{
 	Modules: []string{},
-	Pages: []api.Page{
+	Decks: []api.Deck{
 		{
 		},
 	},
 }
+var isRunning = true
 
 func main() {
+	configPtr := flag.String("config", configPath, "Path to config file")
+	flag.Parse()
+	if *configPtr != "" {
+		configPath = *configPtr
+	}
 	cleanupHook()
 	go InitDBUS()
 	examples.RegisterBaseModules()
+	loadConfig()
+	devs = make(map[string]*VirtualDev)
 	attemptConnection()
 }
 
 func attemptConnection() {
-	for !isOpen {
-		_ = openDevice()
-		if isOpen {
-			if config == nil {
-				loadConfig()
+	for isRunning {
+		dev := &VirtualDev{}
+		dev, _ = openDevice()
+		if dev.IsOpen {
+			SetPage(dev, 0)
+			found := false
+			for i := range sDInfo {
+				if sDInfo[i].Serial == dev.Deck.Serial {
+					found = true
+				}
 			}
-			SetPage(config, p)
-			if sDbus != nil {
-				sDInfo.IconSize = int(dev.Pixels)
-				sDInfo.Rows = int(dev.Rows)
-				sDInfo.Cols = int(dev.Columns)
+			if !found {
+				sDInfo = append(sDInfo, api.StreamDeckInfo{
+					Cols:     int(dev.Deck.Columns),
+					Rows:     int(dev.Deck.Rows),
+					IconSize: int(dev.Deck.Pixels),
+					Page:     0,
+					Serial:   dev.Deck.Serial,
+				})
 			}
-			Listen()
+			go Listen(dev)
 		}
 	}
 }
 
-func disconnect() {
+func disconnect(dev *VirtualDev) {
 	ctx := context.Background()
 	err := disconnectSem.Acquire(ctx, 1)
 	if err != nil {
 		return
 	}
 	defer disconnectSem.Release(1)
-	if !isOpen {
+	if !dev.IsOpen {
 		return
 	}
-	log.Println("Device disconnected")
-	_ = dev.Close()
-	isOpen = false
-	unmountHandlers()
+	log.Println("Device (" + dev.Deck.Serial + ") disconnected")
+	_ = dev.Deck.Close()
+	dev.IsOpen = false
+	unmountDevHandlers(dev)
 }
 
-func openDevice() error {
+func openDevice() (*VirtualDev, error) {
 	ctx := context.Background()
 	err := connectSem.Acquire(ctx, 1)
 	if err != nil {
-		return err
+		return &VirtualDev{}, err
 	}
 	defer connectSem.Release(1)
 	d, err := streamdeck.Devices()
 	if err != nil {
-		return err
+		return &VirtualDev{}, err
 	}
 	if len(d) == 0 {
-		return errors.New("No streamdeck devices found")
+		return &VirtualDev{}, errors.New("No streamdeck devices found")
 	}
-	err = d[0].Open()
+	device := streamdeck.Device{Serial: ""}
+	for i := range d {
+		found := false
+		for s := range devs {
+			if d[i].ID == devs[s].Deck.ID && devs[s].IsOpen {
+				found = true
+				break
+			}
+		}
+		if !found {
+			device = d[i]
+		}
+	}
+	if len(device.Serial) != 12 {
+		return &VirtualDev{}, errors.New("No streamdeck devices found")
+	}
+	err = device.Open()
 	if err != nil {
-		return err
+		return &VirtualDev{}, err
 	}
-	dev = d[0]
-	isOpen = true
-	fmt.Println("Device (" + dev.Serial + ") connected")
-	return nil
+	devNo := -1
+	for i := range config.Decks {
+		if config.Decks[i].Serial == device.Serial {
+			devNo = i
+		}
+	}
+	if devNo == -1 {
+		var pages []api.Page
+		page := api.Page{}
+		for i := 0; i < int(device.Rows)*int(device.Columns); i++ {
+			page = append(page, api.Key{})
+		}
+		pages = append(pages, page)
+		config.Decks = append(config.Decks, api.Deck{Serial: device.Serial, Pages: pages})
+		devNo = len(config.Decks) -1
+	}
+	dev := &VirtualDev{Deck: device, Page: 0, IsOpen: true, Config: config.Decks[devNo].Pages}
+	devs[device.Serial] = dev
+	log.Println("Device (" + device.Serial + ") connected")
+	return dev, nil
 }
 
 func loadConfig() {
@@ -116,18 +169,10 @@ func loadConfig() {
 			log.Println(err)
 		}
 		config = &basicConfig
-		page := config.Pages[0]
-		for i := 0; i < int(dev.Rows)*int(dev.Columns); i++ {
-			page = append(page, api.Key{})
-		}
-		config.Pages[0] = page
 		err = SaveConfig()
 		if err != nil {
 			log.Println(err)
 		}
-	}
-	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, api.Page{})
 	}
 	if len(config.Modules) > 0 {
 		for _, module := range config.Modules {
@@ -166,8 +211,21 @@ func cleanupHook() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 	go func() {
 		<-sigs
-		_ = dev.Reset()
-		os.Exit(0)
+		isRunning = false
+		unmountHandlers()
+		var err error
+		for s := range devs {
+			if devs[s].IsOpen {
+				err = devs[s].Deck.Reset()
+				if err != nil {
+					log.Println(err)
+				}
+				err = devs[s].Deck.Close()
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}
 	}()
 }
 
@@ -179,17 +237,30 @@ func SetConfig(configString string) error {
 	if err != nil {
 		return err
 	}
-	if len(config.Pages) == 0 {
-		config.Pages = append(config.Pages, api.Page{})
+	for s := range devs {
+		dev := devs[s]
+		for i := range config.Decks {
+			if dev.Deck.Serial == config.Decks[i].Serial {
+				dev.Config = config.Decks[i].Pages
+			}
+		}
+		SetPage(dev, devs[s].Page)
 	}
-	SetPage(config, p)
 	return nil
 }
 
 func ReloadConfig() error {
 	unmountHandlers()
 	loadConfig()
-	SetPage(config, p)
+	for s := range devs {
+		dev := devs[s]
+		for i := range config.Decks {
+			if dev.Deck.Serial == config.Decks[i].Serial {
+				dev.Config = config.Decks[i].Pages
+			}
+		}
+		SetPage(dev, devs[s].Page)
+	}
 	return nil
 }
 
@@ -214,16 +285,20 @@ func SaveConfig() error {
 	}
 	return nil
 }
-
 func unmountHandlers() {
-	if config != nil && len(config.Pages) > 0 {
-		for i := range config.Pages {
-			page := config.Pages[i]
-			for i2 := 0; i2 < len(page); i2++ {
-				key := &page[i2]
-				if key.IconHandlerStruct != nil {
-					key.IconHandlerStruct.Stop()
-				}
+	for s := range devs {
+		dev := devs[s]
+		unmountDevHandlers(dev)
+	}
+}
+
+func unmountDevHandlers(dev *VirtualDev) {
+	for i := range dev.Config {
+		page := dev.Config[i]
+		for i2 := 0; i2 < len(page); i2++ {
+			key := &page[i2]
+			if key.IconHandlerStruct != nil {
+				key.IconHandlerStruct.Stop()
 			}
 		}
 	}
