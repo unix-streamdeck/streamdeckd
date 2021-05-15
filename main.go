@@ -30,6 +30,7 @@ type VirtualDev struct {
 
 var devs map[string]*VirtualDev
 var config *api.Config
+var migrateConfig = false
 var configPath = os.Getenv("HOME") + string(os.PathSeparator) + ".streamdeck-config.json"
 var disconnectSem = semaphore.NewWeighted(1)
 var connectSem = semaphore.NewWeighted(1)
@@ -133,6 +134,11 @@ func openDevice() (*VirtualDev, error) {
 		return &VirtualDev{}, err
 	}
 	devNo := -1
+	if migrateConfig {
+		config.Decks[0].Serial = device.Serial
+		_ = SaveConfig()
+		migrateConfig = false
+	}
 	for i := range config.Decks {
 		if config.Decks[i].Serial == device.Serial {
 			devNo = i
@@ -188,8 +194,14 @@ func readConfig() (*api.Config, error) {
 	}
 	var config api.Config
 	err = json.Unmarshal(data, &config)
-	if err != nil {
-		return &api.Config{}, err
+	if err != nil || config.Decks == nil {
+		var deprecatedConfig api.DepracatedConfig
+		err = json.Unmarshal(data, &deprecatedConfig)
+		if err != nil {
+			return &api.Config{}, err
+		}
+		config = api.Config{Modules: deprecatedConfig.Modules, Decks: []api.Deck{{Pages: deprecatedConfig.Pages, Serial: ""}}}
+		migrateConfig = true
 	}
 	return &config, nil
 }
