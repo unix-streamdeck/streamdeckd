@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 type VirtualDev struct {
@@ -80,6 +81,7 @@ func attemptConnection() {
 			}
 			go Listen(dev)
 		}
+		time.Sleep(250 * time.Millisecond)
 	}
 }
 
