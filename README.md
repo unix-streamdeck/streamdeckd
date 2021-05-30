@@ -80,3 +80,13 @@ There is a D-Bus interface built into the daemon, the service name and interface
 #### Signals
 
 - Page - sends the number of the page switched to on the StreamDeck
+
+
+### Custom Handlers
+
+
+
+#### Button Press Handler
+
+
+#### Icon Handler
