@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
@@ -23,8 +24,8 @@ import (
 )
 
 type VirtualDev struct {
-	Deck streamdeck.Device
-	Page int
+	Deck   streamdeck.Device
+	Page   int
 	IsOpen bool
 	Config []api.Page
 }
@@ -154,7 +155,7 @@ func openDevice() (*VirtualDev, error) {
 		}
 		pages = append(pages, page)
 		config.Decks = append(config.Decks, api.Deck{Serial: device.Serial, Pages: pages})
-		devNo = len(config.Decks) -1
+		devNo = len(config.Decks) - 1
 	}
 	dev := &VirtualDev{Deck: device, Page: 0, IsOpen: true, Config: config.Decks[devNo].Pages}
 	devs[device.Serial] = dev
@@ -209,22 +210,30 @@ func readConfig() (*api.Config, error) {
 }
 
 func runCommand(command string) {
-	//args := strings.Split(command, " ")
-	c := exec.Command("/bin/sh", "-c", command)
-	if err := c.Start(); err != nil {
-		log.Println(err)
-	}
-	err := c.Wait()
-	if err != nil {
-		log.Printf("command failed: %s", err)
-	}
+	go func() {
+		cmd := exec.Command("/bin/sh", "-c", "/usr/bin/nohup "+command)
+
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid: true,
+			Pgid:    0,
+			Pdeathsig: syscall.SIGHUP,
+		}
+		if err := cmd.Start(); err != nil {
+			fmt.Println("There was a problem running ", command, ":", err)
+		} else {
+			pid := cmd.Process.Pid
+			cmd.Process.Release()
+			fmt.Println(command, " has been started with pid", pid)
+		}
+	}()
 }
 
 func cleanupHook() {
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+	signal.Notify(sigs, syscall.SIGSTOP, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGINT)
 	go func() {
 		<-sigs
+		log.Println("Cleaning up")
 		isRunning = false
 		unmountHandlers()
 		var err error
@@ -240,6 +249,7 @@ func cleanupHook() {
 				}
 			}
 		}
+		os.Exit(0)
 	}()
 }
 
