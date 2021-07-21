@@ -91,8 +91,8 @@ github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
-github.com/unix-streamdeck/api v0.0.0-20210515173054-b84ad539ac91 h1:YVr3Fdr92LM1eFXdkkuWfYXmFUj6n8v5lS9oOJMCQUs=
-github.com/unix-streamdeck/api v0.0.0-20210515173054-b84ad539ac91/go.mod h1:Z8bzDHQnWv/2hx9wQXp0/qw6Fp4ty5pFRsgaBG5WYAI=
+github.com/unix-streamdeck/api v0.0.0-20210721193311-76065a74bf1f h1:JZ7w6kwybh4/+lBod9SITHk2gTQo/EEV5QGVsDlRZjc=
+github.com/unix-streamdeck/api v0.0.0-20210721193311-76065a74bf1f/go.mod h1:Z8bzDHQnWv/2hx9wQXp0/qw6Fp4ty5pFRsgaBG5WYAI=
 github.com/unix-streamdeck/driver v0.0.0-20200817173808-cdaf123c076b h1:27gVti9+OevmBC2BnWlKC0dQ0eiIHh7PvYTWxt4vb6A=
 github.com/unix-streamdeck/driver v0.0.0-20200817173808-cdaf123c076b/go.mod h1:i3Eg6kJBslgUk2VIPJ3Cclta2fpV1KJrOnOnR8gnVKY=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
