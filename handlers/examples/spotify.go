@@ -15,16 +15,20 @@ import (
 type SpotifyIconHandler struct {
 	Running bool
 	oldUrl string
+	Quit chan bool
 }
 
 func (s *SpotifyIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	s.Running = true
+	if s.Quit == nil {
+		s.Quit = make(chan bool)
+	}
 	c, err := Connect()
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	go run(c, s, callback)
+	go s.run(c, callback)
 }
 
 func (s *SpotifyIconHandler) IsRunning() bool {
@@ -37,30 +41,36 @@ func (s *SpotifyIconHandler) SetRunning(running bool)  {
 
 func (s *SpotifyIconHandler) Stop() {
 	s.Running = false
+	s.Quit <- true
 }
 
-func run(c *Connection, s *SpotifyIconHandler, callback func(image image.Image)) {
+func (s *SpotifyIconHandler) run(c *Connection, callback func(image image.Image)) {
 	defer c.Close()
-	for s.Running {
-		url, err := c.GetAlbumArtUrl()
-		if err != nil {
-			log.Println(err)
+	for {
+		select {
+		case <-s.Quit:
+			return
+		default:
+			url, err := c.GetAlbumArtUrl()
+			if err != nil {
+				log.Println(err)
+				time.Sleep(time.Second)
+				continue
+			}
+			if url == s.oldUrl {
+				time.Sleep(time.Second)
+				continue
+			}
+			img, err := getImage(url)
+			if err != nil {
+				log.Println(err)
+				time.Sleep(time.Second)
+				continue
+			}
+			callback(img)
+			s.oldUrl = url
 			time.Sleep(time.Second)
-			continue
 		}
-		if url == s.oldUrl {
-			time.Sleep(time.Second)
-			continue
-		}
-		img, err := getImage(url)
-		if err != nil {
-			log.Println(err)
-			time.Sleep(time.Second)
-			continue
-		}
-		callback(img)
-		s.oldUrl = url
-		time.Sleep(time.Second)
 	}
 }
 

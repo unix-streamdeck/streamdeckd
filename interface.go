@@ -82,6 +82,7 @@ func SetKeyImage(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 }
 
 func SetPage(dev *VirtualDev, page int) {
+	unmountPageHandlers(dev.Config[dev.Page])
 	dev.Page = page
 	currentPage := dev.Config[page]
 	for i := 0; i < len(currentPage); i++ {
@@ -113,6 +114,7 @@ func SetKey(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 			if handler == nil {
 				return
 			}
+			log.Printf("Created & Started %s\n", currentKey.IconHandler)
 			handler.Start(*currentKey, deckInfo, func(image image.Image) {
 				if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
 					image = api.ResizeImage(image, int(dev.Deck.Pixels))
@@ -126,6 +128,7 @@ func SetKey(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 		SetImage(dev, currentKey.Buff, i, page)
 	}
 	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
+		log.Printf("Started %s\n", currentKey.IconHandler)
 		currentKey.IconHandlerStruct.Start(*currentKey, deckInfo, func(image image.Image) {
 			if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
 				image = api.ResizeImage(image, int(dev.Deck.Pixels))

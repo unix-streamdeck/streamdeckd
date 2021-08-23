@@ -11,11 +11,15 @@ import (
 
 type TimeIconHandler struct {
 	Running bool
+	Quit chan bool
 }
 
 func (t *TimeIconHandler) Start(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
 	t.Running = true
-	go timeLoop(k, info, callback, t)
+	if t.Quit == nil {
+		t.Quit = make(chan bool)
+	}
+	go t.timeLoop(k, info, callback)
 }
 
 func (t *TimeIconHandler) IsRunning() bool {
@@ -28,21 +32,27 @@ func (t *TimeIconHandler) SetRunning(running bool)  {
 
 func (t *TimeIconHandler) Stop() {
 	t.Running = false
+	t.Quit <- true
 }
 
-func timeLoop(k api.Key, info api.StreamDeckInfo, callback func(image image.Image), handler *TimeIconHandler) {
-	for handler.Running {
-		img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
-		draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
-		t := time.Now()
-		tString := t.Format("15:04:05")
-		imgParsed, err := api.DrawText(img, tString, k.TextSize, k.TextAlignment)
-		if err != nil {
-			log.Println(err)
-		} else {
-			callback(imgParsed)
+func (t *TimeIconHandler) timeLoop(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+	for {
+		select {
+		case <- t.Quit:
+			return
+		default:
+			img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
+			t := time.Now()
+			tString := t.Format("15:04:05")
+			imgParsed, err := api.DrawText(img, tString, k.TextSize, k.TextAlignment)
+			if err != nil {
+				log.Println(err)
+			} else {
+				callback(imgParsed)
+			}
+			time.Sleep(time.Second)
 		}
-		time.Sleep(time.Second)
 	}
 }
 
