@@ -318,12 +318,19 @@ func unmountHandlers() {
 
 func unmountDevHandlers(dev *VirtualDev) {
 	for i := range dev.Config {
-		page := dev.Config[i]
-		for i2 := 0; i2 < len(page); i2++ {
-			key := &page[i2]
-			if key.IconHandlerStruct != nil {
+		unmountPageHandlers(dev.Config[i])
+	}
+}
+
+func unmountPageHandlers(page api.Page) {
+	for i2 := 0; i2 < len(page); i2++ {
+		key := &page[i2]
+		if key.IconHandlerStruct != nil {
+			log.Printf("Stopping %s\n", key.IconHandler)
+			go func() {
 				key.IconHandlerStruct.Stop()
-			}
+				log.Printf("Stopped %s\n", key.IconHandler)
+			}()
 		}
 	}
 }
