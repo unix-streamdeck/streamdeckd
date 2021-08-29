@@ -82,7 +82,9 @@ func SetKeyImage(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 }
 
 func SetPage(dev *VirtualDev, page int) {
-	unmountPageHandlers(dev.Config[dev.Page])
+	if page != dev.Page {
+		unmountPageHandlers(dev.Config[dev.Page])
+	}
 	dev.Page = page
 	currentPage := dev.Config[page]
 	for i := 0; i < len(currentPage); i++ {
