@@ -64,7 +64,7 @@ func attemptConnection() {
 		dev := &VirtualDev{}
 		dev, _ = openDevice()
 		if dev.IsOpen {
-			SetPage(dev, 0)
+			SetPage(dev, dev.Page)
 			found := false
 			for i := range sDInfo {
 				if sDInfo[i].Serial == dev.Deck.Serial {
@@ -123,6 +123,14 @@ func openDevice() (*VirtualDev, error) {
 			if d[i].ID == devs[s].Deck.ID && devs[s].IsOpen {
 				found = true
 				break
+			} else if d[i].Serial == s && !devs[s].IsOpen {
+				err = d[i].Open()
+				if err != nil {
+					return &VirtualDev{}, err
+				}
+				devs[s].Deck = d[i]
+				devs[s].IsOpen = true
+				return devs[s], nil
 			}
 		}
 		if !found {
@@ -327,10 +335,12 @@ func unmountPageHandlers(page api.Page) {
 		key := &page[i2]
 		if key.IconHandlerStruct != nil {
 			log.Printf("Stopping %s\n", key.IconHandler)
-			go func() {
-				key.IconHandlerStruct.Stop()
-				log.Printf("Stopped %s\n", key.IconHandler)
-			}()
+			if key.IconHandlerStruct.IsRunning() {
+				go func() {
+					key.IconHandlerStruct.Stop()
+					log.Printf("Stopped %s\n", key.IconHandler)
+				}()
+			}
 		}
 	}
 }
