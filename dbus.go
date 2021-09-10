@@ -80,6 +80,15 @@ func (StreamDeckDBus) GetModules() (string, *dbus.Error) {
 	return string(modulesString), nil
 }
 
+func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
+	dev, ok := devs[serial]
+	if !ok || !dev.IsOpen{
+		return dbus.MakeFailedError(errors.New("Can't find connected device: " + serial))
+	}
+	HandleInput(dev, &dev.Config[dev.Page][keyIndex], dev.Page)
+	return nil
+}
+
 func InitDBUS() error {
 	var err error
 	conn, err = dbus.SessionBus()
