@@ -113,6 +113,16 @@ Modules require a method on them in the main package called "GetModule" that ret
 ```go
 package main
 
+type CustomIconHandler struct {
+	
+}
+...
+
+type CustomKeyHandler struct {
+	
+}
+...
+
 func GetModule() handlers.Module {
 	return handlers.Module{
 		Name: "CustomModule", // the name that will be used in the icon_handler/key_handler field in the config, and that will be shown in the handler dropdown in streamdeckui
