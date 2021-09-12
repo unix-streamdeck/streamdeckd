@@ -16,9 +16,13 @@ import (
 type GifIconHandler struct {
 	Running bool
 	Lock    *semaphore.Weighted
+	Quit    chan bool
 }
 
 func (s *GifIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+	if s.Quit == nil {
+		s.Quit = make(chan bool)
+	}
 	if s.Lock == nil {
 		s.Lock = semaphore.NewWeighted(1)
 	}
@@ -50,7 +54,7 @@ func (s *GifIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback fu
 		}
 		frames[i] = img
 	}
-	go loop(frames, timeDelay, callback, s)
+	go s.loop(frames, timeDelay, callback)
 }
 
 func (s *GifIconHandler) IsRunning() bool {
@@ -63,9 +67,10 @@ func (s *GifIconHandler) SetRunning(running bool) {
 
 func (s *GifIconHandler) Stop() {
 	s.Running = false
+	s.Quit <- true
 }
 
-func loop(frames []image.Image, timeDelay int, callback func(image image.Image), s *GifIconHandler) {
+func (s *GifIconHandler) loop(frames []image.Image, timeDelay int, callback func(image image.Image)) {
 	ctx := context.Background()
 	err := s.Lock.Acquire(ctx, 1)
 	if err != nil {
@@ -73,14 +78,19 @@ func loop(frames []image.Image, timeDelay int, callback func(image image.Image),
 	}
 	defer s.Lock.Release(1)
 	gifIndex := 0
-	for s.Running {
-		img := frames[gifIndex]
-		callback(img)
-		gifIndex++
-		if gifIndex >= len(frames) {
-			gifIndex = 0
+	for {
+		select {
+		case <-s.Quit:
+			return
+		default:
+			img := frames[gifIndex]
+			callback(img)
+			gifIndex++
+			if gifIndex >= len(frames) {
+				gifIndex = 0
+			}
+			time.Sleep(time.Duration(timeDelay * 10000000))
 		}
-		time.Sleep(time.Duration(timeDelay * 10000000))
 	}
 }
 

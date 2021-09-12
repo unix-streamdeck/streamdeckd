@@ -12,7 +12,7 @@ import (
 var conn *dbus.Conn
 
 var sDbus *StreamDeckDBus
-var sDInfo api.StreamDeckInfo
+var sDInfo []api.StreamDeckInfo
 
 type StreamDeckDBus struct {
 }
@@ -41,9 +41,15 @@ func (StreamDeckDBus) ReloadConfig() *dbus.Error {
 	return nil
 }
 
-func (StreamDeckDBus) SetPage(page int) *dbus.Error {
-	SetPage(config, page)
-	return nil
+func (StreamDeckDBus) SetPage(serial string, page int) *dbus.Error {
+	for s := range devs {
+		if devs[s].Deck.Serial == serial {
+			dev := devs[s]
+			SetPage(dev, page)
+			return nil
+		}
+	}
+	return dbus.MakeFailedError(errors.New("Device with Serial: " + serial + " could not be found"))
 }
 
 func (StreamDeckDBus) SetConfig(configString string) *dbus.Error {
@@ -74,6 +80,15 @@ func (StreamDeckDBus) GetModules() (string, *dbus.Error) {
 	return string(modulesString), nil
 }
 
+func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
+	dev, ok := devs[serial]
+	if !ok || !dev.IsOpen{
+		return dbus.MakeFailedError(errors.New("Can't find connected device: " + serial))
+	}
+	HandleInput(dev, &dev.Config[dev.Page][keyIndex], dev.Page)
+	return nil
+}
+
 func InitDBUS() error {
 	var err error
 	conn, err = dbus.SessionBus()
@@ -84,9 +99,6 @@ func InitDBUS() error {
 	defer conn.Close()
 
 	sDbus = &StreamDeckDBus{}
-	sDInfo = api.StreamDeckInfo{
-		Page: p,
-	}
 	conn.ExportAll(sDbus, "/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd")
 	reply, err := conn.RequestName("com.unixstreamdeck.streamdeckd",
 		dbus.NameFlagDoNotQueue)
@@ -100,11 +112,13 @@ func InitDBUS() error {
 	select {}
 }
 
-func EmitPage(page int) {
+func EmitPage(dev *VirtualDev, page int) {
 	if conn != nil {
-		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", page)
+		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", dev.Deck.Serial, page)
 	}
-	if sDbus != nil {
-		sDInfo.Page = page
+	for i := range sDInfo {
+		if sDInfo[i].Serial == dev.Deck.Serial {
+			sDInfo[i].Page = page
+		}
 	}
 }
