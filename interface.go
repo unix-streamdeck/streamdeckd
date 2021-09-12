@@ -163,10 +163,15 @@ func HandleInput(dev *VirtualDev, key *api.Key, page int) {
 	}
 	if key.KeyHandler != "" {
 		var deckInfo api.StreamDeckInfo
+		found := false
 		for i := range sDInfo {
 			if sDInfo[i].Serial == dev.Deck.Serial {
 				deckInfo = sDInfo[i]
+				found = true
 			}
+		}
+		if !found {
+			return
 		}
 		if key.KeyHandlerStruct == nil {
 			var handler api.KeyHandler
