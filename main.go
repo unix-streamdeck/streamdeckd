@@ -34,7 +34,7 @@ type VirtualDev struct {
 var devs map[string]*VirtualDev
 var config *api.Config
 var migrateConfig = false
-var configPath = os.Getenv("HOME") + string(os.PathSeparator) + ".streamdeck-config.json"
+var configPath string
 var disconnectSem = semaphore.NewWeighted(1)
 var connectSem = semaphore.NewWeighted(1)
 var basicConfig = api.Config{
@@ -51,6 +51,12 @@ func main() {
 	flag.Parse()
 	if *configPtr != "" {
 		configPath = *configPtr
+	} else {
+		basePath := os.Getenv("HOME") + string(os.PathSeparator) + ".config"
+		if os.Getenv("XDG_CONFIG_HOME") != "" {
+			basePath = os.Getenv("XDG_CONFIG_HOME")
+		}
+		configPath = basePath + string(os.PathSeparator) + ".streamdeck-config.json"
 	}
 	cleanupHook()
 	go InitDBUS()

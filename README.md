@@ -28,7 +28,14 @@ Then xdotool will be required to simulate keypresses, to install this run:
 
 #### Manual configuration
 
-The configuration file streamdeckd uses is a JSON file found at `~/.streamdeck-config.json`
+## Warning:
+
+If you are updating from v1.0.0, the config file is now being set in the location as below, instead of where it used to be, in the home dir, either consider moving the config file to that dir, or running streamdeckd with the `-config` flag, which allows you to point to a config file in a custom location
+
+---
+
+
+The configuration file streamdeckd uses is a JSON file found at `$XDG_CONFIG_HOME/.streamdeck-config.json`
 
 An example config would be something like:
 
