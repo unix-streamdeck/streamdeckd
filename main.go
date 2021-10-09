@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/driver"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
@@ -39,13 +40,13 @@ var connectSem = semaphore.NewWeighted(1)
 var basicConfig = api.Config{
 	Modules: []string{},
 	Decks: []api.Deck{
-		{
-		},
+		{},
 	},
 }
 var isRunning = true
 
 func main() {
+	checkOtherRunningInstances()
 	configPtr := flag.String("config", configPath, "Path to config file")
 	flag.Parse()
 	if *configPtr != "" {
@@ -57,6 +58,19 @@ func main() {
 	loadConfig()
 	devs = make(map[string]*VirtualDev)
 	attemptConnection()
+}
+
+func checkOtherRunningInstances() {
+	processes, err := process.Processes()
+	if err != nil {
+		log.Println("Could not check for other instances of streamdeckd, assuming no others running")
+	}
+	for _, proc := range processes {
+		name, err := proc.Name()
+		if err == nil && name == "streamdeckd" && int(proc.Pid) != os.Getpid() {
+			log.Fatalln("Another instance of streamdeckd is already running, exiting...")
+		}
+	}
 }
 
 func attemptConnection() {
@@ -222,8 +236,8 @@ func runCommand(command string) {
 		cmd := exec.Command("/bin/sh", "-c", "/usr/bin/nohup "+command)
 
 		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Setpgid: true,
-			Pgid:    0,
+			Setpgid:   true,
+			Pgid:      0,
 			Pdeathsig: syscall.SIGHUP,
 		}
 		if err := cmd.Start(); err != nil {
