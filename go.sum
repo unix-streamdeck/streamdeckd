@@ -109,8 +109,8 @@ github.com/tklauser/numcpus v0.3.0 h1:ILuRUQBtssgnxw0XXIjKUC56fgnOrFoQQ/4+DeU2bi
 github.com/tklauser/numcpus v0.3.0/go.mod h1:yFGUr7TUHQRAhyqBcEg0Ge34zDBAsIvJJcyE6boqnA8=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
-github.com/unix-streamdeck/api v1.0.0 h1:GZIslyThiZgcZ/GIR0O/DWnciL6bijSdIA+TSnKzHsI=
-github.com/unix-streamdeck/api v1.0.0/go.mod h1:Z8bzDHQnWv/2hx9wQXp0/qw6Fp4ty5pFRsgaBG5WYAI=
+github.com/unix-streamdeck/api v1.0.1 h1:B5P5p1d4uqvoy8N2OhiWdy/iuhHRCYI+pP3+lwYzDsU=
+github.com/unix-streamdeck/api v1.0.1/go.mod h1:Z8bzDHQnWv/2hx9wQXp0/qw6Fp4ty5pFRsgaBG5WYAI=
 github.com/unix-streamdeck/driver v0.0.0-20211119182210-fc6b90443bcd h1:SZleJkNDcxwgKQaoNgpg2Ui2LYFb/feWHFkYj+SLIms=
 github.com/unix-streamdeck/driver v0.0.0-20211119182210-fc6b90443bcd/go.mod h1:i3Eg6kJBslgUk2VIPJ3Cclta2fpV1KJrOnOnR8gnVKY=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
