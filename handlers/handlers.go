@@ -41,16 +41,29 @@ func LoadModule(path string) {
 		log.Println(err)
 		return
 	}
-	mod, err := plug.Lookup("GetModule")
-	if err != nil {
-		log.Println(err)
-		return
+	mods, err := plug.Lookup("GetModules")
+	if err == nil {
+		modsMethod, ok := mods.(func() []Module)
+		if !ok {
+			log.Println("Failed to get list of modules: ", path)
+			return
+		}
+		modules := modsMethod()
+		for idx := range modules {
+			RegisterModule(modules[idx])
+		}
+	} else {
+		mod, err := plug.Lookup("GetModule")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		var modMethod func() Module
+		modMethod, ok := mod.(func() Module)
+		if !ok {
+			log.Println("Failed to load module: " + path)
+			return
+		}
+		RegisterModule(modMethod())
 	}
-	var modMethod func() Module
-	modMethod, ok := mod.(func() Module)
-	if !ok {
-		log.Println("Failed to load module: " + path)
-		return
-	}
-	RegisterModule(modMethod())
 }
