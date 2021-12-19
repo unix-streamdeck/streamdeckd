@@ -2,20 +2,22 @@ package examples
 
 import (
 	"errors"
-	"github.com/godbus/dbus/v5"
-	"github.com/unix-streamdeck/api"
-	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"fmt"
 	"image"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/godbus/dbus/v5"
+	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/streamdeckd/handlers"
 )
 
 type SpotifyIconHandler struct {
 	Running bool
-	oldUrl string
-	Quit chan bool
+	oldUrl  string
+	Quit    chan bool
 }
 
 func (s *SpotifyIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
@@ -23,7 +25,11 @@ func (s *SpotifyIconHandler) Start(key api.Key, info api.StreamDeckInfo, callbac
 	if s.Quit == nil {
 		s.Quit = make(chan bool)
 	}
-	c, err := Connect()
+	serviceName := key.IconHandlerFields["serviceName"]
+	if serviceName == "" {
+		serviceName = "spotify"
+	}
+	c, err := Connect(serviceName)
 	if err != nil {
 		log.Println(err)
 		return
@@ -35,7 +41,7 @@ func (s *SpotifyIconHandler) IsRunning() bool {
 	return s.Running
 }
 
-func (s *SpotifyIconHandler) SetRunning(running bool)  {
+func (s *SpotifyIconHandler) SetRunning(running bool) {
 	s.Running = running
 }
 
@@ -77,11 +83,11 @@ func (s *SpotifyIconHandler) run(c *Connection, callback func(image image.Image)
 func RegisterSpotify() handlers.Module {
 	return handlers.Module{NewIcon: func() api.IconHandler {
 		return &SpotifyIconHandler{Running: true}
-	}, Name: "Spotify"}
+	}, Name: "Spotify", IconFields: []api.Field{{Title: "Service (default 'spotify')", Name: "serviceName", Type: "Text"}}}
 }
 
 // region DBus
-func getImage(url string) (image.Image, error)  {
+func getImage(url string) (image.Image, error) {
 	response, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -97,20 +103,20 @@ func getImage(url string) (image.Image, error)  {
 	return img, nil
 }
 
-
 type Connection struct {
 	busobj dbus.BusObject
-	conn *dbus.Conn
+	conn   *dbus.Conn
 }
 
-func Connect() (*Connection, error) {
+func Connect(serviceName string) (*Connection, error) {
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
 		return nil, err
 	}
+
 	return &Connection{
-		conn: conn,
-		busobj: conn.Object("org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2"),
+		conn:   conn,
+		busobj: conn.Object(fmt.Sprintf("org.mpris.MediaPlayer2.%s", serviceName), "/org/mpris/MediaPlayer2"),
 	}, nil
 }
 
@@ -134,7 +140,7 @@ func (c *Connection) GetAlbumArtUrl() (string, error) {
 	return url, nil
 }
 
-func (c *Connection) Close()  {
+func (c *Connection) Close() {
 	c.conn.Close()
 }
 
