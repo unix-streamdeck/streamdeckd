@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/godbus/dbus/v5"
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"image"
+	"image/png"
 	"log"
+	"time"
 )
 
 var conn *dbus.Conn
@@ -87,6 +92,68 @@ func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
 	}
 	HandleInput(dev, &dev.Config[dev.Page][keyIndex], dev.Page)
 	return nil
+}
+
+func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string, *dbus.Error) {
+	var key *api.Key
+	err := json.Unmarshal([]byte(keyString), &key)
+	if err != nil {
+		return "", dbus.MakeFailedError(err)
+	}
+	if key.IconHandler == "" || key.IconHandler == "Default" {
+		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
+	}
+	var handler api.IconHandler
+	modules := handlers.AvailableModules()
+	for _, module := range modules {
+		if module.Name == key.IconHandler {
+			handler = module.NewIcon()
+			break
+		}
+	}
+	if handler == nil {
+		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
+	}
+	var dev api.StreamDeckInfo
+	for _, info := range sDInfo {
+		if info.Serial == serial {
+			dev = info
+			break
+		}
+	}
+	if dev.Serial != serial {
+		return "", dbus.MakeFailedError(errors.New("could not find device"))
+	}
+	var img image.Image
+	log.Println("Created and running " + key.IconHandler + " for dbus")
+	handler.Start(*key, dev, func(image image.Image) {
+		if image.Bounds().Max.X != dev.IconSize || image.Bounds().Max.Y != dev.IconSize {
+			image = api.ResizeImage(image, dev.IconSize)
+		}
+		img = image
+		log.Println("Stopping " + key.IconHandler + " for dbus")
+		handler.Stop()
+		log.Println("Stopped " + key.IconHandler + " for dbus")
+	})
+	timer := time.NewTimer(5 * time.Second)
+	go func() {
+		<-timer.C
+		if handler.IsRunning() {
+			log.Println("Handler still running")
+			handler.Stop()
+		} else {
+			log.Println("Handler had stopped")
+		}
+	}()
+	for handler.IsRunning() {
+	}
+	if img == nil {
+		return "", dbus.MakeFailedError(errors.New("Handler did not respond in a timely fashion"))
+	}
+	buf := new(bytes.Buffer)
+	err = png.Encode(buf, img)
+	imageBits := buf.Bytes()
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(imageBits), nil
 }
 
 func InitDBUS() error {
