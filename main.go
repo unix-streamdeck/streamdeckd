@@ -239,7 +239,7 @@ func readConfig() (*api.Config, error) {
 
 func runCommand(command string) {
 	go func() {
-		cmd := exec.Command("/bin/sh", "-c", "/usr/bin/nohup "+command)
+		cmd := exec.Command("/bin/sh", "-c", "nohup "+command)
 
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Setpgid:   true,
