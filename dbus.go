@@ -45,7 +45,7 @@ func (StreamDeckDBus) SetPage(serial string, page int) *dbus.Error {
 	for s := range devs {
 		if devs[s].Deck.Serial == serial {
 			dev := devs[s]
-			SetPage(dev, page)
+			dev.SetPage(page)
 			return nil
 		}
 	}

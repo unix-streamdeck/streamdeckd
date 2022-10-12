@@ -1,16 +1,16 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"github.com/unix-streamdeck/api"
-	_ "github.com/unix-streamdeck/driver"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
 	"golang.org/x/sync/semaphore"
 	"image"
 	"image/draw"
 	"log"
 	"os"
-	"strings"
+	"os/exec"
+	"syscall"
 )
 
 
@@ -31,29 +31,7 @@ func LoadImage(dev *VirtualDev, path string) (image.Image, error) {
 	return api.ResizeImage(img, int(dev.Deck.Pixels)), nil
 }
 
-func SetImage(dev *VirtualDev, img image.Image, i int, page int) {
-	ctx := context.Background()
-	err := sem.Acquire(ctx, 1)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer sem.Release(1)
-	if dev.Page == page && dev.IsOpen {
-		err := dev.Deck.SetImage(uint8(i), img)
-		if err != nil {
-			if strings.Contains(err.Error(), "hidapi") {
-				disconnect(dev)
-			} else if strings.Contains(err.Error(), "dimensions") {
-				log.Println(err)
-			}else {
-				log.Println(err)
-			}
-		}
-	}
-}
-
-func SetKeyImage(dev *VirtualDev, currentKey *api.Key, i int, page int) {
+func SetKeyImage(dev *VirtualDev, currentKey *api.Key, keyIndex int, page int) {
 	if currentKey.Buff == nil {
 		if currentKey.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, int(dev.Deck.Pixels), int(dev.Deck.Pixels)))
@@ -77,24 +55,11 @@ func SetKeyImage(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 		}
 	}
 	if currentKey.Buff != nil {
-		SetImage(dev, currentKey.Buff, i, page)
+		dev.SetImage(currentKey.Buff, keyIndex, page)
 	}
 }
 
-func SetPage(dev *VirtualDev, page int) {
-	if page != dev.Page {
-		unmountPageHandlers(dev.Config[dev.Page])
-	}
-	dev.Page = page
-	currentPage := dev.Config[page]
-	for i := 0; i < len(currentPage); i++ {
-		currentKey := &currentPage[i]
-		go SetKey(dev, currentKey, i, page)
-	}
-	EmitPage(dev, page)
-}
-
-func SetKey(dev *VirtualDev, currentKey *api.Key, i int, page int) {
+func SetKey(dev *VirtualDev, currentKey *api.Key, keyIndex int, page int) {
 	var deckInfo api.StreamDeckInfo
 	for i := range sDInfo {
 		if sDInfo[i].Serial == dev.Deck.Serial {
@@ -103,7 +68,7 @@ func SetKey(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 	}
 	if currentKey.Buff == nil {
 		if currentKey.IconHandler == "" {
-			SetKeyImage(dev, currentKey, i, page)
+			SetKeyImage(dev, currentKey, keyIndex, page)
 
 		} else if currentKey.IconHandlerStruct == nil {
 			var handler api.IconHandler
@@ -121,13 +86,13 @@ func SetKey(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 				if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
 					image = api.ResizeImage(image, int(dev.Deck.Pixels))
 				}
-				SetImage(dev, image, i, page)
+				dev.SetImage(image, keyIndex, page)
 				currentKey.Buff = image
 			})
 			currentKey.IconHandlerStruct = handler
 		}
 	} else {
-		SetImage(dev, currentKey.Buff, i, page)
+		dev.SetImage(currentKey.Buff, keyIndex, page)
 	}
 	if currentKey.IconHandlerStruct != nil && !currentKey.IconHandlerStruct.IsRunning() {
 		log.Printf("Started %s\n", currentKey.IconHandler)
@@ -135,10 +100,29 @@ func SetKey(dev *VirtualDev, currentKey *api.Key, i int, page int) {
 			if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
 				image = api.ResizeImage(image, int(dev.Deck.Pixels))
 			}
-			SetImage(dev, image, i, page)
+			dev.SetImage(image, keyIndex, page)
 			currentKey.Buff = image
 		})
 	}
+}
+
+func runCommand(command string) {
+	go func() {
+		cmd := exec.Command("/bin/sh", "-c", "/usr/bin/nohup "+command)
+
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid:   true,
+			Pgid:      0,
+			Pdeathsig: syscall.SIGHUP,
+		}
+		if err := cmd.Start(); err != nil {
+			fmt.Println("There was a problem running ", command, ":", err)
+		} else {
+			pid := cmd.Process.Pid
+			cmd.Process.Release()
+			fmt.Println(command, " has been started with pid", pid)
+		}
+	}()
 }
 
 func HandleInput(dev *VirtualDev, key *api.Key, page int) {
@@ -150,10 +134,10 @@ func HandleInput(dev *VirtualDev, key *api.Key, page int) {
 	}
 	if key.SwitchPage != 0 {
 		page = key.SwitchPage - 1
-		SetPage(dev, page)
+		dev.SetPage(page)
 	}
 	if key.Brightness != 0 {
-		err := dev.Deck.SetBrightness(uint8(key.Brightness))
+		err := dev.SetBrightness(uint8(key.Brightness))
 		if err != nil {
 			log.Println(err)
 		}
@@ -187,26 +171,5 @@ func HandleInput(dev *VirtualDev, key *api.Key, page int) {
 			key.KeyHandlerStruct = handler
 		}
 		key.KeyHandlerStruct.Key(*key, deckInfo)
-	}
-}
-
-func Listen(dev *VirtualDev) {
-	kch, err := dev.Deck.ReadKeys()
-	if err != nil {
-		log.Println(err)
-	}
-	for dev.IsOpen {
-		select {
-		case k, ok := <-kch:
-			if !ok {
-				disconnect(dev)
-				return
-			}
-			if k.Pressed == true {
-				if len(dev.Config)-1 >= dev.Page && len(dev.Config[dev.Page])-1 >= int(k.Index) {
-					HandleInput(dev, &dev.Config[dev.Page][k.Index], dev.Page)
-				}
-			}
-		}
 	}
 }
