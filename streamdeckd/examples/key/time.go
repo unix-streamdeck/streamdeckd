@@ -1,8 +1,8 @@
-package examples
+package key
 
 import (
 	"github.com/unix-streamdeck/api"
-	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 	"image"
 	"image/draw"
 	"log"
@@ -14,7 +14,7 @@ type TimeIconHandler struct {
 	Quit chan bool
 }
 
-func (t *TimeIconHandler) Start(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (t *TimeIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	t.Running = true
 	if t.Quit == nil {
 		t.Quit = make(chan bool)
@@ -35,7 +35,7 @@ func (t *TimeIconHandler) Stop() {
 	t.Quit <- true
 }
 
-func (t *TimeIconHandler) timeLoop(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (t *TimeIconHandler) timeLoop(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	for {
 		select {
 		case <- t.Quit:
@@ -56,8 +56,8 @@ func (t *TimeIconHandler) timeLoop(k api.Key, info api.StreamDeckInfo, callback 
 	}
 }
 
-func RegisterTime() handlers.Module {
-	return handlers.Module{NewIcon: func() api.IconHandler {
+func RegisterTime() streamdeckd.Module {
+	return streamdeckd.Module{NewIcon: func() api.IconHandler {
 		return &TimeIconHandler{Running: true}
 	}, Name: "Time"}
 }

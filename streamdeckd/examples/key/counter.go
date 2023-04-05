@@ -1,12 +1,12 @@
-package examples
+package key
 
 import (
-	"github.com/unix-streamdeck/api"
-	"github.com/unix-streamdeck/streamdeckd/handlers"
-	"image"
-	"image/draw"
-	"log"
-	"strconv"
+    "github.com/unix-streamdeck/api"
+    "github.com/unix-streamdeck/streamdeckd/streamdeckd"
+    "image"
+    "image/draw"
+    "log"
+    "strconv"
 )
 
 type CounterIconHandler struct {
@@ -15,7 +15,7 @@ type CounterIconHandler struct {
 	Callback func(image image.Image)
 }
 
-func (c *CounterIconHandler) Start(k api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (c *CounterIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	if c.Callback == nil {
 		c.Callback = callback
 	}
@@ -46,7 +46,7 @@ func (c CounterIconHandler) Stop()  {
 
 type CounterKeyHandler struct{}
 
-func (CounterKeyHandler) Key(key api.Key, info api.StreamDeckInfo) {
+func (CounterKeyHandler) Key(key api.KeyConfigV3, info api.StreamDeckInfoV1) {
 	if key.IconHandler != "Counter" {
 		return
 	}
@@ -57,8 +57,8 @@ func (CounterKeyHandler) Key(key api.Key, info api.StreamDeckInfo) {
 	}
 }
 
-func RegisterCounter() handlers.Module {
-	return handlers.Module{NewIcon: func() api.IconHandler {
+func RegisterCounter() streamdeckd.Module {
+	return streamdeckd.Module{NewIcon: func() api.IconHandler {
 		return &CounterIconHandler{Running: true, Count: 0}
 	}, NewKey: func() api.KeyHandler {
 		return &CounterKeyHandler{}

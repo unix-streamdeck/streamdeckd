@@ -1,4 +1,4 @@
-package handlers
+package streamdeckd
 
 import (
 	"github.com/unix-streamdeck/api"
@@ -10,8 +10,12 @@ type Module struct {
 	Name	string
 	NewIcon func() api.IconHandler
 	NewKey func() api.KeyHandler
+	NewLcd func() api.LcdHandler
+	NewKnobOrTouch func() api.KnobOrTouchHandler
 	IconFields []api.Field
 	KeyFields []api.Field
+	LcdFields []api.Field
+	KnobOrTouchFields []api.Field
 }
 
 
@@ -53,4 +57,20 @@ func LoadModule(path string) {
 		return
 	}
 	RegisterModule(modMethod())
+}
+
+func UnmountHandlers() {
+	for s := range Devs {
+		dev := Devs[s]
+		dev.UnmountHandlers()
+	}
+}
+
+func UnmountKeyHandler(keyConfig *api.KeyConfigV3) {
+	keyConfig.IconHandlerStruct.Stop()
+	log.Printf("Stopped %s\n", keyConfig.IconHandler)
+}
+func UnmountKnobHandler(keyConfig *api.KnobConfigV3) {
+	keyConfig.LcdHandlerStruct.Stop()
+	log.Printf("Stopped %s\n", keyConfig.LcdHandler)
 }

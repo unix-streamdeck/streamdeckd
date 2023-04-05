@@ -1,10 +1,10 @@
-package examples
+package key
 
 import (
 	"errors"
 	"github.com/godbus/dbus/v5"
 	"github.com/unix-streamdeck/api"
-	"github.com/unix-streamdeck/streamdeckd/handlers"
+	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 	"image"
 	"log"
 	"net/http"
@@ -18,14 +18,16 @@ type SpotifyIconHandler struct {
 	Quit chan bool
 }
 
-func (s *SpotifyIconHandler) Start(key api.Key, info api.StreamDeckInfo, callback func(image image.Image)) {
+func (s *SpotifyIconHandler) Start(key api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	s.Running = true
 	if s.Quit == nil {
 		s.Quit = make(chan bool)
 	}
 	c, err := Connect()
 	if err != nil {
-		log.Println(err)
+		if err.Error() != "The name org.mpris.MediaPlayer2.spotify was not provided by any .service files"{
+			log.Println(err)
+		}
 		return
 	}
 	go s.run(c, callback)
@@ -42,6 +44,7 @@ func (s *SpotifyIconHandler) SetRunning(running bool)  {
 func (s *SpotifyIconHandler) Stop() {
 	s.Running = false
 	s.Quit <- true
+	s.oldUrl = ""
 }
 
 func (s *SpotifyIconHandler) run(c *Connection, callback func(image image.Image)) {
@@ -53,7 +56,9 @@ func (s *SpotifyIconHandler) run(c *Connection, callback func(image image.Image)
 		default:
 			url, err := c.GetAlbumArtUrl()
 			if err != nil {
-				log.Println(err)
+				if err.Error() != "The name org.mpris.MediaPlayer2.spotify was not provided by any .service files"{
+					log.Println(err)
+				}
 				time.Sleep(time.Second)
 				continue
 			}
@@ -74,8 +79,8 @@ func (s *SpotifyIconHandler) run(c *Connection, callback func(image image.Image)
 	}
 }
 
-func RegisterSpotify() handlers.Module {
-	return handlers.Module{NewIcon: func() api.IconHandler {
+func RegisterSpotify() streamdeckd.Module {
+	return streamdeckd.Module{NewIcon: func() api.IconHandler {
 		return &SpotifyIconHandler{Running: true}
 	}, Name: "Spotify"}
 }

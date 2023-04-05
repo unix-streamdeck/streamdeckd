@@ -1,4 +1,4 @@
-package main
+package streamdeckd
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"errors"
 	"github.com/godbus/dbus/v5"
 	"github.com/unix-streamdeck/api"
-	"github.com/unix-streamdeck/streamdeckd/handlers"
 	"image"
 	"image/png"
 	"log"
@@ -17,13 +16,16 @@ import (
 var conn *dbus.Conn
 
 var sDbus *StreamDeckDBus
-var sDInfo []api.StreamDeckInfo
 
 type StreamDeckDBus struct {
 }
 
 func (s StreamDeckDBus) GetDeckInfo() (string, *dbus.Error) {
-	infoString, err := json.Marshal(sDInfo)
+	var decks []api.StreamDeckInfoV1
+	for _, dev := range Devs {
+		decks = append(decks, dev.sdInfo)
+	}
+	infoString, err := json.Marshal(decks)
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
 	}
@@ -47,9 +49,9 @@ func (StreamDeckDBus) ReloadConfig() *dbus.Error {
 }
 
 func (StreamDeckDBus) SetPage(serial string, page int) *dbus.Error {
-	for s := range devs {
-		if devs[s].Deck.Serial == serial {
-			dev := devs[s]
+	for s := range Devs {
+		if Devs[s].Deck.Serial == serial {
+			dev := Devs[s]
 			dev.SetPage(page)
 			return nil
 		}
@@ -75,7 +77,7 @@ func (StreamDeckDBus) CommitConfig() *dbus.Error {
 
 func (StreamDeckDBus) GetModules() (string, *dbus.Error) {
 	var modules []api.Module
-	for _, module := range handlers.AvailableModules() {
+	for _, module := range AvailableModules() {
 		modules = append(modules, api.Module{Name: module.Name, IconFields: module.IconFields, KeyFields: module.KeyFields, IsIcon: module.NewIcon != nil, IsKey: module.NewKey != nil})
 	}
 	modulesString, err := json.Marshal(modules)
@@ -86,16 +88,16 @@ func (StreamDeckDBus) GetModules() (string, *dbus.Error) {
 }
 
 func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
-	dev, ok := devs[serial]
+	dev, ok := Devs[serial]
 	if !ok || !dev.IsOpen{
 		return dbus.MakeFailedError(errors.New("Can't find connected device: " + serial))
 	}
-	HandleInput(dev, &dev.Config[dev.Page][keyIndex], dev.Page)
+	HandleKeyInput(dev, &dev.Config[dev.Page].Keys[keyIndex])
 	return nil
 }
 
 func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string, *dbus.Error) {
-	var key *api.Key
+	var key *api.KeyConfigV3
 	err := json.Unmarshal([]byte(keyString), &key)
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
@@ -104,7 +106,7 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
 	var handler api.IconHandler
-	modules := handlers.AvailableModules()
+	modules := AvailableModules()
 	for _, module := range modules {
 		if module.Name == key.IconHandler {
 			handler = module.NewIcon()
@@ -114,16 +116,12 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 	if handler == nil {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
-	var dev api.StreamDeckInfo
-	for _, info := range sDInfo {
-		if info.Serial == serial {
-			dev = info
-			break
-		}
-	}
-	if dev.Serial != serial {
+	var dev api.StreamDeckInfoV1
+	sd, ok := Devs[serial]
+	if !ok {
 		return "", dbus.MakeFailedError(errors.New("could not find device"))
 	}
+	dev = sd.sdInfo
 	var img image.Image
 	log.Println("Created and running " + key.IconHandler + " for dbus")
 	handler.Start(*key, dev, func(image image.Image) {
@@ -135,35 +133,37 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 		handler.Stop()
 		log.Println("Stopped " + key.IconHandler + " for dbus")
 	})
-	timer := time.NewTimer(5 * time.Second)
-	go func() {
-		<-timer.C
-		if handler.IsRunning() {
-			log.Println("Handler still running")
-			handler.Stop()
-		} else {
-			log.Println("Handler had stopped")
+	counter := 0
+	for {
+		if img != nil {
+			buf := new(bytes.Buffer)
+			err = png.Encode(buf, img)
+			imageBits := buf.Bytes()
+			return "data:image/png;base64," + base64.StdEncoding.EncodeToString(imageBits), nil
 		}
-	}()
-	for handler.IsRunning() {
+		if counter >= 100 {
+			return "", dbus.MakeFailedError(errors.New("Handler did not respond in a timely fashion"))
+		}
+		counter += 1
+		time.Sleep(50 * time.Millisecond)
 	}
-	if img == nil {
-		return "", dbus.MakeFailedError(errors.New("Handler did not respond in a timely fashion"))
-	}
-	buf := new(bytes.Buffer)
-	err = png.Encode(buf, img)
-	imageBits := buf.Bytes()
-	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(imageBits), nil
 }
 
-func InitDBUS() error {
+func reInitDBus() {
+	log.Println("Restarting DBUS")
+	go InitDBUS()
+}
+
+func InitDBUS() {
+	log.Println("DBUS Started")
 	var err error
 	conn, err = dbus.SessionBus()
 	if err != nil {
 		log.Println(err)
-		return err
+		return
 	}
 	defer conn.Close()
+	defer HandlePanic(reInitDBus)
 
 	sDbus = &StreamDeckDBus{}
 	conn.ExportAll(sDbus, "/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd")
@@ -171,10 +171,12 @@ func InitDBUS() error {
 		dbus.NameFlagDoNotQueue)
 	if err != nil {
 		log.Println(err)
-		return err
+		return
 	}
+	log.Println("DBUS Started 2")
 	if reply != dbus.RequestNameReplyPrimaryOwner {
-		return errors.New("DBus: Name already taken")
+		log.Println(errors.New("DBus: Name already taken"))
+		return
 	}
 	select {}
 }
@@ -183,9 +185,44 @@ func EmitPage(dev *VirtualDev, page int) {
 	if conn != nil {
 		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", dev.Deck.Serial, page)
 	}
-	for i := range sDInfo {
-		if sDInfo[i].Serial == dev.Deck.Serial {
-			sDInfo[i].Page = page
+}
+
+
+type ScreensaverConnection struct {
+	busobj dbus.BusObject
+	conn *dbus.Conn
+}
+
+func ConnectScreensaver() (*ScreensaverConnection, error) {
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		return nil, err
+	}
+	return &ScreensaverConnection{
+		conn: conn,
+		busobj: conn.Object("org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver"),
+	}, nil
+}
+
+func (c *ScreensaverConnection) RegisterScreensaverActiveListener() {
+	defer HandlePanic(func() {
+		log.Println("Restarting Screensaver Listener")
+		go c.RegisterScreensaverActiveListener()
+	})
+	err := c.conn.AddMatchSignal(dbus.WithMatchObjectPath("/org/freedesktop/ScreenSaver"), dbus.WithMatchInterface("org.freedesktop.ScreenSaver"), dbus.WithMatchMember("ActiveChanged"))
+	if err != nil {
+		log.Println(err)
+	}
+	ch := make(chan *dbus.Signal, 10)
+	c.conn.Signal(ch)
+	for v := range ch {
+		if locked != v.Body[0].(bool) {
+			locked = v.Body[0].(bool)
+			for _, deck := range Devs {
+				if deck.IsOpen {
+					deck.HandleScreenLockChange(locked)
+				}
+			}
 		}
 	}
 }
