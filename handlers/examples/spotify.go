@@ -6,6 +6,7 @@ import (
 	"github.com/unix-streamdeck/api"
 	"github.com/unix-streamdeck/streamdeckd/handlers"
 	"image"
+	"image/draw"
 	"log"
 	"net/http"
 	"strings"
@@ -28,6 +29,17 @@ func (s *SpotifyIconHandler) Start(key api.Key, info api.StreamDeckInfo, callbac
 		log.Println(err)
 		return
 	}
+
+	img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+	draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
+	imgParsed, err := api.DrawText(img, "Spotify", key.TextSize, key.TextAlignment)
+
+	if err != nil {
+		log.Println(err)
+	} else {
+		callback(imgParsed)
+	}
+	
 	go s.run(c, callback)
 }
 
