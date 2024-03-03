@@ -33,7 +33,7 @@ func (s *GifIconHandler) Start(key api.KeyConfigV3, info api.StreamDeckInfoV1, c
     if !ok {
         return
     }
-    f, err := os.Open(icon)
+    f, err := os.Open(icon.(string))
     if err != nil {
         log.Println(err)
         return
@@ -60,9 +60,20 @@ func (s *GifIconHandler) Start(key api.KeyConfigV3, info api.StreamDeckInfoV1, c
         frame := image.NewRGBA(image.Rect(0, 0, iconSize, iconSize))
         draw.Draw(frame, frame.Bounds(), overPaintImage, image.ZP, draw.Over)
         img := frame.SubImage(frame.Rect)
-        if key.IconHandlerFields["text"] != "" {
-            size, _ := strconv.ParseInt(key.IconHandlerFields["text_size"], 10, 0)
-            img, err = api.DrawText(img, key.IconHandlerFields["text"], int(size), key.IconHandlerFields["text_alignment"])
+        text, ok := key.IconHandlerFields["text"]
+        if ok {
+            text_size, ok := key.IconHandlerFields["text_size"]
+            var size int64
+            if ok {
+                size, _ = strconv.ParseInt(text_size.(string), 10, 0)
+            } else {
+                size = 0
+            }
+            alignment, ok := key.IconHandlerFields["text_alignment"]
+            if !ok {
+                alignment = ""
+            }
+            img, err = api.DrawText(img, text.(string), int(size), alignment.(string))
             if err != nil {
                 log.Println(err)
             }
@@ -129,7 +140,7 @@ func (s *GifLcdHandler) Start(key api.KnobConfigV3, info api.StreamDeckInfoV1, c
     if !ok {
         return
     }
-    f, err := os.Open(icon)
+    f, err := os.Open(icon.(string))
     if err != nil {
         log.Println(err)
         return
@@ -154,9 +165,20 @@ func (s *GifLcdHandler) Start(key api.KnobConfigV3, info api.StreamDeckInfoV1, c
         frame := image.NewRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
         draw.Draw(frame, frame.Bounds(), overPaintImage, image.ZP, draw.Over)
         img := frame.SubImage(frame.Rect)
-        if key.LcdHandlerFields["text"] != "" {
-            size, _ := strconv.ParseInt(key.LcdHandlerFields["text_size"], 10, 0)
-            img, err = api.DrawText(img, key.LcdHandlerFields["text"], int(size), key.LcdHandlerFields["text_alignment"])
+        text, ok := key.LcdHandlerFields["text"]
+        if ok {
+            text_size, ok := key.LcdHandlerFields["text_size"]
+            var size int64
+            if ok {
+                size, _ = strconv.ParseInt(text_size.(string), 10, 0)
+            } else {
+                size = 0
+            }
+            alignment, ok := key.LcdHandlerFields["text_alignment"]
+            if !ok {
+                alignment = ""
+            }
+            img, err = api.DrawText(img, text.(string), int(size), alignment.(string))
             if err != nil {
                 log.Println(err)
             }

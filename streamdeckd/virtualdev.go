@@ -249,10 +249,10 @@ func (dev *VirtualDev) SetSdInfo() {
         Name:          manufacturer + " " + product,
         Connected:     true,
         LastConnected: time.Now(),
-        LcdWidth: int(dev.Deck.LcdWidth),
-        LcdHeight: int(dev.Deck.LcdHeight),
-        LcdCols: int(dev.Deck.LcdColumns),
-        KnobCols: int(dev.Deck.Knobs),
+        LcdWidth:      int(dev.Deck.LcdWidth),
+        LcdHeight:     int(dev.Deck.LcdHeight),
+        LcdCols:       int(dev.Deck.LcdColumns),
+        KnobCols:      int(dev.Deck.Knobs),
     }
 
     dev.sdInfo = info
@@ -267,6 +267,9 @@ func (dev *VirtualDev) ApplicationUpdated() {
         key := &page.Keys[i]
         _, keyHasApp := key.Application[currentApplication]
         activeApp := key.ActiveApplication
+        if key.Application[key.ActiveApplication].KeyHold != 0 && (keyHasApp || key.ActiveApplication != "") {
+            kb.KeyUp(key.Application[key.ActiveApplication].KeyHold)
+        }
         if key.ActiveApplication != "" && !keyHasApp {
             key.ActiveApplication = ""
         }
@@ -311,14 +314,14 @@ func (dev *VirtualDev) ReadDevKey() {
     }()
     dev.Deck.HandleInput(func(event streamdeck.InputEvent) {
         if !locked {
-            if event.EventType == streamdeck.KEY_PRESS {
+            if event.EventType == streamdeck.KEY_PRESS || event.EventType == streamdeck.KEY_RELEASE {
                 page := dev.Config[dev.Page]
                 if uint8(len(page.Keys)) > event.Index {
-                    HandleKeyInput(dev, &page.Keys[event.Index])
+                    HandleKeyInput(dev, &page.Keys[event.Index], event.EventType == streamdeck.KEY_PRESS)
                 }
             } else if event.EventType == streamdeck.SCREEN_SWIPE {
                 if event.ScreenEndX < event.ScreenX {
-                    if dev.Page < len(dev.Config) - 1 {
+                    if dev.Page < len(dev.Config)-1 {
                         dev.SetPage(dev.Page + 1)
                     }
                 } else {

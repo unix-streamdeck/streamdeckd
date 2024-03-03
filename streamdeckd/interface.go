@@ -8,9 +8,7 @@ import (
     "log"
     "os"
     "os/exec"
-    "strings"
     "syscall"
-    "time"
 )
 
 var currentApplication = ""
@@ -147,7 +145,7 @@ func SetKnobHandler(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIn
         log.Printf("Created %s\n", currentKnobConfig.LcdHandler)
         currentKnobConfig.LcdHandlerStruct = handler
     }
-    log.Printf("Started %s on key %d with app profile %s\n", currentKnobConfig.LcdHandler, knobIndex, activeApp)
+    log.Printf("Started %s on knob %d with app profile %s\n", currentKnobConfig.LcdHandler, knobIndex, activeApp)
     currentKnobConfig.LcdHandlerStruct.Start(*currentKnobConfig, dev.sdInfo, func(image image.Image) {
         if image.Bounds().Max.X != int(dev.Deck.LcdWidth) || image.Bounds().Max.Y != int(dev.Deck.LcdHeight) {
             image = api.ResizeImageWH(image, int(dev.Deck.LcdWidth), int(dev.Deck.LcdHeight))
@@ -179,51 +177,67 @@ func RunCommand(command string) {
     }()
 }
 
-func HandleKeyInput(dev *VirtualDev, key *api.KeyV3) {
+func HandleKeyInput(dev *VirtualDev, key *api.KeyV3, keyDown bool) {
+    log.Println(key.ActiveApplication)
     keyConfig, ok := key.Application[key.ActiveApplication]
     if !ok {
         log.Println("Err getting correct config for key")
         return
     }
-    if keyConfig.Command != "" {
-        RunCommand(keyConfig.Command)
-    }
-    if keyConfig.Keybind != "" {
-        RunCommand("xdotool key " + keyConfig.Keybind)
-    }
-    if keyConfig.SwitchPage != 0 {
-        page := keyConfig.SwitchPage - 1
-        dev.SetPage(page)
-    }
-    if keyConfig.Brightness != 0 {
-        err := dev.SetBrightness(uint8(keyConfig.Brightness))
-        if err != nil {
-            log.Println(err)
+    if keyDown {
+        if keyConfig.Command != "" {
+            RunCommand(keyConfig.Command)
         }
-    }
-    if keyConfig.Url != "" {
-        RunCommand("xdg-open " + keyConfig.Url)
-    }
-    if keyConfig.ObsCommand != "" {
-        runObsCommand(keyConfig.ObsCommand, keyConfig.ObsCommandParams)
-    }
-    if keyConfig.KeyHandler != "" {
-        var deckInfo api.StreamDeckInfoV1
-        deckInfo = dev.sdInfo
-        if keyConfig.KeyHandlerStruct == nil {
-            var handler api.KeyHandler
-            modules := AvailableModules()
-            for _, module := range modules {
-                if module.Name == keyConfig.KeyHandler {
-                    handler = module.NewKey()
+        if keyConfig.Keybind != "" {
+            RunCommand("xdotool key " + keyConfig.Keybind)
+        }
+        if keyConfig.SwitchPage != 0 {
+            page := keyConfig.SwitchPage - 1
+            dev.SetPage(page)
+        }
+        if keyConfig.Brightness != 0 {
+            err := dev.SetBrightness(uint8(keyConfig.Brightness))
+            if err != nil {
+                log.Println(err)
+            }
+        }
+        if keyConfig.Url != "" {
+            RunCommand("xdg-open " + keyConfig.Url)
+        }
+        if keyConfig.ObsCommand != "" {
+            runObsCommand(keyConfig.ObsCommand, keyConfig.ObsCommandParams)
+        }
+        if keyConfig.KeyHandler != "" {
+            var deckInfo api.StreamDeckInfoV1
+            deckInfo = dev.sdInfo
+            if keyConfig.KeyHandlerStruct == nil {
+                var handler api.KeyHandler
+                modules := AvailableModules()
+                for _, module := range modules {
+                    if module.Name == keyConfig.KeyHandler {
+                        handler = module.NewKey()
+                    }
                 }
+                if handler == nil {
+                    return
+                }
+                keyConfig.KeyHandlerStruct = handler
             }
-            if handler == nil {
-                return
-            }
-            keyConfig.KeyHandlerStruct = handler
+            keyConfig.KeyHandlerStruct.Key(*keyConfig, deckInfo)
         }
-        keyConfig.KeyHandlerStruct.Key(*keyConfig, deckInfo)
+    }
+    if keyConfig.KeyHold != 0 {
+        if keyDown {
+            err := kb.KeyDown(keyConfig.KeyHold)
+            if err != nil {
+                log.Println(err)
+            }
+        } else {
+            err := kb.KeyUp(keyConfig.KeyHold)
+            if err != nil {
+                log.Println(err)
+            }
+        }
     }
 }
 
@@ -253,29 +267,37 @@ func HandleKnobInput(dev *VirtualDev, knob *api.KnobV3, event streamdeck.InputEv
             EventType:     api.InputEventType(event.EventType),
             RotateNotches: event.RotateNotches,
         })
-    }
-}
-
-func UpdateApplication() {
-    defer HandlePanic(func() {
-        log.Println("Restarting UpdateApplication")
-        go UpdateApplication()
-    })
-    for {
-        active, err := exec.Command("xdotool", "getwindowfocus", "getwindowclassname").Output()
-        if err != nil {
-            log.Println(err)
+    } else {
+        var actions api.KnobActionV3
+        if event.EventType == streamdeck.KNOB_PRESS {
+            actions = knobConfig.KnobPressAction
+        } else if event.EventType == streamdeck.KNOB_CCW {
+            actions = knobConfig.KnobTurnDownAction
+        } else if event.EventType == streamdeck.KNOB_CW {
+            actions = knobConfig.KnobTurnUpAction
         }
-        activePs := string(active)
-        activePs = strings.Trim(activePs, "\n")
-        if currentApplication != activePs {
-            currentApplication = activePs
-            log.Println("Application updated to: " + currentApplication)
-            for _, dev := range Devs {
-                dev.ApplicationUpdated()
+        if actions.Command != "" {
+            RunCommand(actions.Command)
+        }
+        if actions.Keybind != "" {
+            RunCommand("xdotool key " + actions.Keybind)
+        }
+        if actions.SwitchPage != 0 {
+            page := actions.SwitchPage - 1
+            dev.SetPage(page)
+        }
+        if actions.Brightness != 0 {
+            err := dev.SetBrightness(uint8(actions.Brightness))
+            if err != nil {
+                log.Println(err)
             }
         }
-        time.Sleep(500 * time.Millisecond)
+        if actions.Url != "" {
+            RunCommand("xdg-open " + actions.Url)
+        }
+        if actions.ObsCommand != "" {
+            runObsCommand(actions.ObsCommand, actions.ObsCommandParams)
+        }
     }
 }
 
