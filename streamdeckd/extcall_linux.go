@@ -31,7 +31,7 @@ func UpdateApplication() {
         win, _ := x.GetInputFocus(c).Reply(c)
         if activeWindow != win.Focus {
             activeWindow = win.Focus
-            active, err := exec.Command("xdotool", "getwindowfocus", "getwindowclassname").Output()
+            active, err := exec.Command("kdotool", "getactivewindow", "getwindowclassname").Output()
             if err != nil {
                 active = []byte("")
             }
