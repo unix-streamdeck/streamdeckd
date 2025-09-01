@@ -111,7 +111,7 @@ methods/signals
 
 ### Custom Modules
 
-To create custom modules, I suggest looking at the gif, counter, and time modules in the example handlers package in streamdeckd, they should be in a file with the GetModule method as shown below
+To create custom modules, I suggest looking at the collection of example plugins in [this repository](https://github.com/unix-streamdeck/example-plugins)
 
 #### Loading Modules into streamdeckd
 
