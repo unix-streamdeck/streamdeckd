@@ -1,27 +1,26 @@
 package streamdeckd
 
 import (
-	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/api/v2"
 	"log"
 	"plugin"
 )
 
 type Module struct {
-	Name	string
-	NewIcon func() api.IconHandler
-	NewKey func() api.KeyHandler
-	NewLcd func() api.LcdHandler
-	NewKnobOrTouch func() api.KnobOrTouchHandler
-	IconFields []api.Field
-	KeyFields []api.Field
-	LcdFields []api.Field
+	Name              string
+	NewIcon           func() api.IconHandler
+	NewKey            func() api.KeyHandler
+	NewLcd            func() api.LcdHandler
+	NewKnobOrTouch    func() api.KnobOrTouchHandler
+	IconFields        []api.Field
+	KeyFields         []api.Field
+	LcdFields         []api.Field
 	KnobOrTouchFields []api.Field
+	Linked            bool
+	LinkedFields      []api.Field
 }
 
-
-
 var modules []Module
-
 
 func AvailableModules() []Module {
 	return modules

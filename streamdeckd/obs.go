@@ -3,7 +3,7 @@ package streamdeckd
 import (
 	"errors"
 	obsws "github.com/christopher-dG/go-obs-websocket"
-	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/api/v2"
 	"log"
 	"strconv"
 )
@@ -148,7 +148,6 @@ func runObsCommand(command string, params map[string]string) {
 		log.Println(err)
 	}
 }
-
 
 func getObsHandlerFields() ([]api.Module, error) {
 	var modules []api.Module
