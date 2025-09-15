@@ -1,7 +1,7 @@
 package streamdeckd
 
 import (
-	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/api/v2"
 	streamdeck "github.com/unix-streamdeck/driver"
 	"image"
 	"image/draw"

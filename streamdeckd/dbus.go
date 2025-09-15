@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/godbus/dbus/v5"
-	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/api/v2"
 	"image"
 	"image/png"
 	"log"

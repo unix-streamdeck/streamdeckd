@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/api/v2"
 	streamdeck "github.com/unix-streamdeck/driver"
 	"golang.org/x/sync/semaphore"
 	"image"

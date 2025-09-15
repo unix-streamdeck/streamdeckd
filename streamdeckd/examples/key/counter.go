@@ -1,7 +1,7 @@
 package key
 
 import (
-	"github.com/unix-streamdeck/api"
+	"github.com/unix-streamdeck/api/v2"
 	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 	"image"
 	"image/draw"
