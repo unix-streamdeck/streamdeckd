@@ -1,6 +1,6 @@
 module github.com/unix-streamdeck/streamdeckd
 
-go 1.19
+go 1.25.1
 
 require (
 	github.com/bendahl/uinput v1.7.0
@@ -11,7 +11,6 @@ require (
 	github.com/unix-streamdeck/api v1.0.1
 	github.com/unix-streamdeck/driver v0.0.0-20211119182210-fc6b90443bcd
 	golang.org/x/sync v0.1.0
-
 )
 
 require (
@@ -26,6 +25,7 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/tklauser/numcpus v0.3.0 // indirect
+	github.com/unix-streamdeck/api/v2 v2.0.0 // indirect
 	golang.org/x/image v0.0.0-20201208152932-35266b937fa6 // indirect
 	golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
 )

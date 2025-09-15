@@ -11,7 +11,7 @@ import (
 
 type TimeIconHandler struct {
 	Running bool
-	Quit chan bool
+	Quit    chan bool
 }
 
 func (t *TimeIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
@@ -26,7 +26,7 @@ func (t *TimeIconHandler) IsRunning() bool {
 	return t.Running
 }
 
-func (t *TimeIconHandler) SetRunning(running bool)  {
+func (t *TimeIconHandler) SetRunning(running bool) {
 	t.Running = running
 }
 
@@ -38,7 +38,7 @@ func (t *TimeIconHandler) Stop() {
 func (t *TimeIconHandler) timeLoop(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	for {
 		select {
-		case <- t.Quit:
+		case <-t.Quit:
 			return
 		default:
 			img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))

@@ -14,8 +14,8 @@ import (
 
 type SpotifyIconHandler struct {
 	Running bool
-	oldUrl string
-	Quit chan bool
+	oldUrl  string
+	Quit    chan bool
 }
 
 func (s *SpotifyIconHandler) Start(key api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
@@ -25,7 +25,7 @@ func (s *SpotifyIconHandler) Start(key api.KeyConfigV3, info api.StreamDeckInfoV
 	}
 	c, err := Connect()
 	if err != nil {
-		if err.Error() != "The name org.mpris.MediaPlayer2.spotify was not provided by any .service files"{
+		if err.Error() != "The name org.mpris.MediaPlayer2.spotify was not provided by any .service files" {
 			log.Println(err)
 		}
 		return
@@ -37,7 +37,7 @@ func (s *SpotifyIconHandler) IsRunning() bool {
 	return s.Running
 }
 
-func (s *SpotifyIconHandler) SetRunning(running bool)  {
+func (s *SpotifyIconHandler) SetRunning(running bool) {
 	s.Running = running
 }
 
@@ -56,7 +56,7 @@ func (s *SpotifyIconHandler) run(c *Connection, callback func(image image.Image)
 		default:
 			url, err := c.GetAlbumArtUrl()
 			if err != nil {
-				if err.Error() != "The name org.mpris.MediaPlayer2.spotify was not provided by any .service files"{
+				if err.Error() != "The name org.mpris.MediaPlayer2.spotify was not provided by any .service files" {
 					log.Println(err)
 				}
 				time.Sleep(time.Second)
@@ -86,7 +86,7 @@ func RegisterSpotify() streamdeckd.Module {
 }
 
 // region DBus
-func getImage(url string) (image.Image, error)  {
+func getImage(url string) (image.Image, error) {
 	response, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -102,10 +102,9 @@ func getImage(url string) (image.Image, error)  {
 	return img, nil
 }
 
-
 type Connection struct {
 	busobj dbus.BusObject
-	conn *dbus.Conn
+	conn   *dbus.Conn
 }
 
 func Connect() (*Connection, error) {
@@ -114,7 +113,7 @@ func Connect() (*Connection, error) {
 		return nil, err
 	}
 	return &Connection{
-		conn: conn,
+		conn:   conn,
 		busobj: conn.Object("org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2"),
 	}, nil
 }
@@ -139,7 +138,7 @@ func (c *Connection) GetAlbumArtUrl() (string, error) {
 	return url, nil
 }
 
-func (c *Connection) Close()  {
+func (c *Connection) Close() {
 	c.conn.Close()
 }
 
