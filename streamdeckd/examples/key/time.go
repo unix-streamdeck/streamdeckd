@@ -1,12 +1,13 @@
 package key
 
 import (
-	"github.com/unix-streamdeck/api/v2"
-	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 	"image"
 	"image/draw"
 	"log"
 	"time"
+
+	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 )
 
 type TimeIconHandler struct {
