@@ -8,9 +8,8 @@ require (
 	github.com/godbus/dbus/v5 v5.0.4-0.20200513180336-df5ef3eb7cca
 	github.com/linuxdeepin/go-x11-client v0.0.0-20230710064023-230ea415af17
 	github.com/shirou/gopsutil/v3 v3.21.9
-	github.com/unix-streamdeck/api v1.0.1
 	github.com/unix-streamdeck/api/v2 v2.0.1-0.20250915204217-05040f967038
-	github.com/unix-streamdeck/driver v0.0.0-20211119182210-fc6b90443bcd
+	github.com/unix-streamdeck/driver v0.0.0-20240303131303-fe8d402e2e9c
 	golang.org/x/sync v0.1.0
 )
 
@@ -22,6 +21,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
+	github.com/karalabe/hid v1.0.1-0.20190806082151-9c14560f9ee8 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
@@ -29,7 +29,3 @@ require (
 	golang.org/x/image v0.0.0-20201208152932-35266b937fa6 // indirect
 	golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
 )
-
-replace github.com/unix-streamdeck/api/v2 v2.0.0 => ../api
-
-replace github.com/unix-streamdeck/driver v0.0.0-20211119182210-fc6b90443bcd => ../driver
