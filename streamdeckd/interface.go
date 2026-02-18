@@ -63,6 +63,8 @@ func SetKeyImageHandler(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, keyI
 		}
 		trimmedKeyConfig.SharedState = currentKeyConfig.SharedState
 		trimmedKeyConfig.IconHandlerFields = mergeSharedConfig(currentKeyConfig.SharedHandlerFields, currentKeyConfig.IconHandlerFields)
+	} else {
+		trimmedKeyConfig.SharedState = make(map[string]any)
 	}
 	currentKeyConfig.IconHandlerStruct.Start(trimmedKeyConfig, dev.sdInfo, func(image image.Image) {
 		if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
@@ -161,7 +163,9 @@ func SetKnobHandler(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIn
 		}
 		trimmedKnobConfig.SharedState = currentKnobConfig.SharedState
 		trimmedKnobConfig.LcdHandlerFields = mergeSharedConfig(currentKnobConfig.SharedHandlerFields, currentKnobConfig.LcdHandlerFields)
-	}
+	} else {
+                trimmedKnobConfig.SharedState = make(map[string]any)
+        }
 	currentKnobConfig.LcdHandlerStruct.Start(trimmedKnobConfig, dev.sdInfo, func(image image.Image) {
 		if image.Bounds().Max.X != int(dev.Deck.LcdWidth) || image.Bounds().Max.Y != int(dev.Deck.LcdHeight) {
 			image = api.ResizeImageWH(image, int(dev.Deck.LcdWidth), int(dev.Deck.LcdHeight))
@@ -243,6 +247,8 @@ func HandleKeyInput(dev *VirtualDev, key *api.KeyV3, keyDown bool) {
 			if keyConfig.IconHandler == keyConfig.KeyHandler {
 				trimmedKeyConfig.SharedState = keyConfig.SharedState
 				trimmedKeyConfig.KeyHandlerFields = mergeSharedConfig(keyConfig.SharedHandlerFields, keyConfig.KeyHandlerFields)
+			} else {
+				trimmedKeyConfig.SharedState = make(map[string]any)
 			}
 			keyConfig.KeyHandlerStruct.Key(trimmedKeyConfig, deckInfo)
 		}
@@ -288,6 +294,8 @@ func HandleKnobInput(dev *VirtualDev, knob *api.KnobV3, event streamdeck.InputEv
 		if knobConfig.LcdHandler == knobConfig.KnobOrTouchHandler {
 			trimmedKnobConfig.SharedState = knobConfig.SharedState
 			trimmedKnobConfig.KnobOrTouchHandlerFields = mergeSharedConfig(knobConfig.SharedHandlerFields, knobConfig.KnobOrTouchHandlerFields)
+		} else {
+			trimmedKnobConfig.SharedState = make(map[string]any)
 		}
 		knobConfig.KnobOrTouchHandlerStruct.Input(trimmedKnobConfig, deckInfo, api.InputEvent{
 			EventType:     api.InputEventType(event.EventType),
