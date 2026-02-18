@@ -9,7 +9,7 @@ require (
 	github.com/linuxdeepin/go-x11-client v0.0.0-20230710064023-230ea415af17
 	github.com/shirou/gopsutil/v3 v3.21.9
 	github.com/unix-streamdeck/api/v2 v2.0.1-0.20250915204217-05040f967038
-	github.com/unix-streamdeck/driver v0.0.0-20240303131303-fe8d402e2e9c
+	github.com/unix-streamdeck/driver v0.0.0-20260218200545-edb2f975e560
 	golang.org/x/sync v0.1.0
 )
 
