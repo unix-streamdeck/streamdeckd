@@ -6,58 +6,55 @@ package streamdeckd
 import (
 	"errors"
 	"log"
-	"os/exec"
-	"strings"
-	"time"
 
 	"github.com/bendahl/uinput"
 	"github.com/godbus/dbus/v5"
-	x "github.com/linuxdeepin/go-x11-client"
 )
 
 var kb uinput.Keyboard
-var c *x.Conn
 
-func UpdateApplication() {
-	EnableVirtualKeyboard()
-	c, _ = x.NewConn()
-	defer c.Close()
-	var activeWindow x.Window
-	defer HandlePanic(func() {
-		log.Println("Restarting UpdateApplication")
-		go UpdateApplication()
-	})
-	for {
-		win, _ := x.GetInputFocus(c).Reply(c)
-		if activeWindow != win.Focus {
-			activeWindow = win.Focus
-			active, err := exec.Command("kdotool", "getactivewindow", "getwindowclassname").Output()
-			if err != nil {
-				active = []byte("")
-			}
-			activePs := string(active)
-			log.Println(activePs)
-			activePs = strings.Trim(activePs, "\n")
-			if currentApplication != activePs {
-				currentApplication = activePs
-				log.Println("Application updated to: " + currentApplication)
-				for _, dev := range Devs {
-					dev.ApplicationUpdated()
-				}
-			}
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-}
+//var c *x.Conn
 
-func EnableVirtualKeyboard() {
-	defer HandlePanic(func() {
-		log.Println("VirtualKeyboard crash")
-	})
-	kb, _ = uinput.CreateKeyboard("/dev/uinput", []byte("streamdeckd"))
-	defer kb.Close()
-	select {}
-}
+//func UpdateApplication() {
+//	go EnableVirtualKeyboard()
+//	c, _ = x.NewConn()
+//	defer c.Close()
+//	var activeWindow x.Window
+//	defer HandlePanic(func() {
+//		log.Println("Restarting UpdateApplication")
+//		go UpdateApplication()
+//	})
+//	for {
+//		win, _ := x.GetInputFocus(c).Reply(c)
+//		if activeWindow != win.Focus {
+//			activeWindow = win.Focus
+//			active, err := exec.Command("kdotool", "getactivewindow", "getwindowclassname").Output()
+//			if err != nil {
+//				active = []byte("")
+//			}
+//			activePs := string(active)
+//			log.Println(activePs)
+//			activePs = strings.Trim(activePs, "\n")
+//			if currentApplication != activePs {
+//				currentApplication = activePs
+//				log.Println("Application updated to: " + currentApplication)
+//				for _, dev := range Devs {
+//					dev.ApplicationUpdated()
+//				}
+//			}
+//		}
+//		time.Sleep(50 * time.Millisecond)
+//	}
+//}
+
+//func EnableVirtualKeyboard() {
+//	defer HandlePanic(func() {
+//		log.Println("VirtualKeyboard crash")
+//	})
+//	kb, _ = uinput.CreateKeyboard("/dev/uinput", []byte("streamdeckd"))
+//	defer kb.Close()
+//	select {}
+//}
 
 func reInitDBus() {
 	log.Println("Restarting DBUS")
