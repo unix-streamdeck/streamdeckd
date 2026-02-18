@@ -42,9 +42,10 @@ github.com/tklauser/go-sysconf v0.3.9 h1:JeUVdAOWhhxVcU6Eqr/ATFHgXk/mmiItdKeJPev
 github.com/tklauser/go-sysconf v0.3.9/go.mod h1:11DU/5sG7UexIrp/O6g35hrWzu0JxlwQ3LSFUzyeuhs=
 github.com/tklauser/numcpus v0.3.0 h1:ILuRUQBtssgnxw0XXIjKUC56fgnOrFoQQ/4+DeU2biQ=
 github.com/tklauser/numcpus v0.3.0/go.mod h1:yFGUr7TUHQRAhyqBcEg0Ge34zDBAsIvJJcyE6boqnA8=
+github.com/unix-streamdeck/api v1.0.1 h1:B5P5p1d4uqvoy8N2OhiWdy/iuhHRCYI+pP3+lwYzDsU=
 github.com/unix-streamdeck/api v1.0.1/go.mod h1:Z8bzDHQnWv/2hx9wQXp0/qw6Fp4ty5pFRsgaBG5WYAI=
-github.com/unix-streamdeck/api/v2 v2.0.0 h1:rlzXvTXlUZvr7mOQkFxiBPmfTw4dgc0e0+QKv1j7Vnc=
-github.com/unix-streamdeck/api/v2 v2.0.0/go.mod h1:cI2bqJofELi2HElcASRmuxAabE9HhdIbDaOqbygdwac=
+github.com/unix-streamdeck/api/v2 v2.0.1-0.20250915204217-05040f967038 h1:Y5DFCsLUtjtkSgx4OBW7M8WurD+WbBLrbob6jLEnZqA=
+github.com/unix-streamdeck/api/v2 v2.0.1-0.20250915204217-05040f967038/go.mod h1:cI2bqJofELi2HElcASRmuxAabE9HhdIbDaOqbygdwac=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
