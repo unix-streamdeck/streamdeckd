@@ -33,10 +33,10 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -o streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }} .
+        run: go build -o dist/streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }} .
       - name: Upload release binary
         uses: alexellis/upload-assets@0.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          asset_paths: '[streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }}]'
+          asset_paths: '["dist/*"]'
