@@ -1,14 +1,14 @@
 package streamdeckd
 
 import (
-	"github.com/unix-streamdeck/api/v2"
-	streamdeck "github.com/unix-streamdeck/driver"
 	"image"
 	"image/draw"
 	"log"
 	"os"
 	"os/exec"
-	"syscall"
+
+	"github.com/unix-streamdeck/api/v2"
+	streamdeck "github.com/unix-streamdeck/driver"
 )
 
 var currentApplication = ""
@@ -164,8 +164,8 @@ func SetKnobHandler(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIn
 		trimmedKnobConfig.SharedState = currentKnobConfig.SharedState
 		trimmedKnobConfig.LcdHandlerFields = mergeSharedConfig(currentKnobConfig.SharedHandlerFields, currentKnobConfig.LcdHandlerFields)
 	} else {
-                trimmedKnobConfig.SharedState = make(map[string]any)
-        }
+		trimmedKnobConfig.SharedState = make(map[string]any)
+	}
 	currentKnobConfig.LcdHandlerStruct.Start(trimmedKnobConfig, dev.sdInfo, func(image image.Image) {
 		if image.Bounds().Max.X != int(dev.Deck.LcdWidth) || image.Bounds().Max.Y != int(dev.Deck.LcdHeight) {
 			image = api.ResizeImageWH(image, int(dev.Deck.LcdWidth), int(dev.Deck.LcdHeight))
@@ -177,13 +177,8 @@ func SetKnobHandler(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIn
 
 func RunCommand(command string) {
 	go func() {
-		cmd := exec.Command("/bin/sh", "-c", "/usr/bin/nohup "+command)
+		cmd := exec.Command("/bin/sh", command)
 
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Setpgid:   true,
-			Pgid:      0,
-			Pdeathsig: syscall.SIGHUP,
-		}
 		if err := cmd.Start(); err != nil {
 			log.Println("There was a problem running ", command, ":", err)
 		} else {
