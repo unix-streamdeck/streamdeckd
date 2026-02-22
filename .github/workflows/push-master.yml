@@ -13,6 +13,7 @@ jobs:
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GH_TOKEN }}
+          default_bump: patch
       - name: Create a GitHub release
         uses: ncipollo/release-action@v1
         with:
