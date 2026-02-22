@@ -1,6 +1,13 @@
 on:
   release:
-    types: [published]
+    types:
+      - published
+  workflow_run:
+    workflows:
+      - "Create Release"
+    types:
+      - completed
+
 jobs:
   Build:
     runs-on: ubuntu-latest
@@ -32,4 +39,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          asset_paths: 'streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }}'
+          asset_paths: ['streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }}']
