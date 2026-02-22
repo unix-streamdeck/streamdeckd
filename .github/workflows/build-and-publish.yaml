@@ -28,6 +28,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: false
         run: go build -o dist/streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }} .
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
