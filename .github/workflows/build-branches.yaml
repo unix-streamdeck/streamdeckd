@@ -27,6 +27,6 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -o streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }} -ldflags "-extldflags '-static'" .
+        run: go build -o streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }} -ldflags "-s -w -extldflags '-static'" .
 
 

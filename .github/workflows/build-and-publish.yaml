@@ -28,7 +28,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -o dist/streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }} -ldflags "-extldflags '-static'" .
+        run: go build -o dist/streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }} -ldflags "-s -w -extldflags '-static'" .
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
