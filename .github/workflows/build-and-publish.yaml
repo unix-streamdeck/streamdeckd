@@ -1,12 +1,7 @@
 on:
-  release:
-    types:
-      - published
-  workflow_run:
-    workflows:
-      - "Create Release"
-    types:
-      - completed
+  push:
+    tags:
+      - '*'
 
 jobs:
   Build:
@@ -39,3 +34,5 @@ jobs:
         with:
           repo_token: ${{ secrets.GH_TOKEN }}
           file: dist/streamdeckd-${{ matrix.goos }}-${{ matrix.goarch }}
+          release_name: 'Release ${{ github.ref }}'
+          tag: '${{ github.ref }}'
