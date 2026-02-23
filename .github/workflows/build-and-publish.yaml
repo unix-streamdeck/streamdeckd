@@ -24,6 +24,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.25.1
+      - name: Setup Dependencies
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
       - name: Build ${{ matrix.goos }} / ${{ matrix.GOARCH }}
         env:
           GOOS: ${{ matrix.goos }}
