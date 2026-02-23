@@ -1,18 +1,14 @@
-# github.com/StackExchange/wmi v1.2.1
-## explicit; go 1.13
-github.com/StackExchange/wmi
-# github.com/bearsh/hid v1.4.2-0.20220627123055-35af594cb5a7
+# github.com/bearsh/hid v1.6.0
 ## explicit; go 1.17
 github.com/bearsh/hid
 github.com/bearsh/hid/hidapi
-github.com/bearsh/hid/hidapi/hidapi
 github.com/bearsh/hid/hidapi/libusb
 github.com/bearsh/hid/hidapi/linux
 github.com/bearsh/hid/hidapi/mac
 github.com/bearsh/hid/hidapi/windows
-github.com/bearsh/hid/libusb
 github.com/bearsh/hid/libusb/libusb
 github.com/bearsh/hid/libusb/libusb/os
+github.com/bearsh/hid/libusb/libusb/os/udev
 # github.com/bendahl/uinput v1.7.0
 ## explicit; go 1.13
 github.com/bendahl/uinput
@@ -22,12 +18,12 @@ github.com/christopher-dG/go-obs-websocket
 # github.com/fogleman/gg v1.3.0
 ## explicit
 github.com/fogleman/gg
-# github.com/go-ole/go-ole v1.2.6
+# github.com/go-ole/go-ole v1.3.0
 ## explicit; go 1.12
 github.com/go-ole/go-ole
 github.com/go-ole/go-ole/oleutil
-# github.com/godbus/dbus/v5 v5.0.4-0.20200513180336-df5ef3eb7cca
-## explicit; go 1.12
+# github.com/godbus/dbus/v5 v5.2.2
+## explicit; go 1.20
 github.com/godbus/dbus/v5
 # github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 ## explicit
@@ -36,47 +32,64 @@ github.com/golang/freetype/truetype
 # github.com/golang/mock v1.6.0
 ## explicit; go 1.11
 github.com/golang/mock/gomock
-# github.com/gorilla/websocket v1.4.0
-## explicit
+# github.com/gorilla/websocket v1.5.3
+## explicit; go 1.12
 github.com/gorilla/websocket
-# github.com/mitchellh/mapstructure v1.1.2
+# github.com/linuxdeepin/go-x11-client v0.0.0-20240415051504-c8e43d028ff9
 ## explicit
+github.com/linuxdeepin/go-x11-client
+# github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0
+## explicit; go 1.16
+github.com/lufia/plan9stats
+# github.com/mitchellh/mapstructure v1.5.0
+## explicit; go 1.14
 github.com/mitchellh/mapstructure
 # github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 ## explicit
 github.com/nfnt/resize
-# github.com/shirou/gopsutil/v3 v3.21.9
-## explicit; go 1.15
+# github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c
+## explicit; go 1.14
+github.com/power-devops/perfstat
+# github.com/shirou/gopsutil/v3 v3.24.5
+## explicit; go 1.18
+github.com/shirou/gopsutil/v3/common
 github.com/shirou/gopsutil/v3/cpu
 github.com/shirou/gopsutil/v3/internal/common
 github.com/shirou/gopsutil/v3/mem
 github.com/shirou/gopsutil/v3/net
 github.com/shirou/gopsutil/v3/process
-# github.com/tklauser/go-sysconf v0.3.9
-## explicit; go 1.13
+# github.com/shoenig/go-m1cpu v0.1.6
+## explicit; go 1.20
+github.com/shoenig/go-m1cpu
+# github.com/tklauser/go-sysconf v0.3.16
+## explicit; go 1.24.0
 github.com/tklauser/go-sysconf
-# github.com/tklauser/numcpus v0.3.0
-## explicit; go 1.11
+# github.com/tklauser/numcpus v0.11.0
+## explicit; go 1.24.0
 github.com/tklauser/numcpus
-# github.com/unix-streamdeck/api/v2 v2.0.1
-## explicit; go 1.18
+# github.com/unix-streamdeck/api/v2 v2.0.3
+## explicit; go 1.24.0
 github.com/unix-streamdeck/api/v2
 # github.com/unix-streamdeck/driver v0.0.0-20260218200545-edb2f975e560
 ## explicit; go 1.14
 github.com/unix-streamdeck/driver
-# golang.org/x/image v0.0.0-20201208152932-35266b937fa6
-## explicit; go 1.12
+# github.com/yusufpapurcu/wmi v1.2.4
+## explicit; go 1.16
+github.com/yusufpapurcu/wmi
+# golang.org/x/image v0.36.0
+## explicit; go 1.24.0
 golang.org/x/image/draw
 golang.org/x/image/font
 golang.org/x/image/font/basicfont
 golang.org/x/image/font/gofont/goregular
 golang.org/x/image/math/f64
 golang.org/x/image/math/fixed
-# golang.org/x/sync v0.1.0
-## explicit
+# golang.org/x/sync v0.19.0
+## explicit; go 1.24.0
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20220624220833-87e55d714810
-## explicit; go 1.17
-golang.org/x/sys/internal/unsafeheader
+# golang.org/x/sys v0.41.0
+## explicit; go 1.24.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
+## explicit; go 1.11

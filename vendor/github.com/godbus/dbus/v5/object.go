@@ -9,15 +9,15 @@ import (
 // BusObject is the interface of a remote object on which methods can be
 // invoked.
 type BusObject interface {
-	Call(method string, flags Flags, args ...interface{}) *Call
-	CallWithContext(ctx context.Context, method string, flags Flags, args ...interface{}) *Call
-	Go(method string, flags Flags, ch chan *Call, args ...interface{}) *Call
-	GoWithContext(ctx context.Context, method string, flags Flags, ch chan *Call, args ...interface{}) *Call
+	Call(method string, flags Flags, args ...any) *Call
+	CallWithContext(ctx context.Context, method string, flags Flags, args ...any) *Call
+	Go(method string, flags Flags, ch chan *Call, args ...any) *Call
+	GoWithContext(ctx context.Context, method string, flags Flags, ch chan *Call, args ...any) *Call
 	AddMatchSignal(iface, member string, options ...MatchOption) *Call
 	RemoveMatchSignal(iface, member string, options ...MatchOption) *Call
 	GetProperty(p string) (Variant, error)
-	StoreProperty(p string, value interface{}) error
-	SetProperty(p string, v interface{}) error
+	StoreProperty(p string, value any) error
+	SetProperty(p string, v any) error
 	Destination() string
 	Path() ObjectPath
 }
@@ -30,12 +30,12 @@ type Object struct {
 }
 
 // Call calls a method with (*Object).Go and waits for its reply.
-func (o *Object) Call(method string, flags Flags, args ...interface{}) *Call {
+func (o *Object) Call(method string, flags Flags, args ...any) *Call {
 	return <-o.createCall(context.Background(), method, flags, make(chan *Call, 1), args...).Done
 }
 
 // CallWithContext acts like Call but takes a context
-func (o *Object) CallWithContext(ctx context.Context, method string, flags Flags, args ...interface{}) *Call {
+func (o *Object) CallWithContext(ctx context.Context, method string, flags Flags, args ...any) *Call {
 	return <-o.createCall(ctx, method, flags, make(chan *Call, 1), args...).Done
 }
 
@@ -46,7 +46,7 @@ func (o *Object) CallWithContext(ctx context.Context, method string, flags Flags
 // Deprecated: use (*Conn) AddMatchSignal instead.
 func (o *Object) AddMatchSignal(iface, member string, options ...MatchOption) *Call {
 	base := []MatchOption{
-		withMatchType("signal"),
+		withMatchTypeSignal(),
 		WithMatchInterface(iface),
 		WithMatchMember(member),
 	}
@@ -65,7 +65,7 @@ func (o *Object) AddMatchSignal(iface, member string, options ...MatchOption) *C
 // Deprecated: use (*Conn) RemoveMatchSignal instead.
 func (o *Object) RemoveMatchSignal(iface, member string, options ...MatchOption) *Call {
 	base := []MatchOption{
-		withMatchType("signal"),
+		withMatchTypeSignal(),
 		WithMatchInterface(iface),
 		WithMatchMember(member),
 	}
@@ -89,16 +89,16 @@ func (o *Object) RemoveMatchSignal(iface, member string, options ...MatchOption)
 //
 // If the method parameter contains a dot ('.'), the part before the last dot
 // specifies the interface on which the method is called.
-func (o *Object) Go(method string, flags Flags, ch chan *Call, args ...interface{}) *Call {
+func (o *Object) Go(method string, flags Flags, ch chan *Call, args ...any) *Call {
 	return o.createCall(context.Background(), method, flags, ch, args...)
 }
 
 // GoWithContext acts like Go but takes a context
-func (o *Object) GoWithContext(ctx context.Context, method string, flags Flags, ch chan *Call, args ...interface{}) *Call {
+func (o *Object) GoWithContext(ctx context.Context, method string, flags Flags, ch chan *Call, args ...any) *Call {
 	return o.createCall(ctx, method, flags, ch, args...)
 }
 
-func (o *Object) createCall(ctx context.Context, method string, flags Flags, ch chan *Call, args ...interface{}) *Call {
+func (o *Object) createCall(ctx context.Context, method string, flags Flags, ch chan *Call, args ...any) *Call {
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -110,7 +110,6 @@ func (o *Object) createCall(ctx context.Context, method string, flags Flags, ch 
 	method = method[i+1:]
 	msg := new(Message)
 	msg.Type = TypeMethodCall
-	msg.serial = o.conn.getSerial()
 	msg.Flags = flags & (FlagNoAutoStart | FlagNoReplyExpected)
 	msg.Headers = make(map[HeaderField]Variant)
 	msg.Headers[FieldPath] = MakeVariant(o.path)
@@ -123,47 +122,7 @@ func (o *Object) createCall(ctx context.Context, method string, flags Flags, ch 
 	if len(args) > 0 {
 		msg.Headers[FieldSignature] = MakeVariant(SignatureOf(args...))
 	}
-	if msg.Flags&FlagNoReplyExpected == 0 {
-		if ch == nil {
-			ch = make(chan *Call, 1)
-		} else if cap(ch) == 0 {
-			panic("dbus: unbuffered channel passed to (*Object).Go")
-		}
-		ctx, cancel := context.WithCancel(ctx)
-		call := &Call{
-			Destination: o.dest,
-			Path:        o.path,
-			Method:      method,
-			Args:        args,
-			Done:        ch,
-			ctxCanceler: cancel,
-			ctx:         ctx,
-		}
-		o.conn.calls.track(msg.serial, call)
-		o.conn.sendMessageAndIfClosed(msg, func() {
-			o.conn.calls.handleSendError(msg, ErrClosed)
-			cancel()
-		})
-		go func() {
-			<-ctx.Done()
-			o.conn.calls.handleSendError(msg, ctx.Err())
-		}()
-
-		return call
-	}
-	done := make(chan *Call, 1)
-	call := &Call{
-		Err:  nil,
-		Done: done,
-	}
-	defer func() {
-		call.Done <- call
-		close(done)
-	}()
-	o.conn.sendMessageAndIfClosed(msg, func() {
-		call.Err = ErrClosed
-	})
-	return call
+	return o.conn.SendWithContext(ctx, msg, ch)
 }
 
 // GetProperty calls org.freedesktop.DBus.Properties.Get on the given
@@ -177,7 +136,7 @@ func (o *Object) GetProperty(p string) (Variant, error) {
 // StoreProperty calls org.freedesktop.DBus.Properties.Get on the given
 // object. The property name must be given in interface.member notation.
 // It stores the returned property into the provided value.
-func (o *Object) StoreProperty(p string, value interface{}) error {
+func (o *Object) StoreProperty(p string, value any) error {
 	idx := strings.LastIndex(p, ".")
 	if idx == -1 || idx+1 == len(p) {
 		return errors.New("dbus: invalid property " + p)
@@ -192,7 +151,14 @@ func (o *Object) StoreProperty(p string, value interface{}) error {
 
 // SetProperty calls org.freedesktop.DBus.Properties.Set on the given
 // object. The property name must be given in interface.member notation.
-func (o *Object) SetProperty(p string, v interface{}) error {
+// Panics if v is not a valid Variant type.
+func (o *Object) SetProperty(p string, v any) error {
+	// v might already be a variant...
+	variant, ok := v.(Variant)
+	if !ok {
+		// Otherwise, make it into one.
+		variant = MakeVariant(v)
+	}
 	idx := strings.LastIndex(p, ".")
 	if idx == -1 || idx+1 == len(p) {
 		return errors.New("dbus: invalid property " + p)
@@ -201,7 +167,7 @@ func (o *Object) SetProperty(p string, v interface{}) error {
 	iface := p[:idx]
 	prop := p[idx+1:]
 
-	return o.Call("org.freedesktop.DBus.Properties.Set", 0, iface, prop, v).Err
+	return o.Call("org.freedesktop.DBus.Properties.Set", 0, iface, prop, variant).Err
 }
 
 // Destination returns the destination that calls on (o *Object) are sent to.

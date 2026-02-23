@@ -3,6 +3,7 @@ package dbus
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -10,26 +11,47 @@ import (
 var (
 	ErrMsgInvalidArg = Error{
 		"org.freedesktop.DBus.Error.InvalidArgs",
-		[]interface{}{"Invalid type / number of args"},
+		[]any{"Invalid type / number of args"},
 	}
 	ErrMsgNoObject = Error{
 		"org.freedesktop.DBus.Error.NoSuchObject",
-		[]interface{}{"No such object"},
+		[]any{"No such object"},
 	}
 	ErrMsgUnknownMethod = Error{
 		"org.freedesktop.DBus.Error.UnknownMethod",
-		[]interface{}{"Unknown / invalid method"},
+		[]any{"Unknown / invalid method"},
 	}
 	ErrMsgUnknownInterface = Error{
 		"org.freedesktop.DBus.Error.UnknownInterface",
-		[]interface{}{"Object does not implement the interface"},
+		[]any{"Object does not implement the interface"},
 	}
 )
+
+func MakeNoObjectError(path ObjectPath) Error {
+	return Error{
+		"org.freedesktop.DBus.Error.NoSuchObject",
+		[]any{fmt.Sprintf("No such object '%s'", string(path))},
+	}
+}
+
+func MakeUnknownMethodError(methodName string) Error {
+	return Error{
+		"org.freedesktop.DBus.Error.UnknownMethod",
+		[]any{fmt.Sprintf("Unknown / invalid method '%s'", methodName)},
+	}
+}
+
+func MakeUnknownInterfaceError(ifaceName string) Error {
+	return Error{
+		"org.freedesktop.DBus.Error.UnknownInterface",
+		[]any{fmt.Sprintf("Object does not implement the interface '%s'", ifaceName)},
+	}
+}
 
 func MakeFailedError(err error) *Error {
 	return &Error{
 		"org.freedesktop.DBus.Error.Failed",
-		[]interface{}{err.Error()},
+		[]any{err.Error()},
 	}
 }
 
@@ -45,7 +67,7 @@ func computeMethodName(name string, mapping map[string]string) string {
 	return name
 }
 
-func getMethods(in interface{}, mapping map[string]string) map[string]reflect.Value {
+func getMethods(in any, mapping map[string]string) map[string]reflect.Value {
 	if in == nil {
 		return nil
 	}
@@ -69,7 +91,7 @@ func getMethods(in interface{}, mapping map[string]string) map[string]reflect.Va
 	return methods
 }
 
-func getAllMethods(in interface{}, mapping map[string]string) map[string]reflect.Value {
+func getAllMethods(in any, mapping map[string]string) map[string]reflect.Value {
 	if in == nil {
 		return nil
 	}
@@ -85,9 +107,9 @@ func getAllMethods(in interface{}, mapping map[string]string) map[string]reflect
 	return methods
 }
 
-func standardMethodArgumentDecode(m Method, sender string, msg *Message, body []interface{}) ([]interface{}, error) {
-	pointers := make([]interface{}, m.NumArguments())
-	decode := make([]interface{}, 0, len(body))
+func standardMethodArgumentDecode(m Method, sender string, msg *Message, body []any) ([]any, error) {
+	pointers := make([]any, m.NumArguments())
+	decode := make([]any, 0, len(body))
 
 	for i := 0; i < m.NumArguments(); i++ {
 		tp := reflect.TypeOf(m.ArgumentValue(i))
@@ -113,7 +135,7 @@ func standardMethodArgumentDecode(m Method, sender string, msg *Message, body []
 	return pointers, nil
 }
 
-func (conn *Conn) decodeArguments(m Method, sender string, msg *Message) ([]interface{}, error) {
+func (conn *Conn) decodeArguments(m Method, sender string, msg *Message) ([]any, error) {
 	if decoder, ok := m.(ArgumentDecoder); ok {
 		return decoder.DecodeArguments(conn, sender, msg, msg.Body)
 	}
@@ -128,6 +150,11 @@ func (conn *Conn) handleCall(msg *Message) {
 	ifaceName, _ := msg.Headers[FieldInterface].value.(string)
 	sender, hasSender := msg.Headers[FieldSender].value.(string)
 	serial := msg.serial
+
+	if len(name) == 0 {
+		conn.sendError(ErrMsgUnknownMethod, sender, serial)
+	}
+
 	if ifaceName == "org.freedesktop.DBus.Peer" {
 		switch name {
 		case "Ping":
@@ -135,29 +162,26 @@ func (conn *Conn) handleCall(msg *Message) {
 		case "GetMachineId":
 			conn.sendReply(sender, serial, conn.uuid)
 		default:
-			conn.sendError(ErrMsgUnknownMethod, sender, serial)
+			conn.sendError(MakeUnknownMethodError(name), sender, serial)
 		}
 		return
-	}
-	if len(name) == 0 {
-		conn.sendError(ErrMsgUnknownMethod, sender, serial)
 	}
 
 	object, ok := conn.handler.LookupObject(path)
 	if !ok {
-		conn.sendError(ErrMsgNoObject, sender, serial)
+		conn.sendError(MakeNoObjectError(path), sender, serial)
 		return
 	}
 
 	iface, exists := object.LookupInterface(ifaceName)
 	if !exists {
-		conn.sendError(ErrMsgUnknownInterface, sender, serial)
+		conn.sendError(MakeUnknownInterfaceError(ifaceName), sender, serial)
 		return
 	}
 
 	m, exists := iface.LookupMethod(name)
 	if !exists {
-		conn.sendError(ErrMsgUnknownMethod, sender, serial)
+		conn.sendError(MakeUnknownMethodError(name), sender, serial)
 		return
 	}
 	args, err := conn.decodeArguments(m, sender, msg)
@@ -175,43 +199,34 @@ func (conn *Conn) handleCall(msg *Message) {
 	if msg.Flags&FlagNoReplyExpected == 0 {
 		reply := new(Message)
 		reply.Type = TypeMethodReply
-		reply.serial = conn.getSerial()
 		reply.Headers = make(map[HeaderField]Variant)
 		if hasSender {
 			reply.Headers[FieldDestination] = msg.Headers[FieldSender]
 		}
 		reply.Headers[FieldReplySerial] = MakeVariant(msg.serial)
-		reply.Body = make([]interface{}, len(ret))
-		for i := 0; i < len(ret); i++ {
-			reply.Body[i] = ret[i]
-		}
+		reply.Body = make([]any, len(ret))
+		copy(reply.Body, ret)
 		reply.Headers[FieldSignature] = MakeVariant(SignatureOf(reply.Body...))
 
-		conn.sendMessageAndIfClosed(reply, nil)
+		if err := conn.sendMessageAndIfClosed(reply, nil); err != nil {
+			if _, ok := err.(FormatError); ok {
+				fmt.Fprintf(os.Stderr, "dbus: replacing invalid reply to %s.%s on obj %s: %s\n", ifaceName, name, path, err)
+			}
+		}
 	}
 }
 
 // Emit emits the given signal on the message bus. The name parameter must be
 // formatted as "interface.member", e.g., "org.freedesktop.DBus.NameLost".
-func (conn *Conn) Emit(path ObjectPath, name string, values ...interface{}) error {
-	if !path.IsValid() {
-		return errors.New("dbus: invalid object path")
-	}
+func (conn *Conn) Emit(path ObjectPath, name string, values ...any) error {
 	i := strings.LastIndex(name, ".")
 	if i == -1 {
 		return errors.New("dbus: invalid method name")
 	}
 	iface := name[:i]
 	member := name[i+1:]
-	if !isValidMember(member) {
-		return errors.New("dbus: invalid method name")
-	}
-	if !isValidInterface(iface) {
-		return errors.New("dbus: invalid interface name")
-	}
 	msg := new(Message)
 	msg.Type = TypeSignal
-	msg.serial = conn.getSerial()
 	msg.Headers = make(map[HeaderField]Variant)
 	msg.Headers[FieldInterface] = MakeVariant(iface)
 	msg.Headers[FieldMember] = MakeVariant(member)
@@ -222,13 +237,13 @@ func (conn *Conn) Emit(path ObjectPath, name string, values ...interface{}) erro
 	}
 
 	var closed bool
-	conn.sendMessageAndIfClosed(msg, func() {
+	err := conn.sendMessageAndIfClosed(msg, func() {
 		closed = true
 	})
 	if closed {
 		return ErrClosed
 	}
-	return nil
+	return err
 }
 
 // Export registers the given value to be exported as an object on the
@@ -259,7 +274,7 @@ func (conn *Conn) Emit(path ObjectPath, name string, values ...interface{}) erro
 // the given combination of path and interface.
 //
 // Export returns an error if path is not a valid path name.
-func (conn *Conn) Export(v interface{}, path ObjectPath, iface string) error {
+func (conn *Conn) Export(v any, path ObjectPath, iface string) error {
 	return conn.ExportWithMap(v, nil, path, iface)
 }
 
@@ -271,7 +286,7 @@ func (conn *Conn) Export(v interface{}, path ObjectPath, iface string) error {
 // type parameter to your method signature. If the error returned is not nil,
 // it is sent back to the caller as an error. Otherwise, a method reply is
 // sent with the other return values as its body.
-func (conn *Conn) ExportAll(v interface{}, path ObjectPath, iface string) error {
+func (conn *Conn) ExportAll(v any, path ObjectPath, iface string) error {
 	return conn.export(getAllMethods(v, nil), path, iface, false)
 }
 
@@ -280,7 +295,7 @@ func (conn *Conn) ExportAll(v interface{}, path ObjectPath, iface string) error 
 //
 // The keys in the map are the real method names (exported on the struct), and
 // the values are the method names to be exported on DBus.
-func (conn *Conn) ExportWithMap(v interface{}, mapping map[string]string, path ObjectPath, iface string) error {
+func (conn *Conn) ExportWithMap(v any, mapping map[string]string, path ObjectPath, iface string) error {
 	return conn.export(getMethods(v, mapping), path, iface, false)
 }
 
@@ -294,7 +309,7 @@ func (conn *Conn) ExportWithMap(v interface{}, mapping map[string]string, path O
 // Note that more specific export paths take precedence over less specific. For
 // example, a method call using the ObjectPath /foo/bar/baz will call a method
 // exported on /foo/bar before a method exported on /foo.
-func (conn *Conn) ExportSubtree(v interface{}, path ObjectPath, iface string) error {
+func (conn *Conn) ExportSubtree(v any, path ObjectPath, iface string) error {
 	return conn.ExportSubtreeWithMap(v, nil, path, iface)
 }
 
@@ -303,7 +318,7 @@ func (conn *Conn) ExportSubtree(v interface{}, path ObjectPath, iface string) er
 //
 // The keys in the map are the real method names (exported on the struct), and
 // the values are the method names to be exported on DBus.
-func (conn *Conn) ExportSubtreeWithMap(v interface{}, mapping map[string]string, path ObjectPath, iface string) error {
+func (conn *Conn) ExportSubtreeWithMap(v any, mapping map[string]string, path ObjectPath, iface string) error {
 	return conn.export(getMethods(v, mapping), path, iface, true)
 }
 
@@ -317,29 +332,32 @@ func (conn *Conn) ExportSubtreeWithMap(v interface{}, mapping map[string]string,
 // methods on the fly.
 //
 // Any non-function objects in the method table are ignored.
-func (conn *Conn) ExportMethodTable(methods map[string]interface{}, path ObjectPath, iface string) error {
+func (conn *Conn) ExportMethodTable(methods map[string]any, path ObjectPath, iface string) error {
 	return conn.exportMethodTable(methods, path, iface, false)
 }
 
 // Like ExportSubtree, but with the same caveats as ExportMethodTable.
-func (conn *Conn) ExportSubtreeMethodTable(methods map[string]interface{}, path ObjectPath, iface string) error {
+func (conn *Conn) ExportSubtreeMethodTable(methods map[string]any, path ObjectPath, iface string) error {
 	return conn.exportMethodTable(methods, path, iface, true)
 }
 
-func (conn *Conn) exportMethodTable(methods map[string]interface{}, path ObjectPath, iface string, includeSubtree bool) error {
-	out := make(map[string]reflect.Value)
-	for name, method := range methods {
-		rval := reflect.ValueOf(method)
-		if rval.Kind() != reflect.Func {
-			continue
+func (conn *Conn) exportMethodTable(methods map[string]any, path ObjectPath, iface string, includeSubtree bool) error {
+	var out map[string]reflect.Value
+	if methods != nil {
+		out = make(map[string]reflect.Value)
+		for name, method := range methods {
+			rval := reflect.ValueOf(method)
+			if rval.Kind() != reflect.Func {
+				continue
+			}
+			t := rval.Type()
+			// only track valid methods must return *Error as last arg
+			if t.NumOut() == 0 ||
+				t.Out(t.NumOut()-1) != reflect.TypeOf(&ErrMsgInvalidArg) {
+				continue
+			}
+			out[name] = rval
 		}
-		t := rval.Type()
-		// only track valid methods must return *Error as last arg
-		if t.NumOut() == 0 ||
-			t.Out(t.NumOut()-1) != reflect.TypeOf(&ErrMsgInvalidArg) {
-			continue
-		}
-		out[name] = rval
 	}
 	return conn.export(out, path, iface, includeSubtree)
 }
@@ -355,12 +373,12 @@ func (conn *Conn) unexport(h *defaultHandler, path ObjectPath, iface string) err
 	return nil
 }
 
-// exportWithMap is the worker function for all exports/registrations.
+// export is the worker function for all exports/registrations.
 func (conn *Conn) export(methods map[string]reflect.Value, path ObjectPath, iface string, includeSubtree bool) error {
 	h, ok := conn.handler.(*defaultHandler)
 	if !ok {
 		return fmt.Errorf(
-			`dbus: export only allowed on the default hander handler have %T"`,
+			`dbus: export only allowed on the default handler. Received: %T"`,
 			conn.handler)
 	}
 
@@ -420,6 +438,18 @@ const (
 	ReleaseNameReplyNotOwner
 )
 
+func (rep ReleaseNameReply) String() string {
+	switch rep {
+	case ReleaseNameReplyReleased:
+		return "released"
+	case ReleaseNameReplyNonExistent:
+		return "non existent"
+	case ReleaseNameReplyNotOwner:
+		return "not owner"
+	}
+	return "unknown"
+}
+
 // RequestNameFlags represents the possible flags for a RequestName call.
 type RequestNameFlags uint32
 
@@ -438,3 +468,17 @@ const (
 	RequestNameReplyExists
 	RequestNameReplyAlreadyOwner
 )
+
+func (rep RequestNameReply) String() string {
+	switch rep {
+	case RequestNameReplyPrimaryOwner:
+		return "primary owner"
+	case RequestNameReplyInQueue:
+		return "in queue"
+	case RequestNameReplyExists:
+		return "exists"
+	case RequestNameReplyAlreadyOwner:
+		return "already owner"
+	}
+	return "unknown"
+}

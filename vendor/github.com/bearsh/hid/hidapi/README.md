@@ -2,15 +2,17 @@
 
 | CI instance          | Status |
 |----------------------|--------|
-| `Linux/macOS/Windows master` | [![GitHub Builds](https://github.com/libusb/hidapi/workflows/GitHub%20Builds/badge.svg?branch=master)](https://github.com/libusb/hidapi/actions/workflows/builds.yml?query=branch%3Amaster) |
-| `Windows master` | [![Build status](https://ci.appveyor.com/api/projects/status/xfmr5fo8w0re8ded/branch/master?svg=true)](https://ci.appveyor.com/project/libusb/hidapi/branch/master) |
-| `Linux/BSD, last build (branch/PR)` | [![builds.sr.ht status](https://builds.sr.ht/~z3ntu/hidapi.svg)](https://builds.sr.ht/~z3ntu/hidapi) |
+| `Linux/macOS/Windows (master)` | [![GitHub Builds](https://github.com/libusb/hidapi/workflows/GitHub%20Builds/badge.svg?branch=master)](https://github.com/libusb/hidapi/actions/workflows/builds.yml?query=branch%3Amaster) |
+| `Windows (master)` | [![Build status](https://ci.appveyor.com/api/projects/status/xfmr5fo8w0re8ded/branch/master?svg=true)](https://ci.appveyor.com/project/libusb/hidapi/branch/master) |
+| `BSD, last build (branch/PR)` | [![builds.sr.ht status](https://builds.sr.ht/~z3ntu/hidapi.svg)](https://builds.sr.ht/~z3ntu/hidapi) |
+| `Coverity Scan (last)` | ![Coverity Scan](https://scan.coverity.com/projects/583/badge.svg) |
 
 HIDAPI is a multi-platform library which allows an application to interface
 with USB and Bluetooth HID-Class devices on Windows, Linux, FreeBSD, and macOS.
 HIDAPI can be either built as a shared library (`.so`, `.dll` or `.dylib`) or
-can be embedded directly into a target application by adding a single source
-file (per platform) and a single header.
+can be embedded directly into a target application by adding a _single source_
+file (per platform) and a single header.<br>
+See [remarks](BUILD.md#embedding-hidapi-directly-into-your-source-tree) on embedding _directly_ into your build system.
 
 HIDAPI library was originally developed by Alan Ott ([signal11](https://github.com/signal11)).
 
@@ -96,7 +98,7 @@ device spec. Writing data (`hid_write`) at random to your HID devices can break 
 
 ```c
 #include <stdio.h> // printf
-#include <wchar.h> // wprintf
+#include <wchar.h> // wchar_t
 
 #include <hidapi.h>
 
@@ -116,22 +118,27 @@ int main(int argc, char* argv[])
 	// Open the device using the VID, PID,
 	// and optionally the Serial number.
 	handle = hid_open(0x4d8, 0x3f, NULL);
+	if (!handle) {
+		printf("Unable to open device\n");
+		hid_exit();
+ 		return 1;
+	}
 
 	// Read the Manufacturer String
 	res = hid_get_manufacturer_string(handle, wstr, MAX_STR);
-	wprintf(L"Manufacturer String: %s\n", wstr);
+	printf("Manufacturer String: %ls\n", wstr);
 
 	// Read the Product String
 	res = hid_get_product_string(handle, wstr, MAX_STR);
-	wprintf(L"Product String: %s\n", wstr);
+	printf("Product String: %ls\n", wstr);
 
 	// Read the Serial Number String
 	res = hid_get_serial_number_string(handle, wstr, MAX_STR);
-	wprintf(L"Serial Number String: (%d) %s\n", wstr[0], wstr);
+	printf("Serial Number String: (%d) %ls\n", wstr[0], wstr);
 
 	// Read Indexed String 1
 	res = hid_get_indexed_string(handle, 1, wstr, MAX_STR);
-	wprintf(L"Indexed String 1: %s\n", wstr);
+	printf("Indexed String 1: %ls\n", wstr);
 
 	// Toggle LED (cmd 0x80). The first byte is the report number (0x0).
 	buf[0] = 0x0;

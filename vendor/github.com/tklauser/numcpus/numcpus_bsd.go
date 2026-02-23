@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build darwin || dragonfly || freebsd || netbsd || openbsd
-// +build darwin dragonfly freebsd netbsd openbsd
 
 package numcpus
 
@@ -29,6 +28,10 @@ func getConfigured() (int, error) {
 }
 
 func getKernelMax() (int, error) {
+	if runtime.GOOS == "freebsd" {
+		n, err := unix.SysctlUint32("kern.smp.maxcpus")
+		return int(n), err
+	}
 	return 0, ErrNotSupported
 }
 

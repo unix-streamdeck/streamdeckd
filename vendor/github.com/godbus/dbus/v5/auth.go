@@ -37,7 +37,7 @@ const (
 
 // Auth defines the behaviour of an authentication mechanism.
 type Auth interface {
-	// Return the name of the mechnism, the argument to the first AUTH command
+	// Return the name of the mechanism, the argument to the first AUTH command
 	// and the next status.
 	FirstData() (name, resp []byte, status AuthStatus)
 
@@ -53,11 +53,11 @@ type Auth interface {
 // bus. Auth must not be called on shared connections.
 func (conn *Conn) Auth(methods []Auth) error {
 	if methods == nil {
-		uid := strconv.Itoa(os.Getuid())
-		methods = []Auth{AuthExternal(uid), AuthCookieSha1(uid, getHomeDir())}
+		uid := strconv.Itoa(os.Geteuid())
+		methods = getDefaultAuthMethods(uid)
 	}
 	in := bufio.NewReader(conn.transport)
-	err := conn.transport.SendNullByte()
+	err := conn.SendNullByte()
 	if err != nil {
 		return err
 	}
@@ -75,17 +75,17 @@ func (conn *Conn) Auth(methods []Auth) error {
 	s = s[1:]
 	for _, v := range s {
 		for _, m := range methods {
-			if name, data, status := m.FirstData(); bytes.Equal(v, name) {
+			if name, _, status := m.FirstData(); bytes.Equal(v, name) {
 				var ok bool
-				err = authWriteLine(conn.transport, []byte("AUTH"), v, data)
+				err = authWriteLine(conn.transport, []byte("AUTH"), v)
 				if err != nil {
 					return err
 				}
 				switch status {
 				case AuthOk:
-					err, ok = conn.tryAuth(m, waitingForOk, in)
+					ok, err = conn.tryAuth(m, waitingForOk, in)
 				case AuthContinue:
-					err, ok = conn.tryAuth(m, waitingForData, in)
+					ok, err = conn.tryAuth(m, waitingForData, in)
 				default:
 					panic("dbus: invalid authentication status")
 				}
@@ -125,21 +125,21 @@ func (conn *Conn) Auth(methods []Auth) error {
 }
 
 // tryAuth tries to authenticate with m as the mechanism, using state as the
-// initial authState and in for reading input. It returns (nil, true) on
-// success, (nil, false) on a REJECTED and (someErr, false) if some other
+// initial authState and in for reading input. It returns (true, nil) on
+// success, (false, nil) on a REJECTED and (false, someErr) if some other
 // error occurred.
-func (conn *Conn) tryAuth(m Auth, state authState, in *bufio.Reader) (error, bool) {
+func (conn *Conn) tryAuth(m Auth, state authState, in *bufio.Reader) (bool, error) {
 	for {
 		s, err := authReadLine(in)
 		if err != nil {
-			return err, false
+			return false, err
 		}
 		switch {
 		case state == waitingForData && string(s[0]) == "DATA":
 			if len(s) != 2 {
 				err = authWriteLine(conn.transport, []byte("ERROR"))
 				if err != nil {
-					return err, false
+					return false, err
 				}
 				continue
 			}
@@ -149,7 +149,7 @@ func (conn *Conn) tryAuth(m Auth, state authState, in *bufio.Reader) (error, boo
 				if len(data) != 0 {
 					err = authWriteLine(conn.transport, []byte("DATA"), data)
 					if err != nil {
-						return err, false
+						return false, err
 					}
 				}
 				if status == AuthOk {
@@ -158,61 +158,66 @@ func (conn *Conn) tryAuth(m Auth, state authState, in *bufio.Reader) (error, boo
 			case AuthError:
 				err = authWriteLine(conn.transport, []byte("ERROR"))
 				if err != nil {
-					return err, false
+					return false, err
 				}
 			}
 		case state == waitingForData && string(s[0]) == "REJECTED":
-			return nil, false
+			return false, nil
 		case state == waitingForData && string(s[0]) == "ERROR":
 			err = authWriteLine(conn.transport, []byte("CANCEL"))
 			if err != nil {
-				return err, false
+				return false, err
 			}
 			state = waitingForReject
 		case state == waitingForData && string(s[0]) == "OK":
 			if len(s) != 2 {
 				err = authWriteLine(conn.transport, []byte("CANCEL"))
 				if err != nil {
-					return err, false
+					return false, err
 				}
 				state = waitingForReject
+			} else {
+				conn.uuid = string(s[1])
+				return true, nil
 			}
-			conn.uuid = string(s[1])
-			return nil, true
 		case state == waitingForData:
 			err = authWriteLine(conn.transport, []byte("ERROR"))
 			if err != nil {
-				return err, false
+				return false, err
 			}
 		case state == waitingForOk && string(s[0]) == "OK":
 			if len(s) != 2 {
 				err = authWriteLine(conn.transport, []byte("CANCEL"))
 				if err != nil {
-					return err, false
+					return false, err
 				}
 				state = waitingForReject
+			} else {
+				conn.uuid = string(s[1])
+				return true, nil
 			}
-			conn.uuid = string(s[1])
-			return nil, true
+		case state == waitingForOk && string(s[0]) == "DATA":
+			err = authWriteLine(conn.transport, []byte("DATA"))
+			if err != nil {
+				return false, nil
+			}
 		case state == waitingForOk && string(s[0]) == "REJECTED":
-			return nil, false
-		case state == waitingForOk && (string(s[0]) == "DATA" ||
-			string(s[0]) == "ERROR"):
-
+			return false, nil
+		case state == waitingForOk && string(s[0]) == "ERROR":
 			err = authWriteLine(conn.transport, []byte("CANCEL"))
 			if err != nil {
-				return err, false
+				return false, err
 			}
 			state = waitingForReject
 		case state == waitingForOk:
 			err = authWriteLine(conn.transport, []byte("ERROR"))
 			if err != nil {
-				return err, false
+				return false, err
 			}
 		case state == waitingForReject && string(s[0]) == "REJECTED":
-			return nil, false
+			return false, nil
 		case state == waitingForReject:
-			return errors.New("dbus: authentication protocol error"), false
+			return false, errors.New("dbus: authentication protocol error")
 		default:
 			panic("dbus: invalid auth state")
 		}

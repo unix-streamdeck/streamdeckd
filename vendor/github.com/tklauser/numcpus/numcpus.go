@@ -1,4 +1,4 @@
-// Copyright 2018 Tobias Klauser
+// Copyright 2018-2022 Tobias Klauser
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package numcpus provides information about the number of CPU.
+// Package numcpus provides information about the number of CPUs in the system.
 //
 // It gets the number of CPUs (online, offline, present, possible or kernel
-// maximum) on a Linux, Darwin, FreeBSD, NetBSD, OpenBSD or DragonflyBSD
-// system.
+// maximum) on Linux, Darwin, FreeBSD, NetBSD, OpenBSD, DragonflyBSD,
+// Solaris/Illumos or Windows systems.
 //
 // On Linux, the information is retrieved by reading the corresponding CPU
 // topology files in /sys/devices/system/cpu.
 //
-// Not all functions are supported on Darwin, FreeBSD, NetBSD, OpenBSD and
-// DragonflyBSD.
+// On BSD systems, the information is retrieved using the hw.ncpu and
+// hw.ncpuonline sysctls, if supported.
+//
+// On Windows systems, the information is retrieved using the
+// GetActiveProcessorCount and GetMaximumProcessorCount functions, respectively.
+//
+// Not all functions are supported on Darwin, FreeBSD, NetBSD, OpenBSD,
+// DragonflyBSD, Solaris/Illumos and Windows. ErrNotSupported is returned in
+// case a function is not supported on a particular platform.
 package numcpus
 
 import "errors"
@@ -38,7 +45,7 @@ func GetConfigured() (int, error) {
 }
 
 // GetKernelMax returns the maximum number of CPUs allowed by the kernel
-// configuration. This function is only supported on Linux systems.
+// configuration. This function is only supported on Linux and Windows systems.
 func GetKernelMax() (int, error) {
 	return getKernelMax()
 }
@@ -65,4 +72,27 @@ func GetPossible() (int, error) {
 // GetPresent returns the number of CPUs present in the system.
 func GetPresent() (int, error) {
 	return getPresent()
+}
+
+// ListOffline returns the list of offline CPUs. See [GetOffline] for details on
+// when a CPU is considered offline.
+func ListOffline() ([]int, error) {
+	return listOffline()
+}
+
+// ListOnline returns the list of CPUs that are online and being scheduled.
+func ListOnline() ([]int, error) {
+	return listOnline()
+}
+
+// ListPossible returns the list of possible CPUs. See [GetPossible] for
+// details on when a CPU is considered possible.
+func ListPossible() ([]int, error) {
+	return listPossible()
+}
+
+// ListPresent returns the list of present CPUs. See [GetPresent] for
+// details on when a CPU is considered present.
+func ListPresent() ([]int, error) {
+	return listPresent()
 }

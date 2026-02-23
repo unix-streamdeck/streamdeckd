@@ -14,8 +14,20 @@ import (
 var kb uinput.Keyboard
 
 func UpdateApplication() {
-	//	kb, _ = uinput.CreateKeyboard("/dev/uinput", []byte("streamdeckd"))
-	//	defer kb.Close()
+	log.Println("Application based configuration is not currently supported on macOS, due to the difficulty in getting the current active application, sorry :(")
+}
+
+func EnableVirtualKeyboard() {
+	defer HandlePanic(func() {
+		log.Println("VirtualKeyboard crash")
+	})
+	var err error
+	kb, err = uinput.CreateKeyboard("/dev/uinput", []byte("streamdeckd"))
+	if err != nil {
+		log.Println(err)
+	}
+	defer kb.Close()
+	select {}
 }
 
 func reInitDBus() {
