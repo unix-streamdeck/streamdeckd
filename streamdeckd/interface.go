@@ -177,7 +177,7 @@ func SetKnobHandler(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIn
 
 func RunCommand(command string) {
 	go func() {
-		cmd := exec.Command("/bin/sh", command)
+		cmd := exec.Command("/bin/sh", "-c", command)
 
 		if err := cmd.Start(); err != nil {
 			log.Println("There was a problem running ", command, ":", err)
