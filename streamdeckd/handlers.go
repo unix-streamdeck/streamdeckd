@@ -1,32 +1,19 @@
 package streamdeckd
 
 import (
-	"github.com/unix-streamdeck/api/v2"
 	"log"
 	"plugin"
+
+	"github.com/unix-streamdeck/api/v2"
 )
 
-type Module struct {
-	Name              string
-	NewIcon           func() api.IconHandler
-	NewKey            func() api.KeyHandler
-	NewLcd            func() api.LcdHandler
-	NewKnobOrTouch    func() api.KnobOrTouchHandler
-	IconFields        []api.Field
-	KeyFields         []api.Field
-	LcdFields         []api.Field
-	KnobOrTouchFields []api.Field
-	Linked            bool
-	LinkedFields      []api.Field
-}
+var modules []api.Module
 
-var modules []Module
-
-func AvailableModules() []Module {
+func AvailableModules() []api.Module {
 	return modules
 }
 
-func RegisterModule(m Module) {
+func RegisterModule(m api.Module) {
 	for _, module := range modules {
 		if module.Name == m.Name {
 			log.Println("Module already loaded: " + m.Name)
@@ -49,8 +36,8 @@ func LoadModule(path string) {
 		log.Println(err)
 		return
 	}
-	var modMethod func() Module
-	modMethod, ok := mod.(func() Module)
+	var modMethod func() api.Module
+	modMethod, ok := mod.(func() api.Module)
 	if !ok {
 		log.Println("Failed to load module: " + path)
 		return

@@ -2,9 +2,6 @@ package key
 
 import (
 	"context"
-	"github.com/unix-streamdeck/api/v2"
-	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
-	"golang.org/x/sync/semaphore"
 	"image"
 	"image/draw"
 	"image/gif"
@@ -12,6 +9,9 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/unix-streamdeck/api/v2"
+	"golang.org/x/sync/semaphore"
 )
 
 type GifIconHandler struct {
@@ -225,8 +225,8 @@ func (s *GifLcdHandler) loop(frames []image.Image, timeDelay int, callback func(
 	}
 }
 
-func RegisterGif() streamdeckd.Module {
-	return streamdeckd.Module{
+func RegisterGif() api.Module {
+	return api.Module{
 		Name: "Gif",
 		NewIcon: func() api.IconHandler {
 			return &GifIconHandler{Running: true, Lock: semaphore.NewWeighted(1)}

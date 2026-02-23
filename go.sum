@@ -40,8 +40,8 @@ github.com/tklauser/go-sysconf v0.3.9 h1:JeUVdAOWhhxVcU6Eqr/ATFHgXk/mmiItdKeJPev
 github.com/tklauser/go-sysconf v0.3.9/go.mod h1:11DU/5sG7UexIrp/O6g35hrWzu0JxlwQ3LSFUzyeuhs=
 github.com/tklauser/numcpus v0.3.0 h1:ILuRUQBtssgnxw0XXIjKUC56fgnOrFoQQ/4+DeU2biQ=
 github.com/tklauser/numcpus v0.3.0/go.mod h1:yFGUr7TUHQRAhyqBcEg0Ge34zDBAsIvJJcyE6boqnA8=
-github.com/unix-streamdeck/api/v2 v2.0.1-0.20250915204217-05040f967038 h1:Y5DFCsLUtjtkSgx4OBW7M8WurD+WbBLrbob6jLEnZqA=
-github.com/unix-streamdeck/api/v2 v2.0.1-0.20250915204217-05040f967038/go.mod h1:cI2bqJofELi2HElcASRmuxAabE9HhdIbDaOqbygdwac=
+github.com/unix-streamdeck/api/v2 v2.0.1 h1:FxvA3kWkddwp3k2HDlPunqeQgSE6ot4MRiqmGBGoNDk=
+github.com/unix-streamdeck/api/v2 v2.0.1/go.mod h1:cI2bqJofELi2HElcASRmuxAabE9HhdIbDaOqbygdwac=
 github.com/unix-streamdeck/driver v0.0.0-20260218200545-edb2f975e560 h1:2URWAKL6xEJMivGpa8FjHFtUX//PeHd5d2FtucGYxu4=
 github.com/unix-streamdeck/driver v0.0.0-20260218200545-edb2f975e560/go.mod h1:qi7NaUSVogFHAxq+VSK7GRFFTLBpPtvL+La6EDlcsy8=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=

@@ -7,7 +7,7 @@ require (
 	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
 	github.com/godbus/dbus/v5 v5.0.4-0.20200513180336-df5ef3eb7cca
 	github.com/shirou/gopsutil/v3 v3.21.9
-	github.com/unix-streamdeck/api/v2 v2.0.1-0.20250915204217-05040f967038
+	github.com/unix-streamdeck/api/v2 v2.0.1
 	github.com/unix-streamdeck/driver v0.0.0-20260218200545-edb2f975e560
 	golang.org/x/sync v0.1.0
 )

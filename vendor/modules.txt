@@ -1,0 +1,82 @@
+# github.com/StackExchange/wmi v1.2.1
+## explicit; go 1.13
+github.com/StackExchange/wmi
+# github.com/bearsh/hid v1.4.2-0.20220627123055-35af594cb5a7
+## explicit; go 1.17
+github.com/bearsh/hid
+github.com/bearsh/hid/hidapi
+github.com/bearsh/hid/hidapi/hidapi
+github.com/bearsh/hid/hidapi/libusb
+github.com/bearsh/hid/hidapi/linux
+github.com/bearsh/hid/hidapi/mac
+github.com/bearsh/hid/hidapi/windows
+github.com/bearsh/hid/libusb
+github.com/bearsh/hid/libusb/libusb
+github.com/bearsh/hid/libusb/libusb/os
+# github.com/bendahl/uinput v1.7.0
+## explicit; go 1.13
+github.com/bendahl/uinput
+# github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
+## explicit; go 1.13
+github.com/christopher-dG/go-obs-websocket
+# github.com/fogleman/gg v1.3.0
+## explicit
+github.com/fogleman/gg
+# github.com/go-ole/go-ole v1.2.6
+## explicit; go 1.12
+github.com/go-ole/go-ole
+github.com/go-ole/go-ole/oleutil
+# github.com/godbus/dbus/v5 v5.0.4-0.20200513180336-df5ef3eb7cca
+## explicit; go 1.12
+github.com/godbus/dbus/v5
+# github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
+## explicit
+github.com/golang/freetype/raster
+github.com/golang/freetype/truetype
+# github.com/golang/mock v1.6.0
+## explicit; go 1.11
+github.com/golang/mock/gomock
+# github.com/gorilla/websocket v1.4.0
+## explicit
+github.com/gorilla/websocket
+# github.com/mitchellh/mapstructure v1.1.2
+## explicit
+github.com/mitchellh/mapstructure
+# github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+## explicit
+github.com/nfnt/resize
+# github.com/shirou/gopsutil/v3 v3.21.9
+## explicit; go 1.15
+github.com/shirou/gopsutil/v3/cpu
+github.com/shirou/gopsutil/v3/internal/common
+github.com/shirou/gopsutil/v3/mem
+github.com/shirou/gopsutil/v3/net
+github.com/shirou/gopsutil/v3/process
+# github.com/tklauser/go-sysconf v0.3.9
+## explicit; go 1.13
+github.com/tklauser/go-sysconf
+# github.com/tklauser/numcpus v0.3.0
+## explicit; go 1.11
+github.com/tklauser/numcpus
+# github.com/unix-streamdeck/api/v2 v2.0.1
+## explicit; go 1.18
+github.com/unix-streamdeck/api/v2
+# github.com/unix-streamdeck/driver v0.0.0-20260218200545-edb2f975e560
+## explicit; go 1.14
+github.com/unix-streamdeck/driver
+# golang.org/x/image v0.0.0-20201208152932-35266b937fa6
+## explicit; go 1.12
+golang.org/x/image/draw
+golang.org/x/image/font
+golang.org/x/image/font/basicfont
+golang.org/x/image/font/gofont/goregular
+golang.org/x/image/math/f64
+golang.org/x/image/math/fixed
+# golang.org/x/sync v0.1.0
+## explicit
+golang.org/x/sync/semaphore
+# golang.org/x/sys v0.0.0-20220624220833-87e55d714810
+## explicit; go 1.17
+golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/unix
+golang.org/x/sys/windows

@@ -1,12 +1,12 @@
 package key
 
 import (
-	"github.com/unix-streamdeck/api/v2"
-	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 	"image"
 	"image/draw"
 	"log"
 	"strconv"
+
+	"github.com/unix-streamdeck/api/v2"
 )
 
 type CounterIconHandler struct {
@@ -69,8 +69,8 @@ func (CounterKeyHandler) Key(key api.KeyConfigV3, info api.StreamDeckInfoV1) {
 	channel.(chan int) <- 1
 }
 
-func RegisterCounter() streamdeckd.Module {
-	return streamdeckd.Module{NewIcon: func() api.IconHandler {
+func RegisterCounter() api.Module {
+	return api.Module{NewIcon: func() api.IconHandler {
 		return &CounterIconHandler{Running: true, Count: 0}
 	}, NewKey: func() api.KeyHandler {
 		return &CounterKeyHandler{}

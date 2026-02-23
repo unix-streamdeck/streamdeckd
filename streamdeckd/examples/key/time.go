@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/unix-streamdeck/api/v2"
-	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 )
 
 type TimeIconHandler struct {
@@ -57,8 +56,8 @@ func (t *TimeIconHandler) timeLoop(k api.KeyConfigV3, info api.StreamDeckInfoV1,
 	}
 }
 
-func RegisterTime() streamdeckd.Module {
-	return streamdeckd.Module{NewIcon: func() api.IconHandler {
+func RegisterTime() api.Module {
+	return api.Module{NewIcon: func() api.IconHandler {
 		return &TimeIconHandler{Running: true}
 	}, Name: "Time"}
 }
