@@ -1,6 +1,8 @@
 package streamdeckd
 
 import (
+	"errors"
+	"fmt"
 	"image"
 	"image/draw"
 	"log"
@@ -204,7 +206,10 @@ func HandleKeyInput(dev *VirtualDev, key *api.KeyV3, keyDown bool) {
 			RunCommand(keyConfig.Command)
 		}
 		if keyConfig.Keybind != "" {
-			RunCommand("xdotool key " + keyConfig.Keybind)
+			err := ExecuteKeybind(keyConfig.Keybind)
+			if err != nil {
+				log.Println("[ERROR] Failed to execute keybind:", err)
+			}
 		}
 		if keyConfig.SwitchPage != 0 {
 			page := keyConfig.SwitchPage - 1
@@ -309,7 +314,10 @@ func HandleKnobInput(dev *VirtualDev, knob *api.KnobV3, event streamdeck.InputEv
 			RunCommand(actions.Command)
 		}
 		if actions.Keybind != "" {
-			RunCommand("xdotool key " + actions.Keybind)
+			err := ExecuteKeybind(actions.Keybind)
+			if err != nil {
+				log.Println("[ERROR] Failed to execute keybind:", err)
+			}
 		}
 		if actions.SwitchPage != 0 {
 			page := actions.SwitchPage - 1
@@ -330,6 +338,31 @@ func HandleKnobInput(dev *VirtualDev, knob *api.KnobV3, event streamdeck.InputEv
 	}
 }
 
+func ExecuteKeybind(keybind string) error {
+	keys, err := api.ParseXDoToolKeybindString(keybind)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to parse keybind: %s", err))
+	}
+
+	for _, key := range keys {
+		if err := kb.KeyDown(key); err != nil {
+			for i := len(keys) - 1; i >= 0; i-- {
+				keyUpErr := kb.KeyUp(keys[i])
+				log.Printf("[WARN] Failed to release key %d: %v", keys[i], keyUpErr)
+			}
+			return errors.New(fmt.Sprintf("failed to press key %d: %s", key, err))
+		}
+	}
+
+	for i := len(keys) - 1; i >= 0; i-- {
+		if err := kb.KeyUp(keys[i]); err != nil {
+			log.Printf("[WARN] Failed to release key %d: %v", keys[i], err)
+		}
+	}
+
+	return nil
+}
+
 func HandlePanic(cback func()) {
 	if err := recover(); err != nil {
 		log.Println("panic occurred:", err)
@@ -340,12 +373,10 @@ func HandlePanic(cback func()) {
 func mergeSharedConfig(sharedConfig map[string]any, individualConfig map[string]any) map[string]any {
 	merged := make(map[string]any)
 
-	// copy map1 into merged
 	for k, v := range sharedConfig {
 		merged[k] = v
 	}
 
-	// copy map2 into merged (overwrites if key already exists)
 	for k, v := range individualConfig {
 		merged[k] = v
 	}
