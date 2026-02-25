@@ -99,6 +99,7 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
 	}
+	key.SharedState = make(map[string]interface{})
 	if key.IconHandler == "" || key.IconHandler == "Default" {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
@@ -152,6 +153,7 @@ func (StreamDeckDBus) GetKnobHandlerExample(serial string, keyString string) (st
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
 	}
+	key.SharedState = make(map[string]interface{})
 	if key.LcdHandler == "" || key.LcdHandler == "Default" {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}

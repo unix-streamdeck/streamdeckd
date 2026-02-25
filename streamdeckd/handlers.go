@@ -21,6 +21,11 @@ func RegisterModule(m api.Module) {
 		}
 	}
 	log.Println("Loaded module " + m.Name)
+	m.IsKey = m.NewKey != nil
+	m.IsIcon = m.NewIcon != nil
+	m.IsKnob = m.NewKnobOrTouch != nil
+	m.IsLcd = m.NewLcd != nil
+	m.IsLinkedHandlers = m.LinkedFields != nil && len(m.LinkedFields) != 0
 	modules = append(modules, m)
 }
 

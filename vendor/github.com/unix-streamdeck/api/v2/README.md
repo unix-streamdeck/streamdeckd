@@ -13,6 +13,7 @@ The library enables handling Stream Deck inputs (buttons, knobs, touch), managin
 - Draw text on Stream Deck buttons with customizable fonts and alignments
 - Resize images to fit Stream Deck displays
 - OBS integration support
+- DBus signal listening for page changes
 
 ## Installation
 
@@ -25,7 +26,10 @@ go get github.com/unix-streamdeck/api
 ### Connecting to the Stream Deck daemon
 
 ```go
-import "github.com/unix-streamdeck/api"
+import (
+    "fmt"
+    "github.com/unix-streamdeck/api"
+)
 
 // Connect to the Stream Deck daemon
 conn, err := api.Connect()
@@ -39,6 +43,11 @@ devices, err := conn.GetInfo()
 if err != nil {
     // Handle error
 }
+
+// Listen for page changes
+err = conn.RegisterPageListener(func(serial string, page int32) {
+    fmt.Printf("Device %s changed to page %d\n", serial, page)
+})
 ```
 
 ### Working with images
@@ -57,6 +66,9 @@ img, _, _ := image.Decode(file)
 
 // Resize image to fit a Stream Deck key
 resizedImg := api.ResizeImage(img, 72) // 72x72 pixels
+
+// Resize image with specific width and height (e.g., for LCD display)
+resizedLcdImg := api.ResizeImageWH(img, 800, 100)
 
 // Add text to an image
 imgWithText, _ := api.DrawText(resizedImg, "Hello", 0, "CENTER")
@@ -95,6 +107,44 @@ func (h *MyIconHandler) Stop() {
     h.running = false
     // Clean up resources
 }
+
+// Implement an LCD handler (for Stream Deck Plus)
+type MyLcdHandler struct {
+    running bool
+}
+
+func (h *MyLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+    h.running = true
+    // Generate and update LCD image
+}
+
+func (h *MyLcdHandler) IsRunning() bool {
+    return h.running
+}
+
+func (h *MyLcdHandler) SetRunning(running bool) {
+    h.running = running
+}
+
+func (h *MyLcdHandler) Stop() {
+    h.running = false
+}
+
+// Implement a knob or touch handler (for Stream Deck Plus)
+type MyKnobHandler struct{}
+
+func (h *MyKnobHandler) Input(knob api.KnobConfigV3, info api.StreamDeckInfoV1, event api.InputEvent) {
+    switch event.EventType {
+    case api.KNOB_CW:
+        // Handle clockwise rotation
+    case api.KNOB_CCW:
+        // Handle counter-clockwise rotation
+    case api.KNOB_PRESS:
+        // Handle knob press
+    case api.SCREEN_SHORT_TAP:
+        // Handle touch screen tap
+    }
+}
 ```
 
 ## API Documentation
@@ -104,8 +154,8 @@ The API provides several interfaces for handling Stream Deck interactions:
 - `Handler`: Base interface for all handlers
 - `IconHandler`: For handling dynamic icons/images
 - `KeyHandler`: For handling key press events
-- `LcdHandler`: For handling LCD displays
-- `KnobOrTouchHandler`: For handling knob rotations and touch events
+- `LcdHandler`: For handling LCD displays (Stream Deck Plus)
+- `KnobOrTouchHandler`: For handling knob rotations and touch events (Stream Deck Plus)
 
 Key components:
 
@@ -157,10 +207,6 @@ if err != nil {
     // Handle error
 }
 ```
-
-## Help Wanted!
-
-If you want to help with the development of streamdeckd and its related repos, either by submitting code, finding/fixing bugs, or just replying to issues, please join this discord server: https://discord.gg/nyhuVEJWMQ
 
 ## License
 
