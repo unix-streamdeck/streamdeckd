@@ -301,40 +301,39 @@ func HandleKnobInput(dev *VirtualDev, knob *api.KnobV3, event streamdeck.InputEv
 			EventType:     api.InputEventType(event.EventType),
 			RotateNotches: event.RotateNotches,
 		})
-	} else {
-		var actions api.KnobActionV3
-		if event.EventType == streamdeck.KNOB_PRESS {
-			actions = knobConfig.KnobPressAction
-		} else if event.EventType == streamdeck.KNOB_CCW {
-			actions = knobConfig.KnobTurnDownAction
-		} else if event.EventType == streamdeck.KNOB_CW {
-			actions = knobConfig.KnobTurnUpAction
+	}
+	var actions api.KnobActionV3
+	if event.EventType == streamdeck.KNOB_PRESS {
+		actions = knobConfig.KnobPressAction
+	} else if event.EventType == streamdeck.KNOB_CCW {
+		actions = knobConfig.KnobTurnDownAction
+	} else if event.EventType == streamdeck.KNOB_CW {
+		actions = knobConfig.KnobTurnUpAction
+	}
+	if actions.Command != "" {
+		RunCommand(actions.Command)
+	}
+	if actions.Keybind != "" {
+		err := ExecuteKeybind(actions.Keybind)
+		if err != nil {
+			log.Println("[ERROR] Failed to execute keybind:", err)
 		}
-		if actions.Command != "" {
-			RunCommand(actions.Command)
+	}
+	if actions.SwitchPage != 0 {
+		page := actions.SwitchPage - 1
+		dev.SetPage(page)
+	}
+	if actions.Brightness != 0 {
+		err := dev.SetBrightness(uint8(actions.Brightness))
+		if err != nil {
+			log.Println(err)
 		}
-		if actions.Keybind != "" {
-			err := ExecuteKeybind(actions.Keybind)
-			if err != nil {
-				log.Println("[ERROR] Failed to execute keybind:", err)
-			}
-		}
-		if actions.SwitchPage != 0 {
-			page := actions.SwitchPage - 1
-			dev.SetPage(page)
-		}
-		if actions.Brightness != 0 {
-			err := dev.SetBrightness(uint8(actions.Brightness))
-			if err != nil {
-				log.Println(err)
-			}
-		}
-		if actions.Url != "" {
-			RunCommand("xdg-open " + actions.Url)
-		}
-		if actions.ObsCommand != "" {
-			runObsCommand(actions.ObsCommand, actions.ObsCommandParams)
-		}
+	}
+	if actions.Url != "" {
+		RunCommand("xdg-open " + actions.Url)
+	}
+	if actions.ObsCommand != "" {
+		runObsCommand(actions.ObsCommand, actions.ObsCommandParams)
 	}
 }
 
