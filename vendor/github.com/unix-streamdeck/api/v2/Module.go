@@ -19,10 +19,22 @@ type Module struct {
 	Linked            bool                      `json:"linked,omitempty"`
 }
 
+type FieldType string
+
+const (
+	File          FieldType = "File"
+	Text          FieldType = "Text"
+	Number        FieldType = "Number"
+	TextAlignment FieldType = "TextAlignment"
+	FontFace      FieldType = "FontFace"
+	Select        FieldType = "Select"
+	Colour        FieldType = "Colour"
+)
+
 type Field struct {
-	Title     string   `json:"title,omitempty"`
-	Name      string   `json:"name,omitempty"`
-	Type      string   `json:"type,omitempty"`
-	FileTypes []string `json:"file_types,omitempty"`
-	ListItems []string `json:"list_items,omitempty"`
+	Title     string    `json:"title,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	Type      FieldType `json:"type,omitempty"`
+	FileTypes []string  `json:"file_types,omitempty"`
+	ListItems []string  `json:"list_items,omitempty"`
 }

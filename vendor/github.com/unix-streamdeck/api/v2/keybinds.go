@@ -249,9 +249,6 @@ func ParseXDoToolKeybindString(keybind string) ([]int, error) {
 	}
 
 	parts := strings.Split(keybind, "+")
-	if len(parts) == 0 {
-		return nil, errors.New("invalid keybind format")
-	}
 
 	keys := make([]int, 0, len(parts))
 	for _, part := range parts {

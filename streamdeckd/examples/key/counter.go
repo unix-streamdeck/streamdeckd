@@ -33,7 +33,10 @@ func (c *CounterIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1,
 				img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
 				draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 				Count := strconv.Itoa(c.Count)
-				imgParsed, err := api.DrawText(img, Count, k.TextSize, k.TextAlignment)
+				imgParsed, err := api.DrawText(img, Count, api.DrawTextOptions{
+					FontSize:          int64(k.TextSize),
+					VerticalAlignment: api.VerticalAlignment(k.TextAlignment),
+				})
 				if err != nil {
 					log.Println(err)
 				} else {

@@ -1,94 +1,186 @@
 package api
 
 import (
+	"image"
+	"math"
+	"regexp"
+	"strings"
+
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
-	"github.com/nfnt/resize"
+	"golang.org/x/image/draw"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/gofont/gobold"
+	"golang.org/x/image/font/gofont/gobolditalic"
+	"golang.org/x/image/font/gofont/goitalic"
+	"golang.org/x/image/font/gofont/gomedium"
+	"golang.org/x/image/font/gofont/gomediumitalic"
+	"golang.org/x/image/font/gofont/gomono"
+	"golang.org/x/image/font/gofont/gomonobold"
+	"golang.org/x/image/font/gofont/gomonobolditalic"
+	"golang.org/x/image/font/gofont/gomonoitalic"
 	"golang.org/x/image/font/gofont/goregular"
-	"image"
-	"log"
-	"strings"
+	"golang.org/x/image/font/gofont/gosmallcaps"
+	"golang.org/x/image/font/gofont/gosmallcapsitalic"
 )
 
-func DrawText(currentImage image.Image, text string, fontSize int, fontAlignment string) (image.Image, error) {
-	width, height := currentImage.Bounds().Max.X, currentImage.Bounds().Max.Y
-	img := gg.NewContextForImage(currentImage)
+const BorderClearance = 10
+
+// TODO replace use of gg with native font.Drawer
+type VerticalAlignment string
+
+const (
+	Top    VerticalAlignment = "TOP"
+	Center VerticalAlignment = "CENTER"
+	Bottom VerticalAlignment = "BOTTOM"
+)
+
+type DrawTextOptions struct {
+	FontSize          int64
+	VerticalAlignment VerticalAlignment
+	FontFace          string
+	Colour            string
+}
+
+type IContext interface {
+	SetRGB(r, g, b float64)
+	SetHexColor(color string)
+	SetFontFace(font font.Face)
+	WordWrap(text string, width float64) []string
+	DrawStringWrapped(s string, x, y, ax, ay, width, lineSpacing float64, align gg.Align)
+	Image() image.Image
+	MeasureMultilineString(text string, lineSpacing float64) (float64, float64)
+	Width() int
+	Height() int
+}
+
+func DrawText(img image.Image, text string, options DrawTextOptions) (image.Image, error) {
+	ggImg := gg.NewContextForImage(img)
+	return drawText(ggImg, text, options)
+}
+
+func drawText(img IContext, text string, options DrawTextOptions) (image.Image, error) {
+	width, height := img.Width(), img.Height()
 	img.SetRGB(1, 1, 1)
-	f, err := truetype.Parse(goregular.TTF)
+	matched, _ := regexp.MatchString(`#?([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})`, options.Colour)
+	if matched {
+		img.SetHexColor(options.Colour)
+	}
+	f, err := truetype.Parse(loadFontFace(options.FontFace))
 	if err != nil {
 		return nil, err
 	}
 	fSize := calculateFontSize(f, text, img)
-	if fontSize != 0 {
-		fSize = float64(fontSize)
+
+	if options.FontSize != 0 {
+		fSize = float64(options.FontSize)
 	}
+
 	face := truetype.NewFace(f, &truetype.Options{Size: fSize})
+	defer face.Close()
 	img.SetFontFace(face)
 
-	lineCount := 1.0
+	lines := img.WordWrap(text, float64(width-BorderClearance))
+	lineCount := float64(len(lines))
 
 	if strings.Contains(text, "\n") {
-		lineCount = float64(strings.Count(text, "\n") + 1)
-	} else {
-		lines := img.WordWrap(text, float64(width-10))
-		lineCount = float64(len(lines))
+		lineCount += float64(strings.Count(text, "\n") + 1)
 	}
 
-	verticalAlignment := 0.5
-	y := float64(height-5) / 2
-	if strings.ToUpper(fontAlignment) == "TOP" {
-		verticalAlignment = 1.0
-		y = (fSize/2)*lineCount + 10*lineCount
-	} else if strings.ToUpper(fontAlignment) == "BOTTOM" {
-		verticalAlignment = 0.0
-		y = float64(height-5) - (fSize * lineCount)
-	}
-	img.DrawStringWrapped(text, float64(width-5)/2, y, 0.5, verticalAlignment, float64(width-10), 1, gg.AlignCenter)
+	valign, y := calculateVerticalAlignment(options.VerticalAlignment, height)
+	img.DrawStringWrapped(text, float64(width/2), y, 0.5, valign, float64(width-BorderClearance), 1, gg.AlignCenter)
 	return img.Image(), nil
 }
 
-func calculateFontSize(f *truetype.Font, text string, img *gg.Context) float64 {
-	width, height := img.Image().Bounds().Max.X, img.Image().Bounds().Max.Y
-	fontSize := float64(img.Image().Bounds().Max.Y) / 3
+// TODO Support loading fonts via fontconfig on linux and whatever the equivalent is on darwin
+func loadFontFace(fontName string) []byte {
+	switch fontName {
+	case "bold":
+		return gobold.TTF
+	case "bolditalic":
+		return gobolditalic.TTF
+	case "italic":
+		return goitalic.TTF
+	case "medium":
+		return gomedium.TTF
+	case "mediumitalic":
+		return gomediumitalic.TTF
+	case "mono":
+		return gomono.TTF
+	case "monobold":
+		return gomonobold.TTF
+	case "monobolditalic":
+		return gomonobolditalic.TTF
+	case "monoitalic":
+		return gomonoitalic.TTF
+	case "smallcaps":
+		return gosmallcaps.TTF
+	case "smallcapsitalic":
+		return gosmallcapsitalic.TTF
+	case "regular":
+		fallthrough
+	default:
+		return goregular.TTF
+	}
+}
+
+func calculateVerticalAlignment(alignment VerticalAlignment, height int) (float64, float64) {
+	if alignment == Top {
+		return 0.0, BorderClearance / 2
+	}
+	if alignment == Bottom {
+		return 1.0, float64(height) - (BorderClearance / 2)
+	}
+	return 0.5, float64(height) / 2
+}
+
+func calculateFontSize(f *truetype.Font, text string, img IContext) float64 {
+	width := img.Width()
+	fontSize := float64(width) / 3
 	face := truetype.NewFace(f, &truetype.Options{Size: fontSize})
+	defer face.Close()
 	img.SetFontFace(face)
 	textWidth, _ := img.MeasureMultilineString(text, 1.0)
 	fSize := fontSize
-	if textWidth >= float64(width-10) {
-		s := (float64(width-10) / textWidth) * fontSize
-		if s > 12 || !strings.Contains(text, " ") {
-			fSize = s
-		} else {
-			words := img.WordWrap(text, float64(width-10))
-			t := ""
-			for i := 0; i < strings.Count(text, "\n"); i++ {
-				t += "\n"
-			}
-			if strings.Contains(text, "\n") {
-				log.Println(t)
-			}
-			for i, word := range words {
-				t += word
-				if i < len(words)-1 {
-					t += "\n"
-				}
-			}
-			textWidth, textHeight := img.MeasureMultilineString(t, 1.0)
-			if textHeight > textWidth && textHeight > float64(height-10) {
-				fSize = (float64(height-10) / textHeight) * fontSize
-
-			} else if textWidth > textHeight && textWidth > float64(width-10) {
-				fSize = (float64(height-10) / textWidth) * fontSize
+	if textWidth >= float64(width-BorderClearance) {
+		oversizeRatio := float64(width-BorderClearance) / textWidth
+		scaledFontSize := math.Min(oversizeRatio*fontSize, 12)
+		for size := fontSize; size >= scaledFontSize; size -= 0.5 {
+			if attemptFontSize(f, text, img, size) {
+				return size
 			}
 		}
+		return scaledFontSize
 	}
 	return fSize
 }
 
+func attemptFontSize(f *truetype.Font, text string, img IContext, fSize float64) bool {
+	width := img.Width()
+	height := img.Height()
+	face := truetype.NewFace(f, &truetype.Options{Size: fSize})
+	defer face.Close()
+	img.SetFontFace(face)
+	wrappedGroups := img.WordWrap(text, float64(width-BorderClearance))
+	wrappedText := strings.Join(wrappedGroups, "\n")
+	textWidth, textHeight := img.MeasureMultilineString(wrappedText, 1.0)
+	return textHeight < float64(height-BorderClearance) && textWidth < float64(width-BorderClearance)
+}
+
 func ResizeImage(img image.Image, keySize int) image.Image {
-	return resize.Resize(uint(keySize), uint(keySize), img, resize.Lanczos3)
+
+	dst := image.NewRGBA(image.Rect(0, 0, keySize, keySize))
+
+	draw.BiLinear.Scale(dst, dst.Rect, img, img.Bounds(), draw.Over, nil)
+
+	return dst
 }
 
 func ResizeImageWH(img image.Image, width int, height int) image.Image {
-	return resize.Resize(uint(width), uint(height), img, resize.Lanczos3)
+
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+
+	draw.BiLinear.Scale(dst, dst.Rect, img, img.Bounds(), draw.Over, nil)
+
+	return dst
 }

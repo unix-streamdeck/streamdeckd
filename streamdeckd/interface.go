@@ -92,7 +92,12 @@ func SetKeyImageHandlerless(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, 
 			currentKeyConfig.Buff = img
 		}
 		if currentKeyConfig.Text != "" {
-			img, err := api.DrawText(currentKeyConfig.Buff, currentKeyConfig.Text, currentKeyConfig.TextSize, currentKeyConfig.TextAlignment)
+			img, err := api.DrawText(currentKeyConfig.Buff, currentKeyConfig.Text, api.DrawTextOptions{
+				FontSize:          int64(currentKeyConfig.TextSize),
+				VerticalAlignment: api.VerticalAlignment(currentKeyConfig.TextAlignment),
+				FontFace:          currentKeyConfig.FontFace,
+				Colour:            currentKeyConfig.TextColour,
+			})
 			if err != nil {
 				log.Println(err)
 			} else {
@@ -130,7 +135,12 @@ func SetKnobHandlerless(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, kn
 			currentKnobConfig.Buff = img
 		}
 		if currentKnobConfig.Text != "" {
-			img, err := api.DrawText(currentKnobConfig.Buff, currentKnobConfig.Text, currentKnobConfig.TextSize, currentKnobConfig.TextAlignment)
+			img, err := api.DrawText(currentKnobConfig.Buff, currentKnobConfig.Text, api.DrawTextOptions{
+				FontSize:          int64(currentKnobConfig.TextSize),
+				VerticalAlignment: api.VerticalAlignment(currentKnobConfig.TextAlignment),
+				FontFace:          currentKnobConfig.FontFace,
+				Colour:            currentKnobConfig.TextColour,
+			})
 			if err != nil {
 				log.Println(err)
 			} else {

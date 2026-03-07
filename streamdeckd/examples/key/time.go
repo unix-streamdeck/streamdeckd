@@ -45,7 +45,10 @@ func (t *TimeIconHandler) timeLoop(k api.KeyConfigV3, info api.StreamDeckInfoV1,
 			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			t := time.Now()
 			tString := t.Format("15:04:05")
-			imgParsed, err := api.DrawText(img, tString, k.TextSize, k.TextAlignment)
+			imgParsed, err := api.DrawText(img, tString, api.DrawTextOptions{
+				FontSize:          int64(k.TextSize),
+				VerticalAlignment: api.VerticalAlignment(k.TextAlignment),
+			})
 			if err != nil {
 				log.Println(err)
 			} else {

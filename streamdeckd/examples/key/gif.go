@@ -73,7 +73,20 @@ func (s *GifIconHandler) Start(key api.KeyConfigV3, info api.StreamDeckInfoV1, c
 			if !ok {
 				alignment = ""
 			}
-			img, err = api.DrawText(img, text.(string), int(size), alignment.(string))
+			fontFace, ok := key.IconHandlerFields["font_face"]
+			if !ok {
+				fontFace = ""
+			}
+			textColour, ok := key.IconHandlerFields["text_colour"]
+			if !ok {
+				textColour = ""
+			}
+			img, err = api.DrawText(img, text.(string), api.DrawTextOptions{
+				FontSize:          size,
+				VerticalAlignment: api.VerticalAlignment(alignment.(string)),
+				FontFace:          fontFace.(string),
+				Colour:            textColour.(string),
+			})
 			if err != nil {
 				log.Println(err)
 			}
@@ -178,7 +191,20 @@ func (s *GifLcdHandler) Start(key api.KnobConfigV3, info api.StreamDeckInfoV1, c
 			if !ok {
 				alignment = ""
 			}
-			img, err = api.DrawText(img, text.(string), int(size), alignment.(string))
+			fontFace, ok := key.LcdHandlerFields["font_face"]
+			if !ok {
+				fontFace = ""
+			}
+			textColour, ok := key.LcdHandlerFields["text_colour"]
+			if !ok {
+				textColour = ""
+			}
+			img, err = api.DrawText(img, text.(string), api.DrawTextOptions{
+				FontSize:          size,
+				VerticalAlignment: api.VerticalAlignment(alignment.(string)),
+				FontFace:          fontFace.(string),
+				Colour:            textColour.(string),
+			})
 			if err != nil {
 				log.Println(err)
 			}
@@ -231,10 +257,24 @@ func RegisterGif() api.Module {
 		NewIcon: func() api.IconHandler {
 			return &GifIconHandler{Running: true, Lock: semaphore.NewWeighted(1)}
 		},
-		IconFields: []api.Field{{Title: "Icon", Name: "icon", Type: "File", FileTypes: []string{".gif"}}, {Title: "Text", Name: "text", Type: "Text"}, {Title: "Text Size", Name: "text_size", Type: "Number"}, {Title: "Text Alignment", Name: "text_alignment", Type: "TextAlignment"}},
+		IconFields: []api.Field{
+			{Title: "Icon", Name: "icon", Type: api.File, FileTypes: []string{".gif"}},
+			{Title: "Text", Name: "text", Type: api.Text},
+			{Title: "Text Size", Name: "text_size", Type: api.Number},
+			{Title: "Text Alignment", Name: "text_alignment", Type: api.TextAlignment},
+			{Title: "Font Face", Name: "font_face", Type: api.FontFace},
+			{Title: "Text Colour", Name: "text_colour", Type: api.Colour},
+		},
 		NewLcd: func() api.LcdHandler {
 			return &GifLcdHandler{Running: true, Lock: semaphore.NewWeighted(1)}
 		},
-		LcdFields: []api.Field{{Title: "Icon", Name: "icon", Type: "File", FileTypes: []string{".gif"}}, {Title: "Text", Name: "text", Type: "Text"}, {Title: "Text Size", Name: "text_size", Type: "Number"}, {Title: "Text Alignment", Name: "text_alignment", Type: "TextAlignment"}},
+		LcdFields: []api.Field{
+			{Title: "Icon", Name: "icon", Type: api.File, FileTypes: []string{".gif"}},
+			{Title: "Text", Name: "text", Type: api.Text},
+			{Title: "Text Size", Name: "text_size", Type: api.Number},
+			{Title: "Text Alignment", Name: "text_alignment", Type: api.TextAlignment},
+			{Title: "Font Face", Name: "font_face", Type: api.FontFace},
+			{Title: "Text Colour", Name: "text_colour", Type: api.Colour},
+		},
 	}
 }

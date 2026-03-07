@@ -1,19 +1,8 @@
-# Stream Deck API for Unix
+# StreamDeck API for Unix
 
-This is a Go library for the streamdeckd daemon, not a standalone application. It provides interfaces for connecting to the daemon, accessing configuration objects, and creating custom handlers or GUI config editors for Elgato Stream Deck devices on Unix systems.
+This is a Go library for the streamdeckd daemon, not a standalone application. It provides interfaces for connecting to the daemon, accessing configuration objects, and creating custom handlers or GUI config editors for Elgato StreamDeck devices on Unix systems.
 
-The library enables handling Stream Deck inputs (buttons, knobs, touch), managing icons and images, and communicating with the Stream Deck daemon via DBus.
-
-## Features
-
-- Connect to Stream Deck devices through the streamdeckd daemon
-- Handle button presses, knob rotations, and touch inputs
-- Create and manipulate images for Stream Deck displays
-- Manage device configurations and pages
-- Draw text on Stream Deck buttons with customizable fonts and alignments
-- Resize images to fit Stream Deck displays
-- OBS integration support
-- DBus signal listening for page changes
+The library exposes an API for creating custom plugins to handle Stream Deck inputs (buttons, knobs, touch), managing icons and images, and also for communicating with the streamdeckd daemon via DBus.
 
 ## Installation
 
@@ -56,7 +45,7 @@ err = conn.RegisterPageListener(func(serial string, page int32) {
 import (
     "github.com/unix-streamdeck/api"
     "image"
-    _ "image/png" // Import for PNG support
+    _ "image/png"
     "os"
 )
 
@@ -64,10 +53,10 @@ import (
 file, _ := os.Open("icon.png")
 img, _, _ := image.Decode(file)
 
-// Resize image to fit a Stream Deck key
+// Resize image to fit a Stream Deck key, ideally pass the `IconSize` field from `StreamDeckInfoV1` rather than magic num,ber
 resizedImg := api.ResizeImage(img, 72) // 72x72 pixels
 
-// Resize image with specific width and height (e.g., for LCD display)
+// Resize image with specific width and height (e.g., for LCD display) (`LcdWidth` and `LcdHeight` in `StreamDeckInfoV1`)
 resizedLcdImg := api.ResizeImageWH(img, 800, 100)
 
 // Add text to an image
@@ -105,7 +94,7 @@ func (h *MyIconHandler) SetRunning(running bool) {
 
 func (h *MyIconHandler) Stop() {
     h.running = false
-    // Clean up resources
+    // Clean up resources and stop calling callback
 }
 
 // Implement an LCD handler (for Stream Deck Plus)
@@ -141,8 +130,6 @@ func (h *MyKnobHandler) Input(knob api.KnobConfigV3, info api.StreamDeckInfoV1, 
         // Handle counter-clockwise rotation
     case api.KNOB_PRESS:
         // Handle knob press
-    case api.SCREEN_SHORT_TAP:
-        // Handle touch screen tap
     }
 }
 ```
@@ -183,30 +170,15 @@ if err != nil {
     // Handle error
 }
 
-// Reload configuration from disk
-err = conn.ReloadConfig()
 
 // Commit configuration changes to disk
 err = conn.CommitConfig()
+
+// Or Reload configuration from disk if the changes weren't correct
+err = conn.ReloadConfig()
+
 ```
 
-### Custom GUI Config Editors
-
-The library provides the `Module` and `Field` types that can be used to create custom GUI configuration editors:
-
-```go
-// Get available modules
-modules, err := conn.GetModules()
-if err != nil {
-    // Handle error
-}
-
-// Get OBS-specific fields
-obsFields, err := conn.GetObsFields()
-if err != nil {
-    // Handle error
-}
-```
 
 ## License
 
