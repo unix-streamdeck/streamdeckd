@@ -2,12 +2,35 @@
 
 package streamdeckd
 
+/*
+ #cgo CFLAGS: -x objective-c
+ #cgo LDFLAGS: -framework Cocoa
+ #import <Cocoa/Cocoa.h>
+ #import <ApplicationServices/ApplicationServices.h>
+ CGEventRef CreateDown(int k){
+	CGEventRef event = CGEventCreateKeyboardEvent (NULL, (CGKeyCode)k, true);
+	return event;
+ }
+ CGEventRef CreateUp(int k){
+	CGEventRef event = CGEventCreateKeyboardEvent (NULL, (CGKeyCode)k, false);
+	return event;
+ }
+ void KeyTap(CGEventRef event){
+	CGEventPost(kCGAnnotatedSessionEventTap, event);
+	CFRelease(event);
+ }
+ void AddActionKey(CGEventFlags type,CGEventRef event){
+ 	CGEventSetFlags(event, type);
+ }
+*/
+import "C"
 import (
 	"errors"
 	"log"
 
 	"github.com/bendahl/uinput"
 	"github.com/godbus/dbus/v5"
+	"github.com/unix-streamdeck/api/v2"
 )
 
 var kb uinput.Keyboard
@@ -67,4 +90,23 @@ func ConnectScreensaver() (*ScreensaverConnection, error) {
 
 func (c *ScreensaverConnection) RegisterScreensaverActiveListener() {
 
+}
+
+func ExecuteKeybind(keybind string) error {
+	keys, err := api.ParseXDoToolKeybindString(keybind)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to parse keybind: %s", err))
+	}
+
+	for _, key := range keys {
+		downEvent := C.CreateDown(C.int(key))
+		C.KeyTap(downEvent)
+	}
+
+	for i := len(keys) - 1; i >= 0; i-- {
+		upEvent := C.CreateUp(C.int(key))
+		C.KeyTap(upEvent)
+	}
+
+	return nil
 }

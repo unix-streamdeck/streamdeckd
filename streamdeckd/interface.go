@@ -347,31 +347,6 @@ func HandleKnobInput(dev *VirtualDev, knob *api.KnobV3, event streamdeck.InputEv
 	}
 }
 
-func ExecuteKeybind(keybind string) error {
-	keys, err := api.ParseXDoToolKeybindString(keybind)
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed to parse keybind: %s", err))
-	}
-
-	for _, key := range keys {
-		if err := kb.KeyDown(key); err != nil {
-			for i := len(keys) - 1; i >= 0; i-- {
-				keyUpErr := kb.KeyUp(keys[i])
-				log.Printf("[WARN] Failed to release key %d: %v", keys[i], keyUpErr)
-			}
-			return errors.New(fmt.Sprintf("failed to press key %d: %s", key, err))
-		}
-	}
-
-	for i := len(keys) - 1; i >= 0; i-- {
-		if err := kb.KeyUp(keys[i]); err != nil {
-			log.Printf("[WARN] Failed to release key %d: %v", keys[i], err)
-		}
-	}
-
-	return nil
-}
-
 func HandlePanic(cback func()) {
 	if err := recover(); err != nil {
 		log.Println("panic occurred:", err)

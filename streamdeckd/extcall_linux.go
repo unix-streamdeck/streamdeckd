@@ -5,6 +5,7 @@ package streamdeckd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/bendahl/uinput"
 	"github.com/godbus/dbus/v5"
 	x "github.com/linuxdeepin/go-x11-client"
+	"github.com/unix-streamdeck/api/v2"
 	"golang.org/x/sys/unix"
 )
 
@@ -212,4 +214,29 @@ func (c *ScreensaverConnection) RegisterScreensaverActiveListener() {
 			}
 		}
 	}
+}
+
+func ExecuteKeybind(keybind string) error {
+	keys, err := api.ParseXDoToolKeybindString(keybind)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to parse keybind: %s", err))
+	}
+
+	for _, key := range keys {
+		if err := kb.KeyDown(key); err != nil {
+			for i := len(keys) - 1; i >= 0; i-- {
+				keyUpErr := kb.KeyUp(keys[i])
+				log.Printf("[WARN] Failed to release key %d: %v", keys[i], keyUpErr)
+			}
+			return errors.New(fmt.Sprintf("failed to press key %d: %s", key, err))
+		}
+	}
+
+	for i := len(keys) - 1; i >= 0; i-- {
+		if err := kb.KeyUp(keys[i]); err != nil {
+			log.Printf("[WARN] Failed to release key %d: %v", keys[i], err)
+		}
+	}
+
+	return nil
 }
