@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/unix-streamdeck/api/v2"
-	streamdeck "github.com/unix-streamdeck/driver"
-	"golang.org/x/sync/semaphore"
 	"image"
 	"log"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/unix-streamdeck/api/v2"
+	streamdeck "github.com/unix-streamdeck/driver"
+	"golang.org/x/sync/semaphore"
 )
 
 var disconnectSem = semaphore.NewWeighted(1)
@@ -274,7 +275,7 @@ func (dev *VirtualDev) ApplicationUpdated() {
 		_, keyHasApp := key.Application[currentApplication]
 		activeApp := key.ActiveApplication
 		if key.Application[key.ActiveApplication].KeyHold != 0 && (keyHasApp || key.ActiveApplication != "") {
-			kb.KeyUp(key.Application[key.ActiveApplication].KeyHold)
+			//kb.KeyUp(key.Application[key.ActiveApplication].KeyHold)
 		}
 		if key.ActiveApplication != "" && !keyHasApp {
 			key.ActiveApplication = ""

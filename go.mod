@@ -30,3 +30,7 @@ require (
 	golang.org/x/image v0.36.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
+
+replace (
+	github.com/unix-streamdeck/api/v2 => ../api
+)
