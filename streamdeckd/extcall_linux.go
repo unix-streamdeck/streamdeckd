@@ -240,3 +240,11 @@ func ExecuteKeybind(keybind string) error {
 
 	return nil
 }
+
+func KeyDown(keyCode int) error {
+	return kb.KeyDown(keyCode)
+}
+
+func KeyUp(keyCode int) error {
+	return kb.KeyUp(keyCode)
+}

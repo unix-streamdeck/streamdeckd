@@ -261,19 +261,19 @@ func HandleKeyInput(dev *VirtualDev, key *api.KeyV3, keyDown bool) {
 			keyConfig.KeyHandlerStruct.Key(trimmedKeyConfig, deckInfo)
 		}
 	}
-	//if keyConfig.KeyHold != 0 {
-	//	if keyDown {
-	//		err := kb.KeyDown(keyConfig.KeyHold)
-	//		if err != nil {
-	//			log.Println(err)
-	//		}
-	//	} else {
-	//		err := kb.KeyUp(keyConfig.KeyHold)
-	//		if err != nil {
-	//			log.Println(err)
-	//		}
-	//	}
-	//}
+	if keyConfig.KeyHold != 0 {
+		if keyDown {
+			err := KeyDown(keyConfig.KeyHold)
+			if err != nil {
+				log.Println(err)
+			}
+		} else {
+			err := KeyUp(keyConfig.KeyHold)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}
 }
 
 func HandleKnobInput(dev *VirtualDev, knob *api.KnobV3, event streamdeck.InputEvent) {

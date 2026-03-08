@@ -121,3 +121,15 @@ func ExecuteKeybind(keybind string) error {
 
 	return nil
 }
+
+func KeyDown(keyCode int) error {
+	downEvent := C.CreateKeyEvent(C.int(keyCode), true)
+	C.SendEvent(downEvent)
+	return nil
+}
+
+func KeyUp(keyCode int) error {
+	upEvent := C.CreateKeyEvent(C.int(keyCode), false)
+	C.SendEvent(upEvent)
+	return nil
+}

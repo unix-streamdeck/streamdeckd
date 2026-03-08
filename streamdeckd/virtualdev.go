@@ -275,7 +275,7 @@ func (dev *VirtualDev) ApplicationUpdated() {
 		_, keyHasApp := key.Application[currentApplication]
 		activeApp := key.ActiveApplication
 		if key.Application[key.ActiveApplication].KeyHold != 0 && (keyHasApp || key.ActiveApplication != "") {
-			//kb.KeyUp(key.Application[key.ActiveApplication].KeyHold)
+			KeyUp(key.Application[key.ActiveApplication].KeyHold)
 		}
 		if key.ActiveApplication != "" && !keyHasApp {
 			key.ActiveApplication = ""
