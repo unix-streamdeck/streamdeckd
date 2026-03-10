@@ -2,8 +2,10 @@ package api
 
 import (
 	"image"
+	"image/color"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/fogleman/gg"
@@ -168,12 +170,7 @@ func attemptFontSize(f *truetype.Font, text string, img IContext, fSize float64)
 }
 
 func ResizeImage(img image.Image, keySize int) image.Image {
-
-	dst := image.NewRGBA(image.Rect(0, 0, keySize, keySize))
-
-	draw.BiLinear.Scale(dst, dst.Rect, img, img.Bounds(), draw.Over, nil)
-
-	return dst
+	return ResizeImageWH(img, keySize, keySize)
 }
 
 func ResizeImageWH(img image.Image, width int, height int) image.Image {
@@ -183,4 +180,46 @@ func ResizeImageWH(img image.Image, width int, height int) image.Image {
 	draw.BiLinear.Scale(dst, dst.Rect, img, img.Bounds(), draw.Over, nil)
 
 	return dst
+}
+
+func DrawProgressBar(img image.Image, label string, x, y, h, w, progress float64) (image.Image, error) {
+	return DrawProgressBarWithAccent(img, label, x, y, h, w, progress, "#777777")
+}
+
+func DrawProgressBarWithAccent(img image.Image, label string, x, y, h, w, progress float64, hex string) (image.Image, error) {
+	ggImg := gg.NewContextForImage(img)
+
+	f, err := truetype.Parse(goregular.TTF)
+
+	if err != nil {
+		return nil, err
+	}
+
+	face := truetype.NewFace(f, &truetype.Options{Size: h / 2})
+	defer face.Close()
+
+	ggImg.SetFillRule(gg.FillRuleEvenOdd)
+
+	ggImg.SetFillStyle(gg.NewSolidPattern(HexColor("#333333")))
+
+	ggImg.DrawRoundedRectangle(x, y, w, h, 5)
+
+	ggImg.Fill()
+
+	ggImg.SetFillStyle(gg.NewSolidPattern(HexColor(hex)))
+
+	ggImg.DrawRoundedRectangle(x, y, w/100*progress, h, 5)
+
+	ggImg.Fill()
+
+	ggImg.SetHexColor("#FFFFFF")
+
+	ggImg.DrawStringAnchored(label, (x+w)/2, y+(h/2), 0.5, 0.5)
+
+	return ggImg.Image(), nil
+}
+
+func HexColor(hex string) color.RGBA {
+	values, _ := strconv.ParseUint(hex[1:], 16, 32)
+	return color.RGBA{R: uint8(values >> 16), G: uint8((values >> 8) & 0xFF), B: uint8(values & 0xFF), A: 255}
 }
