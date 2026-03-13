@@ -72,7 +72,7 @@ func SetConfig(configString string) error {
 		dev := Devs[s]
 		for i := range config.Decks {
 			if dev.Deck.Serial == config.Decks[i].Serial {
-				dev.Config = config.Decks[i].Pages
+				dev.Config = config.Decks[i]
 			}
 		}
 		dev.SetPage(Devs[s].Page)
@@ -87,7 +87,7 @@ func ReloadConfig() error {
 		dev := Devs[s]
 		for i := range config.Decks {
 			if dev.Deck.Serial == config.Decks[i].Serial {
-				dev.Config = config.Decks[i].Pages
+				dev.Config = config.Decks[i]
 			}
 		}
 		dev.SetPage(Devs[s].Page)

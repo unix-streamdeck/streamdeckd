@@ -15,9 +15,6 @@ github.com/bendahl/uinput
 # github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
 ## explicit; go 1.13
 github.com/christopher-dG/go-obs-websocket
-# github.com/fogleman/gg v1.3.0
-## explicit
-github.com/fogleman/gg
 # github.com/go-ole/go-ole v1.3.0
 ## explicit; go 1.12
 github.com/go-ole/go-ole
@@ -61,17 +58,20 @@ github.com/tklauser/go-sysconf
 # github.com/tklauser/numcpus v0.11.0
 ## explicit; go 1.24.0
 github.com/tklauser/numcpus
-# github.com/unix-streamdeck/api/v2 v2.0.11
-## explicit; go 1.24.0
+# github.com/unix-streamdeck/api/v2 v2.0.13
+## explicit; go 1.25.7
 github.com/unix-streamdeck/api/v2
-# github.com/unix-streamdeck/driver v0.0.0-20260218200545-edb2f975e560
-## explicit; go 1.14
+# github.com/unix-streamdeck/driver v0.0.0-20260313121128-65a5f5d81a27
+## explicit; go 1.25.0
 github.com/unix-streamdeck/driver
+# github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9
+## explicit; go 1.25.7
+github.com/unix-streamdeck/gg
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
-# golang.org/x/image v0.36.0
-## explicit; go 1.24.0
+# golang.org/x/image v0.37.0
+## explicit; go 1.25.0
 golang.org/x/image/draw
 golang.org/x/image/font
 golang.org/x/image/font/basicfont
@@ -89,11 +89,11 @@ golang.org/x/image/font/gofont/gosmallcaps
 golang.org/x/image/font/gofont/gosmallcapsitalic
 golang.org/x/image/math/f64
 golang.org/x/image/math/fixed
-# golang.org/x/sync v0.19.0
-## explicit; go 1.24.0
+# golang.org/x/sync v0.20.0
+## explicit; go 1.25.0
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.41.0
-## explicit; go 1.24.0
+# golang.org/x/sys v0.42.0
+## explicit; go 1.25.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c

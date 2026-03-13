@@ -89,7 +89,7 @@ func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
 	if !ok || !dev.IsOpen {
 		return dbus.MakeFailedError(errors.New("Can't find connected device: " + serial))
 	}
-	HandleKeyInput(dev, &dev.Config[dev.Page].Keys[keyIndex], true)
+	HandleKeyInput(dev, &dev.Config.Pages[dev.Page].Keys[keyIndex], true)
 	return nil
 }
 

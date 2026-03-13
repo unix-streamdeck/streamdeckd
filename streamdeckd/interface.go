@@ -16,7 +16,7 @@ import (
 var currentApplication = ""
 var locked = false
 
-func LoadImage(dev *VirtualDev, path string) (image.Image, error) {
+func LoadImage(path string) (image.Image, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func LoadImage(dev *VirtualDev, path string) (image.Image, error) {
 		return nil, err
 	}
 
-	return api.ResizeImage(img, int(dev.Deck.Pixels)), nil
+	return img, nil
 }
 
 func SetKey(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, keyIndex int, page int, activeApp string) {
@@ -84,7 +84,7 @@ func SetKeyImageHandlerless(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, 
 			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			currentKeyConfig.Buff = img
 		} else {
-			img, err := LoadImage(dev, currentKeyConfig.Icon)
+			img, err := LoadImage(currentKeyConfig.Icon)
 			if err != nil {
 				log.Println(err)
 				return
@@ -127,7 +127,7 @@ func SetKnobHandlerless(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, kn
 			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			currentKnobConfig.Buff = img
 		} else {
-			img, err := LoadImage(dev, currentKnobConfig.Icon)
+			img, err := LoadImage(currentKnobConfig.Icon)
 			if err != nil {
 				log.Println(err)
 				return

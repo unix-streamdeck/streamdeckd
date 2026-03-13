@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"image"
 	"image/color"
 	"math"
@@ -8,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
+	"github.com/unix-streamdeck/gg"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobold"
@@ -222,4 +223,16 @@ func DrawProgressBarWithAccent(img image.Image, label string, x, y, h, w, progre
 func HexColor(hex string) color.RGBA {
 	values, _ := strconv.ParseUint(hex[1:], 16, 32)
 	return color.RGBA{R: uint8(values >> 16), G: uint8((values >> 8) & 0xFF), B: uint8(values & 0xFF), A: 255}
+}
+
+func LayerImages(background, foreground image.Image) (image.Image, error) {
+	if background.Bounds().Size() != foreground.Bounds().Size() {
+		return nil, errors.New("images must be same size")
+	}
+
+	ggBG := gg.NewContextForImage(background)
+
+	ggBG.DrawImage(foreground, background.Bounds().Min.X, background.Bounds().Min.Y)
+
+	return ggBG.Image(), nil
 }

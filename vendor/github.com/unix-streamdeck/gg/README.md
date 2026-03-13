@@ -2,19 +2,22 @@
 
 `gg` is a library for rendering 2D graphics in pure Go.
 
+This is a fork of the work by [fogleman](https://github.com/fogleman) just so we can better track dependencies and add functionality, as upstream appears stale
+
 ![Stars](http://i.imgur.com/CylQIJt.png)
 
 ## Installation
 
-    go get -u github.com/fogleman/gg
+    go get -u github.com/unix-streamdeck/gg
 
 Alternatively, you may use gopkg.in to grab a specific major-version:
 
-    go get -u gopkg.in/fogleman/gg.v1
+    go get -u gopkg.in/unix-streamdeck/gg.v1
 
 ## Documentation
 
-https://godoc.org/github.com/fogleman/gg
+- godoc: https://godoc.org/github.com/unix-streamdeck/gg
+- pkg.go.dev: https://pkg.go.dev/github.com/unix-streamdeck/gg?tab=doc
 
 ## Hello, Circle!
 
@@ -23,7 +26,7 @@ Look how easy!
 ```go
 package main
 
-import "github.com/fogleman/gg"
+import "github.com/unix-streamdeck/gg"
 
 func main() {
     dc := gg.NewContext(1000, 1000)
@@ -36,7 +39,7 @@ func main() {
 
 ## Examples
 
-There are [lots of examples](https://github.com/fogleman/gg/tree/master/examples) included. They're mostly for testing the code, but they're good for learning, too.
+There are [lots of examples](https://github.com/unix-streamdeck/gg/tree/master/examples) included. They're mostly for testing the code, but they're good for learning, too.
 
 ![Examples](http://i.imgur.com/tMFoyzu.png)
 
@@ -127,7 +130,7 @@ SetFillRule(fillRule FillRule)
 
 ## Gradients & Patterns
 
-`gg` supports linear and radial gradients and surface patterns. You can also implement your own patterns.
+`gg` supports linear, radial and conic gradients and surface patterns. You can also implement your own patterns.
 
 ```go
 SetFillStyle(pattern Pattern)
@@ -135,6 +138,7 @@ SetStrokeStyle(pattern Pattern)
 NewSolidPattern(color color.Color)
 NewLinearGradient(x0, y0, x1, y1 float64)
 NewRadialGradient(x0, y0, r0, x1, y1, r1 float64)
+NewConicGradient(cx, cy, deg float64)
 NewSurfacePattern(im image.Image, op RepeatOp)
 ```
 
@@ -201,7 +205,7 @@ See the output of this example below.
 ```go
 package main
 
-import "github.com/fogleman/gg"
+import "github.com/unix-streamdeck/gg"
 
 func main() {
 	const S = 1024
