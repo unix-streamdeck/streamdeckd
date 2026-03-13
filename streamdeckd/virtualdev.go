@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"log"
+	"math"
 	"regexp"
 	"strings"
 	"sync"
@@ -138,6 +139,64 @@ func (dev *VirtualDev) SetPage(page int) {
 	EmitPage(dev, page)
 }
 
+func (dev *VirtualDev) GetKeyBackgroundBuff(backgrounder api.KeyGridBackgrounder, w, h int) image.Image {
+	if backgrounder.GetKeyGridBackground() != "" {
+		if backgrounder.GetKeyGridBackgroundBuff() == nil {
+			img, err := LoadImage(backgrounder.GetKeyGridBackground())
+			if err != nil {
+				log.Println(err)
+				return nil
+			}
+			img = api.ResizeImageWH(img, w, h)
+			backgrounder.SetKeyGridBackgroundBuff(img)
+		}
+		return backgrounder.GetKeyGridBackgroundBuff()
+	}
+	return nil
+}
+
+func (dev *VirtualDev) CompositeKeyImage(foreground image.Image, keyIndex int, page int) image.Image {
+	var background image.Image
+
+	pageV3 := dev.Config.Pages[page]
+
+	w := (dev.Deck.Pixels * uint(dev.Deck.Columns)) + (dev.Deck.PaddingX * uint(dev.Deck.Columns-1))
+	h := (dev.Deck.Pixels * uint(dev.Deck.Rows)) + (dev.Deck.PaddingX * uint(dev.Deck.Rows-1))
+
+	keyX := (keyIndex % int(dev.Deck.Columns))
+	keyY := (int(math.Floor(float64(keyIndex) / float64(dev.Deck.Columns))))
+
+	x0, y0 := keyX*int(dev.Deck.Pixels+dev.Deck.PaddingX), keyY*int(dev.Deck.Pixels+dev.Deck.PaddingY)
+	x1, y1 := keyX*int(dev.Deck.Pixels+dev.Deck.PaddingX)+int(dev.Deck.Pixels), keyY*int(dev.Deck.Pixels+dev.Deck.PaddingY)+int(dev.Deck.Pixels)
+
+	pbg := dev.GetKeyBackgroundBuff(&pageV3, int(w), int(h))
+
+	if pbg != nil {
+		background = GetSubImage(pageV3.KeyGridBackgroundBuff, x0, y0, x1, y1)
+	}
+
+	if background == nil {
+		cbg := dev.GetKeyBackgroundBuff(&dev.Config, int(w), int(h))
+
+		if cbg != nil {
+			background = GetSubImage(dev.Config.KeyGridBackgroundBuff, x0, y0, x1, y1)
+		}
+	}
+
+	if background == nil {
+		return foreground
+	}
+
+	mergedImage, err := api.LayerImages(background, foreground)
+
+	if err != nil {
+		log.Println(err)
+		return foreground
+	}
+
+	return mergedImage
+}
+
 func (dev *VirtualDev) SetImage(img image.Image, keyIndex int, page int) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -153,6 +212,7 @@ func (dev *VirtualDev) SetImage(img image.Image, keyIndex int, page int) {
 	if bounds.X != dev.sdInfo.IconSize || bounds.Y != dev.sdInfo.IconSize {
 		img = api.ResizeImage(img, dev.sdInfo.IconSize)
 	}
+	img = dev.CompositeKeyImage(img, keyIndex, page)
 	if bounds.X == 0 && bounds.Y == 0 {
 		log.Println("Empty image received")
 		return
@@ -179,22 +239,7 @@ func (dev *VirtualDev) SetImage(img image.Image, keyIndex int, page int) {
 }
 
 func GetSubImage(img image.Image, x0, y0, x1, y1 int) image.Image {
-	type subImager interface {
-		SubImage(r image.Rectangle) image.Image
-	}
-
-	simg, ok := img.(subImager)
-
-	if !ok {
-		log.Println("Couldn't resize")
-		return nil
-	}
-
-	rect := image.Rect(x0, y0, x1, y1)
-
-	img = simg.SubImage(rect)
-
-	return img
+	return api.SubImage(img, x0, y0, x1, y1)
 }
 
 func (dev *VirtualDev) GetPanelImagePart(knobIndex int, page int) image.Image {
@@ -203,13 +248,13 @@ func (dev *VirtualDev) GetPanelImagePart(knobIndex int, page int) image.Image {
 	x0, y0 := dev.sdInfo.LcdWidth*knobIndex, 0
 	x1, y1 := dev.sdInfo.LcdWidth*(knobIndex+1), dev.sdInfo.LcdHeight
 
-	pbg := dev.GetBackgroundBuff(&pageV3, dev.sdInfo.LcdWidth*dev.sdInfo.LcdCols, dev.sdInfo.LcdHeight)
+	pbg := dev.GetLcdBackgroundBuff(&pageV3, dev.sdInfo.LcdWidth*dev.sdInfo.LcdCols, dev.sdInfo.LcdHeight)
 
 	if pbg != nil {
 		return GetSubImage(pageV3.TouchPanelBackgroundBuff, x0, y0, x1, y1)
 	}
 
-	cbg := dev.GetBackgroundBuff(&dev.Config, dev.sdInfo.LcdWidth*dev.sdInfo.LcdCols, dev.sdInfo.LcdHeight)
+	cbg := dev.GetLcdBackgroundBuff(&dev.Config, dev.sdInfo.LcdWidth*dev.sdInfo.LcdCols, dev.sdInfo.LcdHeight)
 
 	if cbg != nil {
 		return GetSubImage(dev.Config.TouchPanelBackgroundBuff, x0, y0, x1, y1)
@@ -218,7 +263,7 @@ func (dev *VirtualDev) GetPanelImagePart(knobIndex int, page int) image.Image {
 	return nil
 }
 
-func (dev *VirtualDev) GetBackgroundBuff(backgrounder api.Backgrounder, w, h int) image.Image {
+func (dev *VirtualDev) GetLcdBackgroundBuff(backgrounder api.LcdBackgrounder, w, h int) image.Image {
 	if backgrounder.GetTouchPanelBackground() != "" {
 		if backgrounder.GetTouchPanelBackgroundBuff() == nil {
 			img, err := LoadImage(backgrounder.GetTouchPanelBackground())
@@ -238,7 +283,7 @@ func (dev *VirtualDev) CompositePanelImage(foreground image.Image, knobIndex int
 	knobV3 := dev.Config.Pages[page].Knobs[knobIndex]
 	knobConfigV3 := knobV3.Application[knobV3.ActiveApplication]
 
-	kcbg := dev.GetBackgroundBuff(knobConfigV3, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
+	kcbg := dev.GetLcdBackgroundBuff(knobConfigV3, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
 
 	if kcbg != nil {
 		mergedImage, err := api.LayerImages(knobConfigV3.TouchPanelBackgroundBuff, foreground)
@@ -249,7 +294,7 @@ func (dev *VirtualDev) CompositePanelImage(foreground image.Image, knobIndex int
 		return mergedImage
 	}
 
-	kbg := dev.GetBackgroundBuff(knobConfigV3, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
+	kbg := dev.GetLcdBackgroundBuff(knobConfigV3, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
 
 	if kbg != nil {
 		mergedImage, err := api.LayerImages(knobV3.TouchPanelBackgroundBuff, foreground)

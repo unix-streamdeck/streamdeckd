@@ -2,7 +2,6 @@ package key
 
 import (
 	"image"
-	"image/draw"
 	"log"
 	"time"
 
@@ -42,7 +41,6 @@ func (t *TimeIconHandler) timeLoop(k api.KeyConfigV3, info api.StreamDeckInfoV1,
 			return
 		default:
 			img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
-			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			t := time.Now()
 			tString := t.Format("15:04:05")
 			imgParsed, err := api.DrawText(img, tString, api.DrawTextOptions{

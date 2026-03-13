@@ -35,6 +35,7 @@ const (
 	PID_STREAMDECK_XL       = 0x006c
 	PID_STREAMDECK_PEDAL    = 0x0086
 	PID_STREAMDECK_PLUS     = 0x0084
+	PID_STREAMDECK_PLUS_XL  = 0x00c6
 )
 
 type InputEventType uint8
@@ -190,7 +191,8 @@ type Device struct {
 	LcdWidth   uint
 	LcdHeight  uint
 	DPI        uint
-	Padding    uint
+	PaddingX   uint
+	PaddingY   uint
 
 	featureReportSize   int
 	firmwareOffset      int
@@ -261,7 +263,8 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 			Keys:                 15,
 			Pixels:               72,
 			DPI:                  124,
-			Padding:              16,
+			PaddingX:             25,
+			PaddingY:             25,
 			featureReportSize:    17,
 			firmwareOffset:       5,
 			KeyStateOffset:       1,
@@ -286,7 +289,8 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 			Keys:                 6,
 			Pixels:               80,
 			DPI:                  138,
-			Padding:              16,
+			PaddingX:             28,
+			PaddingY:             28,
 			featureReportSize:    17,
 			firmwareOffset:       5,
 			KeyStateOffset:       1,
@@ -311,7 +315,8 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 			Keys:                 15,
 			Pixels:               72,
 			DPI:                  124,
-			Padding:              16,
+			PaddingX:             25,
+			PaddingY:             25,
 			featureReportSize:    32,
 			firmwareOffset:       6,
 			KeyStateOffset:       4,
@@ -336,7 +341,8 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 			Keys:                 32,
 			Pixels:               96,
 			DPI:                  166,
-			Padding:              16,
+			PaddingX:             34,
+			PaddingY:             34,
 			featureReportSize:    32,
 			firmwareOffset:       6,
 			KeyStateOffset:       4,
@@ -383,7 +389,8 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 			LcdWidth:            200,
 			LcdHeight:           100,
 			DPI:                 166,
-			Padding:             16,
+			PaddingX:            120,
+			PaddingY:            40,
 			featureReportSize:   32,
 			firmwareOffset:      6,
 			KeyStateOffset:      4,
@@ -403,7 +410,40 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 			HasKnobs:             true,
 			InputHandler:         PlusInputHandler,
 		}
-
+	case d.VendorID == VID_ELGATO && d.ProductID == PID_STREAMDECK_PLUS_XL:
+		dev = Device{
+			ID:                  d.Path,
+			Serial:              d.Serial,
+			Columns:             9,
+			Rows:                4,
+			LcdColumns:          6,
+			Keys:                36,
+			Knobs:               6,
+			Pixels:              120,
+			LcdWidth:            200,
+			LcdHeight:           100,
+			DPI:                 166,
+			PaddingX:            32,
+			PaddingY:            32,
+			featureReportSize:   32,
+			firmwareOffset:      6,
+			KeyStateOffset:      4,
+			TranslateKeyIndex:   identity,
+			imagePageSize:       1024,
+			imagePageHeaderSize: 8,
+			imagePageHeader:     rev2ImagePageHeader,
+			flipImage: func(i image.Image) image.Image {
+				return i
+			},
+			toImageFormat:        toJPEG,
+			getFirmwareCommand:   c_REV2_FIRMWARE,
+			resetCommand:         c_REV2_RESET,
+			setBrightnessCommand: c_REV2_BRIGHTNESS,
+			HasScreen:            true,
+			HasLCD:               true,
+			HasKnobs:             true,
+			InputHandler:         PlusInputHandler,
+		}
 	}
 
 	if dev.ID != "" {

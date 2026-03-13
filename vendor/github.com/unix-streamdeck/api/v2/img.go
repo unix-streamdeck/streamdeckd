@@ -4,6 +4,7 @@ import (
 	"errors"
 	"image"
 	"image/color"
+	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -230,9 +231,30 @@ func LayerImages(background, foreground image.Image) (image.Image, error) {
 		return nil, errors.New("images must be same size")
 	}
 
-	ggBG := gg.NewContextForImage(background)
+	ggBG := gg.NewContext(foreground.Bounds().Size().X, foreground.Bounds().Size().Y)
 
-	ggBG.DrawImage(foreground, background.Bounds().Min.X, background.Bounds().Min.Y)
+	ggBG.DrawImage(background, -background.Bounds().Min.X, -background.Bounds().Min.Y)
+	//ggBG.Translate(float64(-background.Bounds().Min.X), float64(-background.Bounds().Min.Y))
+	ggBG.DrawImage(foreground, 0, 0)
 
 	return ggBG.Image(), nil
+}
+
+func SubImage(img image.Image, x0, y0, x1, y1 int) image.Image {
+	type subImager interface {
+		SubImage(r image.Rectangle) image.Image
+	}
+
+	simg, ok := img.(subImager)
+
+	if !ok {
+		log.Println("Couldn't resize")
+		return nil
+	}
+
+	rect := image.Rect(x0, y0, x1, y1)
+
+	img = simg.SubImage(rect)
+
+	return img
 }

@@ -4,7 +4,7 @@ let
   cfg = config.programs.streamdeckd;
 
 in {
-  options.programs.streamdeckd = {
+    options.programs.streamdeckd = {
     enable = lib.mkEnableOption "Streamdeckd user daemon";
 
     package = lib.mkOption {
@@ -26,6 +26,16 @@ in {
                 serial = lib.mkOption {
                   type = lib.types.str;
                   description = "Serial number of the Stream Deck";
+                };
+                touch_panel_background = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "Background image for the touch panel";
+                };
+                key_grid_background = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "Background image for the key grid";
                 };
                 pages = lib.mkOption {
                   type = lib.types.listOf (lib.types.submodule {
@@ -60,6 +70,16 @@ in {
                                     type = lib.types.nullOr lib.types.str;
                                     default = null;
                                     description = "Text alignment (left, center, right)";
+                                  };
+                                  font_face = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.str;
+                                    default = null;
+                                    description = "Font Face";
+                                  };
+                                  text_colour = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.str;
+                                    default = null;
+                                    description = "Text colour (hex code)";
                                   };
                                   keybind = lib.mkOption {
                                     type = lib.types.nullOr lib.types.str;
@@ -137,6 +157,11 @@ in {
                             application = lib.mkOption {
                               type = lib.types.nullOr (lib.types.attrsOf (lib.types.submodule {
                                 options = {
+                                  touch_panel_background = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.str;
+                                    default = null;
+                                    description = "Background image for the touch panel";
+                                  };
                                   icon = lib.mkOption {
                                     type = lib.types.nullOr lib.types.str;
                                     default = null;
@@ -156,6 +181,16 @@ in {
                                     type = lib.types.nullOr lib.types.str;
                                     default = null;
                                     description = "Text alignment (left, center, right)";
+                                  };
+                                  font_face = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.str;
+                                    default = null;
+                                    description = "Font Face";
+                                  };
+                                  text_colour = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.str;
+                                    default = null;
+                                    description = "Text colour (hex code)";
                                   };
                                   lcd_handler = lib.mkOption {
                                     type = lib.types.nullOr lib.types.str;
@@ -316,10 +351,25 @@ in {
                               default = null;
                               description = "Application-specific knob configurations";
                             };
+                            touch_panel_background = lib.mkOption {
+                              type = lib.types.nullOr lib.types.str;
+                              default = null;
+                              description = "Background image for the touch panel";
+                            };
                           };
                         });
                         default = [];
                         description = "List of knobs on this page";
+                      };
+                      touch_panel_background = lib.mkOption {
+                        type = lib.types.nullOr lib.types.str;
+                        default = null;
+                        description = "Background image for the touch panel";
+                      };
+                      key_grid_background = lib.mkOption {
+                        type = lib.types.nullOr lib.types.str;
+                        default = null;
+                        description = "Background image for the key grid";
                       };
                     };
                   });

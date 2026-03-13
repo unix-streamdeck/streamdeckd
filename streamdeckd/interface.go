@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/draw"
 	"log"
 	"os"
 	"os/exec"
@@ -36,10 +35,11 @@ func SetKey(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, keyIndex int, pa
 		log.Println("Restarting SetKey")
 		go SetKey(dev, currentKeyConfig, keyIndex, page, activeApp)
 	})
-	if currentKeyConfig.IconHandler == "" {
-		SetKeyImageHandlerless(dev, currentKeyConfig, keyIndex, page)
-	} else {
+	if currentKeyConfig.IconHandler != "" {
 		SetKeyImageHandler(dev, currentKeyConfig, keyIndex, page, activeApp)
+	}
+	if currentKeyConfig.IconHandlerStruct == nil {
+		SetKeyImageHandlerless(dev, currentKeyConfig, keyIndex, page)
 	}
 }
 func SetKeyImageHandler(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, keyIndex int, page int, activeApp string) {
@@ -81,7 +81,6 @@ func SetKeyImageHandlerless(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, 
 	if currentKeyConfig.Buff == nil {
 		if currentKeyConfig.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, int(dev.Deck.Pixels), int(dev.Deck.Pixels)))
-			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			currentKeyConfig.Buff = img
 		} else {
 			img, err := LoadImage(currentKeyConfig.Icon)
@@ -113,10 +112,11 @@ func SetKnob(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIndex int
 		log.Println("Restarting SetKnob")
 		go SetKnob(dev, currentKnobConfig, knobIndex, page, activeApp)
 	})
-	if currentKnobConfig.LcdHandler == "" {
-		SetKnobHandlerless(dev, currentKnobConfig, knobIndex, page)
-	} else {
+	if currentKnobConfig.LcdHandler != "" {
 		SetKnobHandler(dev, currentKnobConfig, knobIndex, page, activeApp)
+	}
+	if currentKnobConfig.LcdHandlerStruct == nil {
+		SetKnobHandlerless(dev, currentKnobConfig, knobIndex, page)
 	}
 }
 
@@ -124,7 +124,6 @@ func SetKnobHandlerless(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, kn
 	if currentKnobConfig.Buff == nil {
 		if currentKnobConfig.Icon == "" {
 			img := image.NewRGBA(image.Rect(0, 0, 200, 100))
-			draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 			currentKnobConfig.Buff = img
 		} else {
 			img, err := LoadImage(currentKnobConfig.Icon)

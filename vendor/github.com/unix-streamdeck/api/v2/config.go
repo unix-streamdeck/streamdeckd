@@ -5,10 +5,16 @@ import (
 	"time"
 )
 
-type Backgrounder interface {
+type LcdBackgrounder interface {
 	GetTouchPanelBackground() string
 	GetTouchPanelBackgroundBuff() image.Image
 	SetTouchPanelBackgroundBuff(img image.Image)
+}
+
+type KeyGridBackgrounder interface {
+	GetKeyGridBackground() string
+	GetKeyGridBackgroundBuff() image.Image
+	SetKeyGridBackgroundBuff(img image.Image)
 }
 
 type ConfigV3 struct {
@@ -22,6 +28,8 @@ type DeckV3 struct {
 	Pages                    []PageV3    `json:"pages"`
 	TouchPanelBackground     string      `json:"touch_panel_background"`
 	TouchPanelBackgroundBuff image.Image `json:"-"`
+	KeyGridBackground        string      `json:"key_grid_background"`
+	KeyGridBackgroundBuff    image.Image `json:"-"`
 }
 
 func (d *DeckV3) GetTouchPanelBackground() string {
@@ -36,11 +44,25 @@ func (d *DeckV3) SetTouchPanelBackgroundBuff(img image.Image) {
 	d.TouchPanelBackgroundBuff = img
 }
 
+func (d *DeckV3) GetKeyGridBackground() string {
+	return d.KeyGridBackground
+}
+
+func (d *DeckV3) GetKeyGridBackgroundBuff() image.Image {
+	return d.KeyGridBackgroundBuff
+}
+
+func (d *DeckV3) SetKeyGridBackgroundBuff(img image.Image) {
+	d.KeyGridBackgroundBuff = img
+}
+
 type PageV3 struct {
 	Keys                     []KeyV3     `json:"keys"`
 	Knobs                    []KnobV3    `json:"knobs"`
 	TouchPanelBackground     string      `json:"touch_panel_background"`
 	TouchPanelBackgroundBuff image.Image `json:"-"`
+	KeyGridBackground        string      `json:"key_grid_background"`
+	KeyGridBackgroundBuff    image.Image `json:"-"`
 }
 
 func (p *PageV3) GetTouchPanelBackground() string {
@@ -53,6 +75,18 @@ func (p *PageV3) GetTouchPanelBackgroundBuff() image.Image {
 
 func (p *PageV3) SetTouchPanelBackgroundBuff(img image.Image) {
 	p.TouchPanelBackgroundBuff = img
+}
+
+func (p *PageV3) GetKeyGridBackground() string {
+	return p.KeyGridBackground
+}
+
+func (p *PageV3) GetKeyGridBackgroundBuff() image.Image {
+	return p.KeyGridBackgroundBuff
+}
+
+func (p *PageV3) SetKeyGridBackgroundBuff(img image.Image) {
+	p.KeyGridBackgroundBuff = img
 }
 
 type KeyV3 struct {

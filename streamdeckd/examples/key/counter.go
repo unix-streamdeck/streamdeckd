@@ -2,7 +2,6 @@ package key
 
 import (
 	"image"
-	"image/draw"
 	"log"
 	"strconv"
 
@@ -31,7 +30,6 @@ func (c *CounterIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1,
 			case <-c.Update:
 				c.Count = c.Count + 1
 				img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
-				draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
 				Count := strconv.Itoa(c.Count)
 				imgParsed, err := api.DrawText(img, Count, api.DrawTextOptions{
 					FontSize:          int64(k.TextSize),

@@ -8,8 +8,8 @@ require (
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/linuxdeepin/go-x11-client v0.0.0-20240415051504-c8e43d028ff9
 	github.com/shirou/gopsutil/v3 v3.24.5
-	github.com/unix-streamdeck/api/v2 v2.0.13
-	github.com/unix-streamdeck/driver v0.0.0-20260313121128-65a5f5d81a27
+	github.com/unix-streamdeck/api/v2 v2.0.14
+	github.com/unix-streamdeck/driver v0.0.0-20260313153150-8a1327d02063
 	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.42.0
 )
