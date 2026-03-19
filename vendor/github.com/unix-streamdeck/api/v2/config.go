@@ -7,14 +7,20 @@ import (
 
 type LcdBackgrounder interface {
 	GetTouchPanelBackground() string
-	GetTouchPanelBackgroundBuff() image.Image
-	SetTouchPanelBackgroundBuff(img image.Image)
+	GetTouchPanelBackgroundBuff() []image.Image
+	SetTouchPanelBackgroundBuff(img []image.Image)
+	GetTouchPanelBackgroundHandler() TouchPanelBackgroundHandler
+	SetTouchPanelBackgroundHandler(handler TouchPanelBackgroundHandler)
+	GetTouchPanelBackgroundHandlerFields() map[string]any
 }
 
 type KeyGridBackgrounder interface {
 	GetKeyGridBackground() string
-	GetKeyGridBackgroundBuff() image.Image
-	SetKeyGridBackgroundBuff(img image.Image)
+	GetKeyGridBackgroundBuff() []image.Image
+	SetKeyGridBackgroundBuff(img []image.Image)
+	GetKeyGridBackgroundHandler() KeyGridBackgroundHandler
+	SetKeyGridBackgroundHandler(handler KeyGridBackgroundHandler)
+	GetKeyGridBackgroundHandlerFields() map[string]any
 }
 
 type ConfigV3 struct {
@@ -24,168 +30,125 @@ type ConfigV3 struct {
 }
 
 type DeckV3 struct {
-	Serial                   string      `json:"serial"`
-	Pages                    []PageV3    `json:"pages"`
-	TouchPanelBackground     string      `json:"touch_panel_background"`
-	TouchPanelBackgroundBuff image.Image `json:"-"`
-	KeyGridBackground        string      `json:"key_grid_background"`
-	KeyGridBackgroundBuff    image.Image `json:"-"`
+	Serial                            string                      `json:"serial"`
+	Pages                             []PageV3                    `json:"pages"`
+	TouchPanelBackground              string                      `json:"touch_panel_background"`
+	TouchPanelBackgroundBuff          []image.Image               `json:"-"`
+	TouchPanelBackgroundHandler       TouchPanelBackgroundHandler `json:"-"`
+	TouchPanelBackgroundHandlerFields map[string]any              `json:"touch_panel_background_handler_fields"`
+	KeyGridBackground                 string                      `json:"key_grid_background"`
+	KeyGridBackgroundBuff             []image.Image               `json:"-"`
+	KeyGridBackgroundHandler          KeyGridBackgroundHandler    `json:"-"`
+	KeyGridBackgroundHandlerFields    map[string]any              `json:"key_grid_background_handler_fields"`
+}
+
+func (d *DeckV3) SetTouchPanelBackgroundHandler(handler TouchPanelBackgroundHandler) {
+	d.TouchPanelBackgroundHandler = handler
+}
+
+func (d *DeckV3) GetTouchPanelBackgroundHandler() TouchPanelBackgroundHandler {
+	return d.TouchPanelBackgroundHandler
 }
 
 func (d *DeckV3) GetTouchPanelBackground() string {
 	return d.TouchPanelBackground
 }
 
-func (d *DeckV3) GetTouchPanelBackgroundBuff() image.Image {
+func (d *DeckV3) GetTouchPanelBackgroundBuff() []image.Image {
 	return d.TouchPanelBackgroundBuff
 }
 
-func (d *DeckV3) SetTouchPanelBackgroundBuff(img image.Image) {
+func (d *DeckV3) SetTouchPanelBackgroundBuff(img []image.Image) {
 	d.TouchPanelBackgroundBuff = img
+}
+
+func (d *DeckV3) GetTouchPanelBackgroundHandlerFields() map[string]any {
+	return d.TouchPanelBackgroundHandlerFields
 }
 
 func (d *DeckV3) GetKeyGridBackground() string {
 	return d.KeyGridBackground
 }
 
-func (d *DeckV3) GetKeyGridBackgroundBuff() image.Image {
+func (d *DeckV3) GetKeyGridBackgroundBuff() []image.Image {
 	return d.KeyGridBackgroundBuff
 }
 
-func (d *DeckV3) SetKeyGridBackgroundBuff(img image.Image) {
+func (d *DeckV3) SetKeyGridBackgroundBuff(img []image.Image) {
 	d.KeyGridBackgroundBuff = img
 }
 
+func (d *DeckV3) SetKeyGridBackgroundHandler(handler KeyGridBackgroundHandler) {
+	d.KeyGridBackgroundHandler = handler
+}
+
+func (d *DeckV3) GetKeyGridBackgroundHandler() KeyGridBackgroundHandler {
+	return d.KeyGridBackgroundHandler
+}
+
+func (d *DeckV3) GetKeyGridBackgroundHandlerFields() map[string]any {
+	return d.KeyGridBackgroundHandlerFields
+}
+
 type PageV3 struct {
-	Keys                     []KeyV3     `json:"keys"`
-	Knobs                    []KnobV3    `json:"knobs"`
-	TouchPanelBackground     string      `json:"touch_panel_background"`
-	TouchPanelBackgroundBuff image.Image `json:"-"`
-	KeyGridBackground        string      `json:"key_grid_background"`
-	KeyGridBackgroundBuff    image.Image `json:"-"`
+	Keys                              []KeyV3                     `json:"keys"`
+	Knobs                             []KnobV3                    `json:"knobs"`
+	TouchPanelBackground              string                      `json:"touch_panel_background"`
+	TouchPanelBackgroundBuff          []image.Image               `json:"-"`
+	TouchPanelBackgroundHandler       TouchPanelBackgroundHandler `json:"-"`
+	TouchPanelBackgroundHandlerFields map[string]any              `json:"touch_panel_background_handler_fields"`
+	KeyGridBackground                 string                      `json:"key_grid_background"`
+	KeyGridBackgroundBuff             []image.Image               `json:"-"`
+	KeyGridBackgroundHandler          KeyGridBackgroundHandler    `json:"-"`
+	KeyGridBackgroundHandlerFields    map[string]any              `json:"key_grid_background_handler_fields"`
+}
+
+func (p *PageV3) SetTouchPanelBackgroundHandler(handler TouchPanelBackgroundHandler) {
+	p.TouchPanelBackgroundHandler = handler
+}
+
+func (p *PageV3) GetTouchPanelBackgroundHandler() TouchPanelBackgroundHandler {
+	return p.TouchPanelBackgroundHandler
 }
 
 func (p *PageV3) GetTouchPanelBackground() string {
 	return p.TouchPanelBackground
 }
 
-func (p *PageV3) GetTouchPanelBackgroundBuff() image.Image {
+func (p *PageV3) GetTouchPanelBackgroundBuff() []image.Image {
 	return p.TouchPanelBackgroundBuff
 }
 
-func (p *PageV3) SetTouchPanelBackgroundBuff(img image.Image) {
+func (p *PageV3) SetTouchPanelBackgroundBuff(img []image.Image) {
 	p.TouchPanelBackgroundBuff = img
+}
+
+func (p *PageV3) GetTouchPanelBackgroundHandlerFields() map[string]any {
+	return p.TouchPanelBackgroundHandlerFields
 }
 
 func (p *PageV3) GetKeyGridBackground() string {
 	return p.KeyGridBackground
 }
 
-func (p *PageV3) GetKeyGridBackgroundBuff() image.Image {
+func (p *PageV3) GetKeyGridBackgroundBuff() []image.Image {
 	return p.KeyGridBackgroundBuff
 }
 
-func (p *PageV3) SetKeyGridBackgroundBuff(img image.Image) {
+func (p *PageV3) SetKeyGridBackgroundBuff(img []image.Image) {
 	p.KeyGridBackgroundBuff = img
 }
 
-type KeyV3 struct {
-	Application             map[string]*KeyConfigV3 `json:"application,omitempty"`
-	ActiveBuff              image.Image             `json:"-"`
-	ActiveIconHandlerStruct *IconHandler            `json:"-"`
-	ActiveKeyHandlerStruct  *KeyHandler             `json:"-"`
-	ActiveApplication       string                  `json:"-"`
+func (p *PageV3) SetKeyGridBackgroundHandler(handler KeyGridBackgroundHandler) {
+	p.KeyGridBackgroundHandler = handler
 }
 
-type KnobV3 struct {
-	Application              map[string]*KnobConfigV3 `json:"application,omitempty"`
-	ActiveBuff               image.Image              `json:"-"`
-	ActiveApplication        string                   `json:"-"`
-	TouchPanelBackground     string                   `json:"touch_panel_background"`
-	TouchPanelBackgroundBuff image.Image              `json:"-"`
+func (p *PageV3) GetKeyGridBackgroundHandler() KeyGridBackgroundHandler {
+	return p.KeyGridBackgroundHandler
 }
 
-func (k *KnobV3) GetTouchPanelBackground() string {
-	return k.TouchPanelBackground
-}
-
-func (k *KnobV3) GetTouchPanelBackgroundBuff() image.Image {
-	return k.TouchPanelBackgroundBuff
-}
-
-func (k *KnobV3) SetTouchPanelBackgroundBuff(img image.Image) {
-	k.TouchPanelBackgroundBuff = img
-}
-
-type KeyConfigV3 struct {
-	Icon                string            `json:"icon,omitempty"`
-	SwitchPage          int               `json:"switch_page,omitempty"`
-	Text                string            `json:"text,omitempty"`
-	TextSize            int               `json:"text_size,omitempty"`
-	TextAlignment       string            `json:"text_alignment,omitempty"`
-	FontFace            string            `json:"font_face,omitempty"`
-	TextColour          string            `json:"text_colour,omitempty"`
-	Keybind             string            `json:"keybind,omitempty"`
-	Command             string            `json:"command,omitempty"`
-	Brightness          int               `json:"brightness,omitempty"`
-	Url                 string            `json:"url,omitempty"`
-	KeyHold             int               `json:"key_hold,omitempty"`
-	ObsCommand          string            `json:"obs_command,omitempty"`
-	ObsCommandParams    map[string]string `json:"obs_command_params,omitempty"`
-	IconHandler         string            `json:"icon_handler,omitempty"`
-	KeyHandler          string            `json:"key_handler,omitempty"`
-	IconHandlerFields   map[string]any    `json:"icon_handler_fields,omitempty"`
-	KeyHandlerFields    map[string]any    `json:"key_handler_fields,omitempty"`
-	SharedHandlerFields map[string]any    `json:"shared_handler_fields,omitempty"`
-	Buff                image.Image       `json:"-"`
-	IconHandlerStruct   IconHandler       `json:"-"`
-	KeyHandlerStruct    KeyHandler        `json:"-"`
-	SharedState         map[string]any    `json:"-"`
-}
-
-type KnobConfigV3 struct {
-	Icon                     string             `json:"icon,omitempty"`
-	Text                     string             `json:"text,omitempty"`
-	TextSize                 int                `json:"text_size,omitempty"`
-	TextAlignment            string             `json:"text_alignment,omitempty"`
-	FontFace                 string             `json:"font_face,omitempty"`
-	TextColour               string             `json:"text_colour,omitempty"`
-	LcdHandler               string             `json:"lcd_handler,omitempty"`
-	KnobOrTouchHandler       string             `json:"knob_or_touch_handler,omitempty"`
-	Buff                     image.Image        `json:"-"`
-	LcdHandlerStruct         LcdHandler         `json:"-"`
-	KnobOrTouchHandlerStruct KnobOrTouchHandler `json:"-"`
-	LcdHandlerFields         map[string]any     `json:"lcd_handler_fields,omitempty"`
-	KnobOrTouchHandlerFields map[string]any     `json:"knob_or_touch_handler_fields,omitempty"`
-	SharedHandlerFields      map[string]any     `json:"shared_handler_fields,omitempty"`
-	KnobPressAction          KnobActionV3       `json:"knob_press_action,omitempty"`
-	KnobTurnUpAction         KnobActionV3       `json:"knob_turn_up_action,omitempty"`
-	KnobTurnDownAction       KnobActionV3       `json:"knob_turn_down_action,omitempty"`
-	SharedState              map[string]any     `json:"-"`
-	TouchPanelBackground     string             `json:"touch_panel_background"`
-	TouchPanelBackgroundBuff image.Image        `json:"-"`
-}
-
-func (kc *KnobConfigV3) GetTouchPanelBackground() string {
-	return kc.TouchPanelBackground
-}
-
-func (kc *KnobConfigV3) GetTouchPanelBackgroundBuff() image.Image {
-	return kc.TouchPanelBackgroundBuff
-}
-
-func (kc *KnobConfigV3) SetTouchPanelBackgroundBuff(img image.Image) {
-	kc.TouchPanelBackgroundBuff = img
-}
-
-type KnobActionV3 struct {
-	SwitchPage       int               `json:"switch_page,omitempty"`
-	Keybind          string            `json:"keybind,omitempty"`
-	Command          string            `json:"command,omitempty"`
-	Brightness       int               `json:"brightness,omitempty"`
-	Url              string            `json:"url,omitempty"`
-	ObsCommand       string            `json:"obs_command,omitempty"`
-	ObsCommandParams map[string]string `json:"obs_command_params,omitempty"`
+func (p *PageV3) GetKeyGridBackgroundHandlerFields() map[string]any {
+	return p.KeyGridBackgroundHandlerFields
 }
 
 type StreamDeckInfoV1 struct {
@@ -202,6 +165,8 @@ type StreamDeckInfoV1 struct {
 	LcdHeight        int       `json:"lcd_height,omitempty"`
 	LcdCols          int       `json:"lcd_cols,omitempty"`
 	KnobCols         int       `json:"knob_cols,omitempty"`
+	PaddingX         int       `json:"padding_x"`
+	PaddingY         int       `json:"padding_y"`
 }
 
 type ObsConnectionInfoV2 struct {

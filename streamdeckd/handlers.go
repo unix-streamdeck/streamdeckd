@@ -32,7 +32,6 @@ func RegisterModule(m api.Module) {
 func LoadModule(path string) {
 	plug, err := plugin.Open(path)
 	if err != nil {
-		//log.Println("Failed to load module: " + path)
 		log.Println(err)
 		return
 	}

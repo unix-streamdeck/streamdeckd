@@ -226,18 +226,32 @@ func HexColor(hex string) color.RGBA {
 	return color.RGBA{R: uint8(values >> 16), G: uint8((values >> 8) & 0xFF), B: uint8(values & 0xFF), A: 255}
 }
 
-func LayerImages(background, foreground image.Image) (image.Image, error) {
-	if background.Bounds().Size() != foreground.Bounds().Size() {
-		return nil, errors.New("images must be same size")
+func LayerImages(x, y int, images ...image.Image) (image.Image, error) {
+
+	if len(images) == 0 {
+		return nil, errors.New("no images supplied")
 	}
 
-	ggBG := gg.NewContext(foreground.Bounds().Size().X, foreground.Bounds().Size().Y)
+	layers := 0
 
-	ggBG.DrawImage(background, -background.Bounds().Min.X, -background.Bounds().Min.Y)
-	//ggBG.Translate(float64(-background.Bounds().Min.X), float64(-background.Bounds().Min.Y))
-	ggBG.DrawImage(foreground, 0, 0)
+	dst := image.NewRGBA(image.Rect(0, 0, x, y))
 
-	return ggBG.Image(), nil
+	for _, img := range images {
+		if img == nil {
+			continue
+		}
+		if img.Bounds().Dx() != x || img.Bounds().Dy() != y {
+			continue
+		}
+		layers += 1
+		draw.Copy(dst, dst.Bounds().Min, img, img.Bounds(), draw.Over, &draw.Options{})
+	}
+
+	if layers == 0 {
+		return nil, errors.New("no valid images supplied")
+	}
+
+	return dst, nil
 }
 
 func SubImage(img image.Image, x0, y0, x1, y1 int) image.Image {

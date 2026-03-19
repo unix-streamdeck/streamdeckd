@@ -1,22 +1,31 @@
 package api
 
 type Module struct {
-	Name              string                    `json:"name,omitempty"`
-	NewIcon           func() IconHandler        `json:"-"`
-	NewKey            func() KeyHandler         `json:"-"`
-	NewLcd            func() LcdHandler         `json:"-"`
-	NewKnobOrTouch    func() KnobOrTouchHandler `json:"-"`
-	IconFields        []Field                   `json:"icon_fields,omitempty"`
-	KeyFields         []Field                   `json:"key_fields,omitempty"`
-	LcdFields         []Field                   `json:"lcd_fields,omitempty"`
-	KnobOrTouchFields []Field                   `json:"knob_or_touch_fields,omitempty"`
-	LinkedFields      []Field                   `json:"linked_fields,omitempty"`
-	IsIcon            bool                      `json:"is_icon,omitempty"`
-	IsKey             bool                      `json:"is_key,omitempty"`
-	IsLcd             bool                      `json:"is_lcd,omitempty"`
-	IsKnob            bool                      `json:"is_knob,omitempty"`
-	IsLinkedHandlers  bool                      `json:"is_linked_handlers,omitempty"`
-	Linked            bool                      `json:"linked,omitempty"`
+	Name string `json:"name,omitempty"`
+
+	NewIcon                        func() IconHandler                 `json:"-"`
+	NewKey                         func() KeyHandler                  `json:"-"`
+	NewLcd                         func() LcdHandler                  `json:"-"`
+	NewKnobOrTouch                 func() KnobOrTouchHandler          `json:"-"`
+	NewKeyGridBackground           func() KeyGridBackgroundHandler    `json:"-"`
+	NewTouchPanelBackgroundHandler func() TouchPanelBackgroundHandler `json:"-"`
+
+	IconFields                 []Field `json:"icon_fields,omitempty"`
+	KeyFields                  []Field `json:"key_fields,omitempty"`
+	LcdFields                  []Field `json:"lcd_fields,omitempty"`
+	KnobOrTouchFields          []Field `json:"knob_or_touch_fields,omitempty"`
+	LinkedFields               []Field `json:"linked_fields,omitempty"`
+	KeyGridBackgroundFields    []Field `json:"key_grid_background_fields"`
+	TouchPanelBackgroundFields []Field `json:"touch_panel_background_fields"`
+
+	IsIcon                 bool `json:"is_icon,omitempty"`
+	IsKey                  bool `json:"is_key,omitempty"`
+	IsLcd                  bool `json:"is_lcd,omitempty"`
+	IsKnob                 bool `json:"is_knob,omitempty"`
+	IsLinkedHandlers       bool `json:"is_linked_handlers,omitempty"`
+	IsKeyGridBackground    bool `json:"is_key_grid_background"`
+	IsTouchPanelBackground bool `json:"is_touch_panel_background"`
+	Linked                 bool `json:"linked,omitempty"`
 }
 
 type FieldType string

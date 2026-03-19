@@ -5,30 +5,49 @@ import "image"
 type Handler interface {
 }
 
-type IconHandler interface {
+type VisualHandler interface {
 	Handler
-	Start(key KeyConfigV3, info StreamDeckInfoV1, callback func(image image.Image))
 	IsRunning() bool
 	SetRunning(running bool)
 	Stop()
 }
 
-type KeyHandler interface {
+type InputHandler interface {
 	Handler
+}
+
+type IconHandler interface {
+	VisualHandler
+	Start(key KeyConfigV3, info StreamDeckInfoV1, callback func(image image.Image))
+}
+
+type KeyHandler interface {
+	InputHandler
 	Key(key KeyConfigV3, info StreamDeckInfoV1)
 }
 
 type LcdHandler interface {
-	Handler
+	VisualHandler
 	Start(key KnobConfigV3, info StreamDeckInfoV1, callback func(image image.Image))
-	IsRunning() bool
-	SetRunning(running bool)
-	Stop()
 }
 
 type KnobOrTouchHandler interface {
-	Handler
+	InputHandler
 	Input(key KnobConfigV3, info StreamDeckInfoV1, event InputEvent)
+}
+
+type BackgroundHandler interface {
+	VisualHandler
+	Start(fields map[string]any, info StreamDeckInfoV1, callback func(images []image.Image))
+	StartIndividual(fields map[string]any, info StreamDeckInfoV1, callback func(img image.Image))
+}
+
+type KeyGridBackgroundHandler interface {
+	BackgroundHandler
+}
+
+type TouchPanelBackgroundHandler interface {
+	BackgroundHandler
 }
 
 type InputEventType uint8

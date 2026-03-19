@@ -20,6 +20,7 @@ import (
 var isRunning = true
 
 func main() {
+	log.Default().SetFlags(log.Lshortfile | log.Ltime)
 	checkDuplicateStreamdeckdInstance()
 	configPtr := flag.String("config", "", "Path to config file")
 	flag.Parse()

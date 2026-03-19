@@ -35,6 +35,10 @@ func SetKey(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, keyIndex int, pa
 		log.Println("Restarting SetKey")
 		go SetKey(dev, currentKeyConfig, keyIndex, page, activeApp)
 	})
+
+	go dev.setIndividualKeyBackground(currentKeyConfig, keyIndex, dev.sdInfo.IconSize, dev.sdInfo.IconSize)
+
+	dev.CompositeKeyImage(keyIndex, page)
 	if currentKeyConfig.IconHandler != "" {
 		SetKeyImageHandler(dev, currentKeyConfig, keyIndex, page, activeApp)
 	}
@@ -72,39 +76,35 @@ func SetKeyImageHandler(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, keyI
 		if image.Bounds().Max.X != int(dev.Deck.Pixels) || image.Bounds().Max.Y != int(dev.Deck.Pixels) {
 			image = api.ResizeImage(image, int(dev.Deck.Pixels))
 		}
-		dev.SetImage(image, keyIndex, page)
-		currentKeyConfig.Buff = image
+		dev.SetKeyForeground(image, keyIndex, page)
 	})
 }
 
 func SetKeyImageHandlerless(dev *VirtualDev, currentKeyConfig *api.KeyConfigV3, keyIndex int, page int) {
-	if currentKeyConfig.Buff == nil {
-		if currentKeyConfig.Icon == "" {
-			img := image.NewRGBA(image.Rect(0, 0, int(dev.Deck.Pixels), int(dev.Deck.Pixels)))
-			currentKeyConfig.Buff = img
-		} else {
-			img, err := LoadImage(currentKeyConfig.Icon)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			currentKeyConfig.Buff = img
-		}
-		if currentKeyConfig.Text != "" {
-			img, err := api.DrawText(currentKeyConfig.Buff, currentKeyConfig.Text, api.DrawTextOptions{
-				FontSize:          int64(currentKeyConfig.TextSize),
-				VerticalAlignment: api.VerticalAlignment(currentKeyConfig.TextAlignment),
-				FontFace:          currentKeyConfig.FontFace,
-				Colour:            currentKeyConfig.TextColour,
-			})
-			if err != nil {
-				log.Println(err)
-			} else {
-				currentKeyConfig.Buff = img
-			}
+	var img image.Image
+	if currentKeyConfig.Icon == "" {
+		img = image.NewRGBA(image.Rect(0, 0, int(dev.Deck.Pixels), int(dev.Deck.Pixels)))
+	} else {
+		var err error
+		img, err = LoadImage(currentKeyConfig.Icon)
+		if err != nil {
+			log.Println(err)
+			return
 		}
 	}
-	dev.SetImage(currentKeyConfig.Buff, keyIndex, page)
+	if currentKeyConfig.Text != "" {
+		var err error
+		img, err = api.DrawText(img, currentKeyConfig.Text, api.DrawTextOptions{
+			FontSize:          int64(currentKeyConfig.TextSize),
+			VerticalAlignment: api.VerticalAlignment(currentKeyConfig.TextAlignment),
+			FontFace:          currentKeyConfig.FontFace,
+			Colour:            currentKeyConfig.TextColour,
+		})
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	dev.SetKeyForeground(img, keyIndex, page)
 }
 
 func SetKnob(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIndex int, page int, activeApp string) {
@@ -112,6 +112,10 @@ func SetKnob(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIndex int
 		log.Println("Restarting SetKnob")
 		go SetKnob(dev, currentKnobConfig, knobIndex, page, activeApp)
 	})
+
+	go dev.setIndividualLcdBackground(currentKnobConfig, knobIndex, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
+
+	dev.CompositePanelImage(knobIndex, page)
 	if currentKnobConfig.LcdHandler != "" {
 		SetKnobHandler(dev, currentKnobConfig, knobIndex, page, activeApp)
 	}
@@ -121,34 +125,30 @@ func SetKnob(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIndex int
 }
 
 func SetKnobHandlerless(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIndex int, page int) {
-	if currentKnobConfig.Buff == nil {
-		if currentKnobConfig.Icon == "" {
-			img := image.NewRGBA(image.Rect(0, 0, 200, 100))
-			currentKnobConfig.Buff = img
-		} else {
-			img, err := LoadImage(currentKnobConfig.Icon)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			currentKnobConfig.Buff = img
+	var img image.Image
+	if currentKnobConfig.Icon == "" {
+		img = image.NewRGBA(image.Rect(0, 0, 200, 100))
+	} else {
+		var err error
+		img, err = LoadImage(currentKnobConfig.Icon)
+		if err != nil {
+			log.Println(err)
+			return
 		}
-		if currentKnobConfig.Text != "" {
-			img, err := api.DrawText(currentKnobConfig.Buff, currentKnobConfig.Text, api.DrawTextOptions{
-				FontSize:          int64(currentKnobConfig.TextSize),
-				VerticalAlignment: api.VerticalAlignment(currentKnobConfig.TextAlignment),
-				FontFace:          currentKnobConfig.FontFace,
-				Colour:            currentKnobConfig.TextColour,
-			})
-			if err != nil {
-				log.Println(err)
-			} else {
-				currentKnobConfig.Buff = img
-			}
-		}
-		currentKnobConfig.Buff = api.ResizeImageWH(currentKnobConfig.Buff, 200, 100)
 	}
-	dev.SetPanelImage(currentKnobConfig.Buff, knobIndex, page)
+	if currentKnobConfig.Text != "" {
+		var err error
+		img, err = api.DrawText(img, currentKnobConfig.Text, api.DrawTextOptions{
+			FontSize:          int64(currentKnobConfig.TextSize),
+			VerticalAlignment: api.VerticalAlignment(currentKnobConfig.TextAlignment),
+			FontFace:          currentKnobConfig.FontFace,
+			Colour:            currentKnobConfig.TextColour,
+		})
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	dev.SetPanelForeground(img, knobIndex, page)
 }
 
 func SetKnobHandler(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIndex int, page int, activeApp string) {
@@ -177,12 +177,12 @@ func SetKnobHandler(dev *VirtualDev, currentKnobConfig *api.KnobConfigV3, knobIn
 	} else {
 		trimmedKnobConfig.SharedState = make(map[string]any)
 	}
-	currentKnobConfig.LcdHandlerStruct.Start(trimmedKnobConfig, dev.sdInfo, func(image image.Image) {
+
+	go currentKnobConfig.LcdHandlerStruct.Start(trimmedKnobConfig, dev.sdInfo, func(image image.Image) {
 		if image.Bounds().Max.X != int(dev.Deck.LcdWidth) || image.Bounds().Max.Y != int(dev.Deck.LcdHeight) {
 			image = api.ResizeImageWH(image, int(dev.Deck.LcdWidth), int(dev.Deck.LcdHeight))
 		}
-		dev.SetPanelImage(image, knobIndex, page)
-		currentKnobConfig.Buff = image
+		dev.SetPanelForeground(image, knobIndex, page)
 	})
 }
 
@@ -204,7 +204,6 @@ func RunCommand(command string) {
 }
 
 func HandleKeyInput(dev *VirtualDev, key *api.KeyV3, keyDown bool) {
-	log.Println(key.ActiveApplication)
 	keyConfig, ok := key.Application[key.ActiveApplication]
 	if !ok {
 		log.Println("Err getting correct config for key")

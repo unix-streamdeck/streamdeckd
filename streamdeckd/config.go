@@ -2,10 +2,11 @@ package streamdeckd
 
 import (
 	"encoding/json"
-	"github.com/unix-streamdeck/api/v2"
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/unix-streamdeck/api/v2"
 )
 
 var configPath string

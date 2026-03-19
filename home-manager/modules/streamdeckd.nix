@@ -32,10 +32,20 @@ in {
                   default = null;
                   description = "Background image for the touch panel";
                 };
+                touch_panel_background_handler_fields = lib.mkOption {
+                  type = lib.types.nullOr lib.types.attrs;
+                  default = null;
+                  description = "Touch panel background handler configuration fields";
+                };
                 key_grid_background = lib.mkOption {
                   type = lib.types.nullOr lib.types.str;
                   default = null;
                   description = "Background image for the key grid";
+                };
+                key_grid_background_handler_fields = lib.mkOption {
+                  type = lib.types.nullOr lib.types.attrs;
+                  default = null;
+                  description = "Key grid background handler configuration fields";
                 };
                 pages = lib.mkOption {
                   type = lib.types.listOf (lib.types.submodule {
@@ -43,9 +53,29 @@ in {
                       keys = lib.mkOption {
                         type = lib.types.listOf (lib.types.submodule {
                           options = {
+                            background = lib.mkOption {
+                              type = lib.types.nullOr lib.types.str;
+                              default = null;
+                              description = "Background image for the key";
+                            };
+                            key_background_handler_fields = lib.mkOption {
+                              type = lib.types.nullOr lib.types.attrs;
+                              default = null;
+                              description = "Key background handler configuration fields";
+                            };
                             application = lib.mkOption {
                               type = lib.types.nullOr (lib.types.attrsOf (lib.types.submodule {
                                 options = {
+                                  background = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.str;
+                                    default = null;
+                                    description = "Background image for the key";
+                                  };
+                                  key_background_handler_fields = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.attrs;
+                                    default = null;
+                                    description = "Key background handler configuration fields";
+                                  };
                                   icon = lib.mkOption {
                                     type = lib.types.nullOr lib.types.str;
                                     default = null;
@@ -154,6 +184,16 @@ in {
                       knobs = lib.mkOption {
                         type = lib.types.listOf (lib.types.submodule {
                           options = {
+                            touch_panel_background = lib.mkOption {
+                              type = lib.types.nullOr lib.types.str;
+                              default = null;
+                              description = "Background image for the touch panel";
+                            };
+                            touch_panel_background_handler_fields = lib.mkOption {
+                              type = lib.types.nullOr lib.types.attrs;
+                              default = null;
+                              description = "Touch panel background handler configuration fields";
+                            };
                             application = lib.mkOption {
                               type = lib.types.nullOr (lib.types.attrsOf (lib.types.submodule {
                                 options = {
@@ -161,6 +201,11 @@ in {
                                     type = lib.types.nullOr lib.types.str;
                                     default = null;
                                     description = "Background image for the touch panel";
+                                  };
+                                  touch_panel_background_handler_fields = lib.mkOption {
+                                    type = lib.types.nullOr lib.types.attrs;
+                                    default = null;
+                                    description = "Touch panel background handler configuration fields";
                                   };
                                   icon = lib.mkOption {
                                     type = lib.types.nullOr lib.types.str;
@@ -351,11 +396,6 @@ in {
                               default = null;
                               description = "Application-specific knob configurations";
                             };
-                            touch_panel_background = lib.mkOption {
-                              type = lib.types.nullOr lib.types.str;
-                              default = null;
-                              description = "Background image for the touch panel";
-                            };
                           };
                         });
                         default = [];
@@ -366,10 +406,20 @@ in {
                         default = null;
                         description = "Background image for the touch panel";
                       };
+                      touch_panel_background_handler_fields = lib.mkOption {
+                        type = lib.types.nullOr lib.types.attrs;
+                        default = null;
+                        description = "Touch panel background handler configuration fields";
+                      };
                       key_grid_background = lib.mkOption {
                         type = lib.types.nullOr lib.types.str;
                         default = null;
                         description = "Background image for the key grid";
+                      };
+                      key_grid_background_handler_fields = lib.mkOption {
+                        type = lib.types.nullOr lib.types.attrs;
+                        default = null;
+                        description = "Key grid background handler configuration fields";
                       };
                     };
                   });

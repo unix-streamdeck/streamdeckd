@@ -1,0 +1,146 @@
+package gif
+
+import (
+	"context"
+	"image"
+	"image/draw"
+	"image/gif"
+	"log"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/unix-streamdeck/api/v2"
+	"golang.org/x/sync/semaphore"
+)
+
+type GifTouchPanelBackgroundHandler struct {
+	Running bool
+	Lock    *semaphore.Weighted
+	Quit    chan bool
+	Gifs    []*image.Paletted
+}
+
+func (s *GifTouchPanelBackgroundHandler) StartIndividual(fields map[string]any, info api.StreamDeckInfoV1, callback func(img image.Image)) {
+	log.Println("Not Implemented")
+	return
+}
+
+func (s *GifTouchPanelBackgroundHandler) Start(fields map[string]any, info api.StreamDeckInfoV1, callback func(imgs []image.Image)) {
+	if s.Quit == nil {
+		s.Quit = make(chan bool)
+	}
+	if s.Lock == nil {
+		s.Lock = semaphore.NewWeighted(1)
+	}
+	s.Running = true
+	icon, ok := fields["icon"]
+	if !ok {
+		return
+	}
+	f, err := os.Open(icon.(string))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	gifs, err := gif.DecodeAll(f)
+	s.Gifs = gifs.Image
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	timeDelay := gifs.Delay[0]
+	if timeDelay < 1 {
+		timeDelay = 8
+	}
+	frames := make([][]image.Image, len(gifs.Image))
+
+	overPaintImage := image.NewRGBA(image.Rect(0, 0, info.LcdWidth*info.LcdCols, info.LcdHeight))
+	draw.Draw(overPaintImage, overPaintImage.Bounds(), api.ResizeImageWH(gifs.Image[0], info.LcdWidth*info.LcdCols, info.LcdHeight), image.ZP, draw.Src)
+
+	for i, frame := range gifs.Image {
+		draw.Draw(overPaintImage, overPaintImage.Bounds(), api.ResizeImageWH(frame, info.LcdWidth*info.LcdCols, info.LcdHeight), image.ZP, draw.Over)
+		frame := image.NewRGBA(image.Rect(0, 0, info.LcdWidth*info.LcdCols, info.LcdHeight))
+		draw.Draw(frame, frame.Bounds(), overPaintImage, image.ZP, draw.Over)
+		img := frame.SubImage(frame.Rect)
+		text, ok := fields["text"]
+		if ok {
+			text_size, ok := fields["text_size"]
+			var size int64
+			if ok {
+				size, _ = strconv.ParseInt(text_size.(string), 10, 0)
+			} else {
+				size = 0
+			}
+			alignment, ok := fields["text_alignment"]
+			if !ok {
+				alignment = ""
+			}
+			fontFace, ok := fields["font_face"]
+			if !ok {
+				fontFace = ""
+			}
+			textColour, ok := fields["text_colour"]
+			if !ok {
+				textColour = ""
+			}
+			img, err = api.DrawText(img, text.(string), api.DrawTextOptions{
+				FontSize:          size,
+				VerticalAlignment: api.VerticalAlignment(alignment.(string)),
+				FontFace:          fontFace.(string),
+				Colour:            textColour.(string),
+			})
+			if err != nil {
+				log.Println(err)
+			}
+		}
+		var frameArr []image.Image
+		for lcdIndex := range info.LcdCols {
+			x0, y0 := info.LcdWidth*lcdIndex, 0
+			x1, y1 := info.LcdWidth*(lcdIndex+1), info.LcdHeight
+
+			subImage := api.SubImage(img, x0, y0, x1, y1)
+
+			frameArr = append(frameArr, subImage)
+		}
+		frames[i] = frameArr
+	}
+	go s.loop(frames, timeDelay, callback)
+}
+
+func (s *GifTouchPanelBackgroundHandler) IsRunning() bool {
+	return s.Running
+}
+
+func (s *GifTouchPanelBackgroundHandler) SetRunning(running bool) {
+	s.Running = running
+}
+
+func (s *GifTouchPanelBackgroundHandler) Stop() {
+	s.Running = false
+	s.Quit <- true
+}
+
+func (s *GifTouchPanelBackgroundHandler) loop(frames [][]image.Image, timeDelay int, callback func(image []image.Image)) {
+	ctx := context.Background()
+	err := s.Lock.Acquire(ctx, 1)
+	if err != nil {
+		return
+	}
+	defer s.Lock.Release(1)
+	gifIndex := 0
+	for {
+		select {
+		case <-s.Quit:
+			return
+		default:
+			img := frames[gifIndex]
+			callback(img)
+			gifIndex++
+			if gifIndex >= len(frames) {
+				gifIndex = 0
+			}
+			time.Sleep(time.Duration(timeDelay*10) * time.Millisecond)
+		}
+	}
+}
