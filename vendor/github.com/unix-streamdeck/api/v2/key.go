@@ -69,7 +69,6 @@ type KeyConfigV3 struct {
 	SharedHandlerFields        map[string]any    `json:"shared_handler_fields,omitempty"`
 	IconHandlerStruct          ForegroundHandler `json:"-"`
 	KeyHandlerStruct           InputHandler      `json:"-"`
-	SharedState                map[string]any    `json:"-"`
 	KeyBackground              string            `json:"background"`
 	KeyBackgroundBuff          image.Image       `json:"-"`
 	KeyBackgroundHandler       BackgroundHandler `json:"-"`

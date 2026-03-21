@@ -3,7 +3,6 @@ package streamdeckd
 import (
 	"image"
 	"log"
-	"math"
 
 	"github.com/unix-streamdeck/api/v2"
 )
@@ -55,14 +54,7 @@ func (bg *Backgrounder) setLcdBackground(backgrounder api.LcdBackgrounder) {
 
 	img = api.ResizeImageWH(img, bg.sdInfo.LcdBackgroundWidth, bg.sdInfo.LcdBackgroundHeight)
 
-	var imgs []image.Image
-
-	for lcdIndex := range bg.sdInfo.LcdCols {
-		x0, y0 := bg.sdInfo.LcdWidth*lcdIndex, 0
-		x1, y1 := bg.sdInfo.LcdWidth*(lcdIndex+1), bg.sdInfo.LcdHeight
-
-		imgs = append(imgs, api.SubImage(img, x0, y0, x1, y1))
-	}
+	imgs := bg.sdInfo.SplitBackgroundImage(img, api.LCD)
 
 	backgrounder.SetTouchPanelBackgroundBuff(imgs)
 
@@ -113,16 +105,8 @@ func (bg *Backgrounder) setKeyBackground(backgrounder api.KeyGridBackgrounder) {
 
 	img = api.ResizeImageWH(img, bg.sdInfo.KeyGridBackgroundWidth, bg.sdInfo.KeyGridBackgroundHeight)
 
-	var imgs []image.Image
-	for keyIndex := range bg.sdInfo.Cols * bg.sdInfo.Rows {
-		keyX := keyIndex % bg.sdInfo.Cols
-		keyY := int(math.Floor(float64(keyIndex) / float64(bg.sdInfo.Cols)))
+	imgs := bg.sdInfo.SplitBackgroundImage(img, api.KEY)
 
-		x0, y0 := keyX*(bg.sdInfo.IconSize+bg.sdInfo.PaddingX), keyY*(bg.sdInfo.IconSize+bg.sdInfo.PaddingY)
-		x1, y1 := keyX*(bg.sdInfo.IconSize+bg.sdInfo.PaddingX)+bg.sdInfo.IconSize, keyY*(bg.sdInfo.IconSize+bg.sdInfo.PaddingY)+bg.sdInfo.IconSize
-
-		imgs = append(imgs, api.SubImage(img, x0, y0, x1, y1))
-	}
 	backgrounder.SetKeyGridBackgroundBuff(imgs)
 
 	for index, _ := range imgs {

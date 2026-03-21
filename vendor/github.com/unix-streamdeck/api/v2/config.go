@@ -2,6 +2,7 @@ package api
 
 import (
 	"image"
+	"math"
 	"time"
 )
 
@@ -201,9 +202,36 @@ func (info StreamDeckInfoV1) GetDimensions(handlerType HandlerType) (int, int) {
 
 func (info StreamDeckInfoV1) GetGridDimensions(handlerType HandlerType) (int, int) {
 	if handlerType == LCD {
-		return info.LcdBackgroundHeight, info.LcdBackgroundHeight
+		return info.LcdBackgroundWidth, info.LcdBackgroundHeight
 	}
 	return info.KeyGridBackgroundWidth, info.KeyGridBackgroundHeight
+}
+
+func (info StreamDeckInfoV1) SplitBackgroundImage(background image.Image, handlerType HandlerType) []image.Image {
+	var frameArr []image.Image
+
+	if handlerType == KEY {
+		for keyIndex := range info.Cols * info.Rows {
+			keyX := keyIndex % info.Cols
+			keyY := int(math.Floor(float64(keyIndex) / float64(info.Cols)))
+
+			x0, y0 := keyX*(info.IconSize+info.PaddingX), keyY*(info.IconSize+info.PaddingY)
+			x1, y1 := keyX*(info.IconSize+info.PaddingX)+info.IconSize, keyY*(info.IconSize+info.PaddingY)+info.IconSize
+
+			frameArr = append(frameArr, SubImage(background, x0, y0, x1, y1))
+		}
+	} else {
+		for lcdIndex := range info.LcdCols {
+			x0, y0 := info.LcdWidth*lcdIndex, 0
+			x1, y1 := info.LcdWidth*(lcdIndex+1), info.LcdHeight
+
+			subImage := SubImage(background, x0, y0, x1, y1)
+
+			frameArr = append(frameArr, subImage)
+		}
+	}
+
+	return frameArr
 }
 
 type ObsConnectionInfoV2 struct {

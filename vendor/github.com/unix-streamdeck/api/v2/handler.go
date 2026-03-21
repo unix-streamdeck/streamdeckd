@@ -22,6 +22,11 @@ type ForegroundHandler interface {
 	Start(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(image image.Image))
 }
 
+type CombinedHandler interface {
+	VisualHandler
+	InputHandler
+}
+
 type BackgroundHandler interface {
 	ForegroundHandler
 	StartGrid(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(images []image.Image))

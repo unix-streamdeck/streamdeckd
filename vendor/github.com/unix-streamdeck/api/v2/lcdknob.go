@@ -100,7 +100,6 @@ type KnobConfigV3 struct {
 	KnobPressAction                   KnobActionV3      `json:"knob_press_action,omitempty"`
 	KnobTurnUpAction                  KnobActionV3      `json:"knob_turn_up_action,omitempty"`
 	KnobTurnDownAction                KnobActionV3      `json:"knob_turn_down_action,omitempty"`
-	SharedState                       map[string]any    `json:"-"`
 	TouchPanelBackground              string            `json:"touch_panel_background"`
 	TouchPanelBackgroundBuff          image.Image       `json:"-"`
 	TouchPanelBackgroundHandler       ForegroundHandler `json:"-"`

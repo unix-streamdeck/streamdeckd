@@ -45,14 +45,9 @@ func (f *Foregrounder) SetKnobHandler(currentKnobConfig *api.KnobConfigV3, knobI
 	}
 	f.vdev.logger.Printf("Started %s on knob %d with app profile %s\n", currentKnobConfig.LcdHandler, knobIndex, activeApp)
 	trimmedKnobConfig := api.KnobConfigV3{LcdHandlerFields: currentKnobConfig.LcdHandlerFields}
+
 	if currentKnobConfig.LcdHandler == currentKnobConfig.KnobOrTouchHandler {
-		if currentKnobConfig.SharedState == nil {
-			currentKnobConfig.SharedState = make(map[string]any)
-		}
-		trimmedKnobConfig.SharedState = currentKnobConfig.SharedState
 		trimmedKnobConfig.LcdHandlerFields = mergeSharedConfig(currentKnobConfig.SharedHandlerFields, currentKnobConfig.LcdHandlerFields)
-	} else {
-		trimmedKnobConfig.SharedState = make(map[string]any)
 	}
 
 	go currentKnobConfig.LcdHandlerStruct.Start(trimmedKnobConfig.LcdHandlerFields,
@@ -98,15 +93,11 @@ func (f *Foregrounder) SetKeyHandler(currentKeyConfig *api.KeyConfigV3, keyIndex
 	}
 	f.vdev.logger.Printf("Started %s on key %d with app profile `%s`\n", currentKeyConfig.IconHandler, keyIndex, activeApp)
 	trimmedKeyConfig := api.KeyConfigV3{IconHandlerFields: currentKeyConfig.IconHandlerFields}
+
 	if currentKeyConfig.IconHandler == currentKeyConfig.KeyHandler {
-		if currentKeyConfig.SharedState == nil {
-			currentKeyConfig.SharedState = make(map[string]any)
-		}
-		trimmedKeyConfig.SharedState = currentKeyConfig.SharedState
 		trimmedKeyConfig.IconHandlerFields = mergeSharedConfig(currentKeyConfig.SharedHandlerFields, currentKeyConfig.IconHandlerFields)
-	} else {
-		trimmedKeyConfig.SharedState = make(map[string]any)
 	}
+
 	currentKeyConfig.IconHandlerStruct.Start(trimmedKeyConfig.IconHandlerFields,
 		api.KEY, f.vdev.sdInfo, func(image image.Image) {
 			if image.Bounds().Max.X != f.vdev.sdInfo.IconSize || image.Bounds().Max.Y != f.vdev.sdInfo.IconSize {

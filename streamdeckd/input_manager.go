@@ -37,10 +37,12 @@ func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEve
 			}
 			trimmedKeyConfig := api.KeyConfigV3{KeyHandlerFields: keyConfig.KeyHandlerFields}
 			if keyConfig.IconHandler == keyConfig.KeyHandler {
-				trimmedKeyConfig.SharedState = keyConfig.SharedState
 				trimmedKeyConfig.KeyHandlerFields = mergeSharedConfig(keyConfig.SharedHandlerFields, keyConfig.KeyHandlerFields)
-			} else {
-				trimmedKeyConfig.SharedState = make(map[string]any)
+				iconHandler := keyConfig.IconHandlerStruct
+				comboHandler, ok := iconHandler.(api.CombinedHandler)
+				if ok {
+					keyConfig.KeyHandlerStruct = comboHandler
+				}
 			}
 			keyConfig.KeyHandlerStruct.Input(trimmedKeyConfig.KeyHandlerFields, api.KEY, deckInfo, api.InputEvent{
 				EventType:     api.InputEventType(event.EventType),
@@ -88,10 +90,12 @@ func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.Input
 		}
 		trimmedKnobConfig := api.KnobConfigV3{KnobOrTouchHandlerFields: knobConfig.KnobOrTouchHandlerFields}
 		if knobConfig.LcdHandler == knobConfig.KnobOrTouchHandler {
-			trimmedKnobConfig.SharedState = knobConfig.SharedState
 			trimmedKnobConfig.KnobOrTouchHandlerFields = mergeSharedConfig(knobConfig.SharedHandlerFields, knobConfig.KnobOrTouchHandlerFields)
-		} else {
-			trimmedKnobConfig.SharedState = make(map[string]any)
+			iconHandler := knobConfig.LcdHandlerStruct
+			comboHandler, ok := iconHandler.(api.CombinedHandler)
+			if ok {
+				knobConfig.KnobOrTouchHandlerStruct = comboHandler
+			}
 		}
 		knobConfig.KnobOrTouchHandlerStruct.Input(trimmedKnobConfig.KnobOrTouchHandlerFields, api.LCD, deckInfo, api.InputEvent{
 			EventType:     api.InputEventType(event.EventType),
