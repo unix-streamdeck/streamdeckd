@@ -52,15 +52,6 @@ func LoadModule(path string) {
 func UnmountHandlers() {
 	for s := range Devs {
 		dev := Devs[s]
-		dev.UnmountHandlers()
+		dev.handlerPruner.StopAllHandlers()
 	}
-}
-
-func UnmountKeyHandler(keyConfig *api.KeyConfigV3) {
-	keyConfig.IconHandlerStruct.Stop()
-	log.Printf("Stopped %s\n", keyConfig.IconHandler)
-}
-func UnmountKnobHandler(keyConfig *api.KnobConfigV3) {
-	keyConfig.LcdHandlerStruct.Stop()
-	log.Printf("Stopped %s\n", keyConfig.LcdHandler)
 }

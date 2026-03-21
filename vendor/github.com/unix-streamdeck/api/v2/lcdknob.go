@@ -55,11 +55,39 @@ type KnobActionV3 struct {
 	ObsCommandParams map[string]string `json:"obs_command_params,omitempty"`
 }
 
+func (k *KnobActionV3) GetSwitchPage() int {
+	return k.SwitchPage
+}
+
+func (k *KnobActionV3) GetKeyBind() string {
+	return k.Keybind
+}
+
+func (k *KnobActionV3) GetCommand() string {
+	return k.Command
+}
+
+func (k *KnobActionV3) GetBrightness() int {
+	return k.Brightness
+}
+
+func (k *KnobActionV3) GetUrl() string {
+	return k.Url
+}
+
+func (k *KnobActionV3) GetObsCommand() string {
+	return k.ObsCommand
+}
+
+func (k *KnobActionV3) GetObsCommandParams() map[string]string {
+	return k.ObsCommandParams
+}
+
 type KnobConfigV3 struct {
 	Icon                              string                      `json:"icon,omitempty"`
 	Text                              string                      `json:"text,omitempty"`
 	TextSize                          int                         `json:"text_size,omitempty"`
-	TextAlignment                     string                      `json:"text_alignment,omitempty"`
+	TextAlignment                     VerticalAlignment           `json:"text_alignment,omitempty"`
 	FontFace                          string                      `json:"font_face,omitempty"`
 	TextColour                        string                      `json:"text_colour,omitempty"`
 	LcdHandler                        string                      `json:"lcd_handler,omitempty"`
@@ -77,6 +105,30 @@ type KnobConfigV3 struct {
 	TouchPanelBackgroundBuff          image.Image                 `json:"-"`
 	TouchPanelBackgroundHandler       TouchPanelBackgroundHandler `json:"-"`
 	TouchPanelBackgroundHandlerFields map[string]any              `json:"touch_panel_background_handler_fields"`
+}
+
+func (kc *KnobConfigV3) GetIcon() string {
+	return kc.Icon
+}
+
+func (kc *KnobConfigV3) GetText() string {
+	return kc.Text
+}
+
+func (kc *KnobConfigV3) GetTextSize() int {
+	return kc.TextSize
+}
+
+func (kc *KnobConfigV3) GetTextAlignment() VerticalAlignment {
+	return kc.TextAlignment
+}
+
+func (kc *KnobConfigV3) GetFontFace() string {
+	return kc.FontFace
+}
+
+func (kc *KnobConfigV3) GetTextColour() string {
+	return kc.TextColour
 }
 
 func (kc *KnobConfigV3) GetTouchPanelBackgroundHandlerFields() map[string]any {

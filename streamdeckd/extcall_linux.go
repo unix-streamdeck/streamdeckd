@@ -46,13 +46,7 @@ func UpdateApplication() {
 
 func setApplication(activePs string) {
 	activePs = strings.Trim(activePs, "\n")
-	if currentApplication != activePs {
-		currentApplication = activePs
-		log.Println("Application updated to: " + currentApplication)
-		for _, dev := range Devs {
-			dev.ApplicationUpdated()
-		}
-	}
+	applicationManager.SetApplication(activePs)
 }
 
 type HyprlandActiveWindow struct {

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/unix-streamdeck/api/v2"
+	streamdeck "github.com/unix-streamdeck/driver"
 )
 
 var configPath string
@@ -17,7 +18,6 @@ var basicConfig = api.ConfigV3{
 	},
 }
 var config *api.ConfigV3
-var migrateConfigFromV1 = false
 
 func LoadConfig() {
 	var err error
@@ -76,7 +76,7 @@ func SetConfig(configString string) error {
 				dev.Config = config.Decks[i]
 			}
 		}
-		dev.SetPage(Devs[s].Page)
+		dev.pageManager.SetPage(Devs[s].pageManager.page)
 	}
 	return nil
 }
@@ -91,7 +91,7 @@ func ReloadConfig() error {
 				dev.Config = config.Decks[i]
 			}
 		}
-		dev.SetPage(Devs[s].Page)
+		dev.pageManager.SetPage(Devs[s].pageManager.page)
 	}
 	return nil
 }
@@ -132,4 +132,31 @@ func SetConfigPath(path string) {
 		}
 		configPath = basePath + string(os.PathSeparator) + ".streamdeck-config.json"
 	}
+}
+
+func findConfig(device *streamdeck.Device) api.DeckV3 {
+	for _, deck := range config.Decks {
+		if deck.Serial == device.Serial {
+			return deck
+		}
+	}
+
+	return makeEmptyDeckConfig(device)
+}
+
+func makeEmptyDeckConfig(device *streamdeck.Device) api.DeckV3 {
+	var pages []api.PageV3
+	page := api.PageV3{}
+	for i := 0; i < int(device.Rows)*int(device.Columns); i++ {
+		applications := make(map[string]*api.KeyConfigV3)
+		applications[""] = &api.KeyConfigV3{}
+		page.Keys = append(page.Keys, api.KeyV3{
+			Application: applications,
+		})
+	}
+	pages = append(pages, page)
+	devConf := api.DeckV3{Serial: device.Serial, Pages: pages}
+	config.Decks = append(config.Decks, devConf)
+	_ = SaveConfig()
+	return devConf
 }

@@ -49,12 +49,12 @@ func (k *KeyV3) GetKeyBackgroundHandler() KeyGridBackgroundHandler {
 
 type KeyConfigV3 struct {
 	Icon                       string                   `json:"icon,omitempty"`
-	SwitchPage                 int                      `json:"switch_page,omitempty"`
 	Text                       string                   `json:"text,omitempty"`
 	TextSize                   int                      `json:"text_size,omitempty"`
-	TextAlignment              string                   `json:"text_alignment,omitempty"`
+	TextAlignment              VerticalAlignment        `json:"text_alignment,omitempty"`
 	FontFace                   string                   `json:"font_face,omitempty"`
 	TextColour                 string                   `json:"text_colour,omitempty"`
+	SwitchPage                 int                      `json:"switch_page,omitempty"`
 	Keybind                    string                   `json:"keybind,omitempty"`
 	Command                    string                   `json:"command,omitempty"`
 	Brightness                 int                      `json:"brightness,omitempty"`
@@ -74,6 +74,58 @@ type KeyConfigV3 struct {
 	KeyBackgroundBuff          image.Image              `json:"-"`
 	KeyBackgroundHandler       KeyGridBackgroundHandler `json:"-"`
 	KeyBackgroundHandlerFields map[string]any           `json:"key_background_handler_fields"`
+}
+
+func (kc *KeyConfigV3) GetIcon() string {
+	return kc.Icon
+}
+
+func (kc *KeyConfigV3) GetText() string {
+	return kc.Text
+}
+
+func (kc *KeyConfigV3) GetTextSize() int {
+	return kc.TextSize
+}
+
+func (kc *KeyConfigV3) GetTextAlignment() VerticalAlignment {
+	return kc.TextAlignment
+}
+
+func (kc *KeyConfigV3) GetFontFace() string {
+	return kc.FontFace
+}
+
+func (kc *KeyConfigV3) GetTextColour() string {
+	return kc.TextColour
+}
+
+func (kc *KeyConfigV3) GetSwitchPage() int {
+	return kc.SwitchPage
+}
+
+func (kc *KeyConfigV3) GetKeyBind() string {
+	return kc.Keybind
+}
+
+func (kc *KeyConfigV3) GetCommand() string {
+	return kc.Command
+}
+
+func (kc *KeyConfigV3) GetBrightness() int {
+	return kc.Brightness
+}
+
+func (kc *KeyConfigV3) GetUrl() string {
+	return kc.Url
+}
+
+func (kc *KeyConfigV3) GetObsCommand() string {
+	return kc.ObsCommand
+}
+
+func (kc *KeyConfigV3) GetObsCommandParams() map[string]string {
+	return kc.ObsCommandParams
 }
 
 func (kc *KeyConfigV3) GetKeyBackgroundHandlerFields() map[string]any {

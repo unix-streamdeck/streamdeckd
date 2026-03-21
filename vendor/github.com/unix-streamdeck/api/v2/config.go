@@ -23,6 +23,25 @@ type KeyGridBackgrounder interface {
 	GetKeyGridBackgroundHandlerFields() map[string]any
 }
 
+type InputActions interface {
+	GetSwitchPage() int
+	GetKeyBind() string
+	GetCommand() string
+	GetBrightness() int
+	GetUrl() string
+	GetObsCommand() string
+	GetObsCommandParams() map[string]string
+}
+
+type ForegroundActions interface {
+	GetIcon() string
+	GetText() string
+	GetTextSize() int
+	GetTextAlignment() VerticalAlignment
+	GetFontFace() string
+	GetTextColour() string
+}
+
 type ConfigV3 struct {
 	Modules           []string            `json:"modules,omitempty"`
 	Decks             []DeckV3            `json:"decks"`
@@ -152,21 +171,25 @@ func (p *PageV3) GetKeyGridBackgroundHandlerFields() map[string]any {
 }
 
 type StreamDeckInfoV1 struct {
-	Cols             int       `json:"cols,omitempty"`
-	Rows             int       `json:"rows,omitempty"`
-	IconSize         int       `json:"icon_size,omitempty"`
-	Page             int       `json:"page"`
-	Serial           string    `json:"serial,omitempty"`
-	Name             string    `json:"name,omitempty"`
-	Connected        bool      `json:"connected"`
-	LastConnected    time.Time `json:"last_connected,omitempty"`
-	LastDisconnected time.Time `json:"last_disconnected,omitempty"`
-	LcdWidth         int       `json:"lcd_width,omitempty"`
-	LcdHeight        int       `json:"lcd_height,omitempty"`
-	LcdCols          int       `json:"lcd_cols,omitempty"`
-	KnobCols         int       `json:"knob_cols,omitempty"`
-	PaddingX         int       `json:"padding_x"`
-	PaddingY         int       `json:"padding_y"`
+	Cols                    int       `json:"cols,omitempty"`
+	Rows                    int       `json:"rows,omitempty"`
+	IconSize                int       `json:"icon_size,omitempty"`
+	Page                    int       `json:"page"`
+	Serial                  string    `json:"serial,omitempty"`
+	Name                    string    `json:"name,omitempty"`
+	Connected               bool      `json:"connected"`
+	LastConnected           time.Time `json:"last_connected,omitempty"`
+	LastDisconnected        time.Time `json:"last_disconnected,omitempty"`
+	LcdWidth                int       `json:"lcd_width,omitempty"`
+	LcdHeight               int       `json:"lcd_height,omitempty"`
+	LcdCols                 int       `json:"lcd_cols,omitempty"`
+	KnobCols                int       `json:"knob_cols,omitempty"`
+	PaddingX                int       `json:"padding_x"`
+	PaddingY                int       `json:"padding_y"`
+	KeyGridBackgroundWidth  int       `json:"key_grid_background_width"`
+	KeyGridBackgroundHeight int       `json:"key_grid_background_height"`
+	LcdBackgroundWidth      int       `json:"lcd_background_width"`
+	LcdBackgroundHeight     int       `json:"lcd_background_height"`
 }
 
 type ObsConnectionInfoV2 struct {

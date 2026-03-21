@@ -53,7 +53,7 @@ func (StreamDeckDBus) SetPage(serial string, page int) *dbus.Error {
 	for s := range Devs {
 		if Devs[s].Deck.Serial == serial {
 			dev := Devs[s]
-			dev.SetPage(page)
+			dev.pageManager.SetPage(page)
 			return nil
 		}
 	}
@@ -89,7 +89,7 @@ func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
 	if !ok || !dev.IsOpen {
 		return dbus.MakeFailedError(errors.New("Can't find connected device: " + serial))
 	}
-	HandleKeyInput(dev, &dev.Config.Pages[dev.Page].Keys[keyIndex], true)
+	dev.inputManager.HandleKeyInput(&dev.Config.Pages[dev.pageManager.page].Keys[keyIndex], true)
 	return nil
 }
 
