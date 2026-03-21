@@ -2,10 +2,11 @@ package streamdeckd
 
 import (
 	"errors"
-	obsws "github.com/christopher-dG/go-obs-websocket"
-	"github.com/unix-streamdeck/api/v2"
 	"log"
 	"strconv"
+
+	obsws "github.com/christopher-dG/go-obs-websocket"
+	"github.com/unix-streamdeck/api/v2"
 )
 
 var paramlessObsCommands = map[string]func() obsws.Request{
@@ -153,9 +154,9 @@ func getObsHandlerFields() ([]api.Module, error) {
 	var modules []api.Module
 	for key := range paramlessObsCommands {
 		modules = append(modules, api.Module{
-			Name:   key,
-			IsIcon: false,
-			IsKey:  true,
+			Name:         key,
+			IsForeground: false,
+			IsInput:      true,
 		})
 	}
 
@@ -185,30 +186,30 @@ func getObsHandlerFields() ([]api.Module, error) {
 	}
 
 	modules = append(modules, api.Module{
-		Name:   "SetVolume",
-		IsIcon: false,
-		IsKey:  true,
-		KeyFields: []api.Field{
+		Name:         "SetVolume",
+		IsForeground: false,
+		IsInput:      true,
+		InputFields: []api.Field{
 			{Title: "Volume", Name: "volume", Type: "Number"},
 			{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
 		},
 	})
 
 	modules = append(modules, api.Module{
-		Name:   "SetMute",
-		IsIcon: false,
-		IsKey:  true,
-		KeyFields: []api.Field{
+		Name:         "SetMute",
+		IsForeground: false,
+		IsInput:      true,
+		InputFields: []api.Field{
 			{Title: "Mute", Name: "mute", Type: "Checkbox"},
 			{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
 		},
 	})
 
 	modules = append(modules, api.Module{
-		Name:   "ToggleMute",
-		IsIcon: false,
-		IsKey:  true,
-		KeyFields: []api.Field{
+		Name:         "ToggleMute",
+		IsForeground: false,
+		IsInput:      true,
+		InputFields: []api.Field{
 			{Title: "Mute", Name: "mute", Type: "Checkbox"},
 			{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
 		},

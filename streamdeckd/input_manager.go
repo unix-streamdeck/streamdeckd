@@ -9,24 +9,24 @@ type InputManager struct {
 	vdev *VirtualDev
 }
 
-func (im *InputManager) HandleKeyInput(key *api.KeyV3, keyDown bool) {
+func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEvent) {
 	keyConfig, ok := key.Application[key.ActiveApplication]
 	if !ok {
 		im.vdev.logger.Println("Err getting correct config for key")
 		return
 	}
-	if keyDown {
+	if event.EventType == streamdeck.KEY_PRESS {
 		im.HandleStandardActions(keyConfig)
 
 		if keyConfig.KeyHandler != "" {
 			var deckInfo api.StreamDeckInfoV1
 			deckInfo = im.vdev.sdInfo
 			if keyConfig.KeyHandlerStruct == nil {
-				var handler api.KeyHandler
+				var handler api.InputHandler
 				modules := AvailableModules()
 				for _, module := range modules {
 					if module.Name == keyConfig.KeyHandler {
-						handler = module.NewKey()
+						handler = module.NewInput()
 					}
 				}
 				if handler == nil {
@@ -42,11 +42,14 @@ func (im *InputManager) HandleKeyInput(key *api.KeyV3, keyDown bool) {
 			} else {
 				trimmedKeyConfig.SharedState = make(map[string]any)
 			}
-			keyConfig.KeyHandlerStruct.Key(trimmedKeyConfig, deckInfo)
+			keyConfig.KeyHandlerStruct.Input(trimmedKeyConfig.KeyHandlerFields, api.KEY, deckInfo, api.InputEvent{
+				EventType:     api.InputEventType(event.EventType),
+				RotateNotches: event.RotateNotches,
+			})
 		}
 	}
 	if keyConfig.KeyHold != 0 {
-		if keyDown {
+		if event.EventType == streamdeck.KEY_PRESS {
 			err := kb.KeyDown(keyConfig.KeyHold)
 			if err != nil {
 				im.vdev.logger.Println(err)
@@ -70,11 +73,11 @@ func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.Input
 		var deckInfo api.StreamDeckInfoV1
 		deckInfo = im.vdev.sdInfo
 		if knobConfig.KnobOrTouchHandlerStruct == nil {
-			var handler api.KnobOrTouchHandler
+			var handler api.InputHandler
 			modules := AvailableModules()
 			for _, module := range modules {
 				if module.Name == knobConfig.KnobOrTouchHandler {
-					handler = module.NewKnobOrTouch()
+					handler = module.NewInput()
 				}
 			}
 			if handler == nil {
@@ -90,7 +93,7 @@ func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.Input
 		} else {
 			trimmedKnobConfig.SharedState = make(map[string]any)
 		}
-		knobConfig.KnobOrTouchHandlerStruct.Input(trimmedKnobConfig, deckInfo, api.InputEvent{
+		knobConfig.KnobOrTouchHandlerStruct.Input(trimmedKnobConfig.KnobOrTouchHandlerFields, api.LCD, deckInfo, api.InputEvent{
 			EventType:     api.InputEventType(event.EventType),
 			RotateNotches: event.RotateNotches,
 		})

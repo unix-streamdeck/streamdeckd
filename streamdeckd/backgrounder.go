@@ -19,11 +19,11 @@ func (bg *Backgrounder) setLcdBackground(backgrounder api.LcdBackgrounder) {
 	}
 
 	if backgrounder.GetTouchPanelBackgroundHandler() == nil {
-		var handler api.TouchPanelBackgroundHandler
+		var handler api.BackgroundHandler
 
 		for _, module := range modules {
 			if module.Name == backgrounder.GetTouchPanelBackground() {
-				handler = module.NewTouchPanelBackgroundHandler()
+				handler = module.NewBackground()
 			}
 		}
 
@@ -31,7 +31,7 @@ func (bg *Backgrounder) setLcdBackground(backgrounder api.LcdBackgrounder) {
 	}
 
 	if backgrounder.GetTouchPanelBackgroundHandlerFields() != nil {
-		go backgrounder.GetTouchPanelBackgroundHandler().Start(backgrounder.GetTouchPanelBackgroundHandlerFields(), bg.sdInfo, func(imgs []image.Image) {
+		go backgrounder.GetTouchPanelBackgroundHandler().StartGrid(backgrounder.GetTouchPanelBackgroundHandlerFields(), api.LCD, bg.sdInfo, func(imgs []image.Image) {
 			if len(imgs) == bg.sdInfo.KnobCols {
 				backgrounder.SetTouchPanelBackgroundBuff(imgs)
 
@@ -77,11 +77,11 @@ func (bg *Backgrounder) setKeyBackground(backgrounder api.KeyGridBackgrounder) {
 	}
 
 	if backgrounder.GetKeyGridBackgroundHandler() == nil {
-		var handler api.KeyGridBackgroundHandler
+		var handler api.BackgroundHandler
 
 		for _, module := range modules {
 			if module.Name == backgrounder.GetKeyGridBackground() {
-				handler = module.NewKeyGridBackground()
+				handler = module.NewBackground()
 			}
 		}
 
@@ -89,7 +89,7 @@ func (bg *Backgrounder) setKeyBackground(backgrounder api.KeyGridBackgrounder) {
 	}
 
 	if backgrounder.GetKeyGridBackgroundHandler() != nil {
-		go backgrounder.GetKeyGridBackgroundHandler().Start(backgrounder.GetKeyGridBackgroundHandlerFields(), bg.sdInfo, func(imgs []image.Image) {
+		go backgrounder.GetKeyGridBackgroundHandler().StartGrid(backgrounder.GetKeyGridBackgroundHandlerFields(), api.KEY, bg.sdInfo, func(imgs []image.Image) {
 			if len(imgs) == bg.sdInfo.Cols*bg.sdInfo.Rows {
 				backgrounder.SetKeyGridBackgroundBuff(imgs)
 
@@ -136,11 +136,11 @@ func (bg *Backgrounder) setIndividualLcdBackground(backgrounder api.LcdSegmentBa
 	}
 
 	if backgrounder.GetTouchPanelBackgroundHandler() == nil {
-		var handler api.TouchPanelBackgroundHandler
+		var handler api.BackgroundHandler
 
 		for _, module := range modules {
 			if module.Name == backgrounder.GetTouchPanelBackground() {
-				handler = module.NewTouchPanelBackgroundHandler()
+				handler = module.NewBackground()
 			}
 		}
 
@@ -148,7 +148,7 @@ func (bg *Backgrounder) setIndividualLcdBackground(backgrounder api.LcdSegmentBa
 	}
 
 	if backgrounder.GetTouchPanelBackgroundHandlerFields() != nil {
-		go backgrounder.GetTouchPanelBackgroundHandler().StartIndividual(backgrounder.GetTouchPanelBackgroundHandlerFields(), bg.sdInfo, func(img image.Image) {
+		go backgrounder.GetTouchPanelBackgroundHandler().Start(backgrounder.GetTouchPanelBackgroundHandlerFields(), api.LCD, bg.sdInfo, func(img image.Image) {
 			backgrounder.SetTouchPanelBackgroundBuff(img)
 
 			bg.vdev.SetPanelBackground(index, bg.vdev.pageManager.page)
@@ -179,11 +179,11 @@ func (bg *Backgrounder) setIndividualKeyBackground(backgrounder api.KeyBackgroun
 	}
 
 	if backgrounder.GetKeyBackgroundHandler() == nil {
-		var handler api.KeyGridBackgroundHandler
+		var handler api.BackgroundHandler
 
 		for _, module := range modules {
 			if module.Name == backgrounder.GetKeyBackground() {
-				handler = module.NewKeyGridBackground()
+				handler = module.NewBackground()
 			}
 		}
 
@@ -191,7 +191,7 @@ func (bg *Backgrounder) setIndividualKeyBackground(backgrounder api.KeyBackgroun
 	}
 
 	if backgrounder.GetKeyBackgroundHandler() != nil {
-		go backgrounder.GetKeyBackgroundHandler().StartIndividual(backgrounder.GetKeyBackgroundHandlerFields(), bg.sdInfo, func(img image.Image) {
+		go backgrounder.GetKeyBackgroundHandler().Start(backgrounder.GetKeyBackgroundHandlerFields(), api.KEY, bg.sdInfo, func(img image.Image) {
 			backgrounder.SetKeyBackgroundBuff(img)
 
 			bg.vdev.SetKeyBackground(index, bg.vdev.pageManager.page)

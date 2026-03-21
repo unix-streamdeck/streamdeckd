@@ -400,7 +400,7 @@ func (dev *VirtualDev) HandleInput() {
 			if event.EventType == streamdeck.KEY_PRESS || event.EventType == streamdeck.KEY_RELEASE {
 				page := dev.Config.Pages[dev.pageManager.page]
 				if uint8(len(page.Keys)) > event.Index {
-					dev.inputManager.HandleKeyInput(&page.Keys[event.Index], event.EventType == streamdeck.KEY_PRESS)
+					dev.inputManager.HandleKeyInput(&page.Keys[event.Index], event)
 				}
 			} else if event.EventType == streamdeck.SCREEN_SWIPE {
 				if event.ScreenEndX < event.ScreenX {

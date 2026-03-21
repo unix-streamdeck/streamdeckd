@@ -12,6 +12,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/unix-streamdeck/api/v2"
+	streamdeck "github.com/unix-streamdeck/driver"
 )
 
 var conn *dbus.Conn
@@ -89,7 +90,9 @@ func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
 	if !ok || !dev.IsOpen {
 		return dbus.MakeFailedError(errors.New("Can't find connected device: " + serial))
 	}
-	dev.inputManager.HandleKeyInput(&dev.Config.Pages[dev.pageManager.page].Keys[keyIndex], true)
+	dev.inputManager.HandleKeyInput(&dev.Config.Pages[dev.pageManager.page].Keys[keyIndex], streamdeck.InputEvent{
+		EventType: streamdeck.KEY_PRESS,
+	})
 	return nil
 }
 
@@ -103,11 +106,11 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 	if key.IconHandler == "" || key.IconHandler == "Default" {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
-	var handler api.IconHandler
+	var handler api.ForegroundHandler
 	modules := AvailableModules()
 	for _, module := range modules {
 		if module.Name == key.IconHandler {
-			handler = module.NewIcon()
+			handler = module.NewForeground()
 			break
 		}
 	}
@@ -122,7 +125,7 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 	dev = sd.sdInfo
 	var img image.Image
 	log.Println("Created and running " + key.IconHandler + " for dbus")
-	handler.Start(*key, dev, func(image image.Image) {
+	handler.Start(key.IconHandlerFields, api.LCD, dev, func(image image.Image) {
 		if image.Bounds().Max.X != dev.IconSize || image.Bounds().Max.Y != dev.IconSize {
 			image = api.ResizeImage(image, dev.IconSize)
 		}
@@ -157,11 +160,11 @@ func (StreamDeckDBus) GetKnobHandlerExample(serial string, keyString string) (st
 	if key.LcdHandler == "" || key.LcdHandler == "Default" {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
-	var handler api.LcdHandler
+	var handler api.ForegroundHandler
 	modules := AvailableModules()
 	for _, module := range modules {
 		if module.Name == key.LcdHandler {
-			handler = module.NewLcd()
+			handler = module.NewForeground()
 			break
 		}
 	}
@@ -176,7 +179,7 @@ func (StreamDeckDBus) GetKnobHandlerExample(serial string, keyString string) (st
 	dev = sd.sdInfo
 	var img image.Image
 	log.Println("Created and running " + key.LcdHandler + " for dbus")
-	go handler.Start(*key, dev, func(image image.Image) {
+	go handler.Start(key.LcdHandlerFields, api.LCD, dev, func(image image.Image) {
 		if image.Bounds().Max.X != dev.LcdWidth || image.Bounds().Max.Y != dev.LcdHeight {
 			image = api.ResizeImageWH(image, dev.LcdWidth, dev.LcdHeight)
 		}
