@@ -6,7 +6,6 @@ import (
 	"image/draw"
 	"image/gif"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"time"
@@ -124,34 +123,6 @@ func (s *GifHandler) StartGrid(fields map[string]any, handlerType api.HandlerTyp
 	}
 
 	go loop(s, gridFrames, timeDelay, callback)
-}
-
-// Should probably be in API somewhere
-func splitFrameForKey(img image.Image, info api.StreamDeckInfoV1) []image.Image {
-	var frameArr []image.Image
-	for keyIndex := range info.Cols * info.Rows {
-		keyX := keyIndex % info.Cols
-		keyY := int(math.Floor(float64(keyIndex) / float64(info.Cols)))
-
-		x0, y0 := keyX*(info.IconSize+info.PaddingX), keyY*(info.IconSize+info.PaddingY)
-		x1, y1 := keyX*(info.IconSize+info.PaddingX)+info.IconSize, keyY*(info.IconSize+info.PaddingY)+info.IconSize
-
-		frameArr = append(frameArr, api.SubImage(img, x0, y0, x1, y1))
-	}
-	return frameArr
-}
-
-func splitFrameForLCD(img image.Image, info api.StreamDeckInfoV1) []image.Image {
-	var frameArr []image.Image
-	for lcdIndex := range info.LcdCols {
-		x0, y0 := info.LcdWidth*lcdIndex, 0
-		x1, y1 := info.LcdWidth*(lcdIndex+1), info.LcdHeight
-
-		subImage := api.SubImage(img, x0, y0, x1, y1)
-
-		frameArr = append(frameArr, subImage)
-	}
-	return frameArr
 }
 
 func getFrames(fields map[string]any, gifs *gif.GIF, width int, height int, err error) []image.Image {
