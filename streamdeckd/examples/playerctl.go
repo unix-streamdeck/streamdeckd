@@ -389,9 +389,9 @@ func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerT
 		volume = math.Round(volume * 100.0)
 
 		if event.EventType == api.KNOB_CCW {
-			volume -= 1.0
+			volume -= 1.0 * float64(event.RotateNotches)
 		} else if event.EventType == api.KNOB_CW {
-			volume += 1.0
+			volume += 1.0 * float64(event.RotateNotches)
 		}
 		volume /= 100.0
 		err = player.SetVolume(volume)
