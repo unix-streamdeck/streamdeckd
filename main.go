@@ -32,7 +32,7 @@ func main() {
 	go streamdeckd.EnableVirtualKeyboard()
 	examples.RegisterBaseModules()
 	streamdeckd.LoadConfig()
-	streamdeckd.Devs = make(map[string]*streamdeckd.VirtualDev)
+	streamdeckd.Devs = make(map[string]streamdeckd.IVirtualDev)
 	screensaverDbus, err := streamdeckd.ConnectScreensaver()
 	if err != nil {
 		log.Println(err)
@@ -76,7 +76,7 @@ func shutdown() {
 	isRunning = false
 	streamdeckd.UnmountHandlers()
 	for s := range streamdeckd.Devs {
-		streamdeckd.Devs[s].Stop()
+		streamdeckd.Devs[s].Close()
 	}
 	os.Exit(0)
 }

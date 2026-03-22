@@ -2,6 +2,12 @@ package streamdeckd
 
 import "log"
 
+type IApplicationManager interface {
+	SetApplication(application string)
+	AttachListener(listener func(application string))
+	GetApplication() string
+}
+
 type ApplicationManager struct {
 	listeners         []func(application string)
 	activeApplication string
@@ -20,4 +26,8 @@ func (am *ApplicationManager) SetApplication(application string) {
 
 func (am *ApplicationManager) AttachListener(listener func(application string)) {
 	am.listeners = append(am.listeners, listener)
+}
+
+func (am *ApplicationManager) GetApplication() string {
+	return am.activeApplication
 }

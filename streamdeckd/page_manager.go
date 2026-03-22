@@ -1,7 +1,13 @@
 package streamdeckd
 
+type IPageManager interface {
+	SetPage(page int)
+	AttachListener(channel func(newPage, previousPage int))
+	GetPage() int
+}
+
 type PageManager struct {
-	vdev      *VirtualDev
+	vdev      IVirtualDev
 	page      int
 	listeners []func(newPage, previousPage int)
 }
@@ -14,7 +20,7 @@ func (pm *PageManager) SetPage(page int) {
 
 		pm.page = page
 
-		pm.vdev.sdInfo.Page = page
+		pm.vdev.SdInfo().Page = page
 		EmitPage(pm.vdev, page)
 
 		for _, listener := range pm.listeners {
@@ -25,4 +31,8 @@ func (pm *PageManager) SetPage(page int) {
 
 func (pm *PageManager) AttachListener(channel func(newPage, previousPage int)) {
 	pm.listeners = append(pm.listeners, channel)
+}
+
+func (pm *PageManager) GetPage() int {
+	return pm.page
 }

@@ -6,18 +6,24 @@ import (
 	"github.com/unix-streamdeck/api/v2"
 )
 
+type IHandlerPruner interface {
+	OnPageChange()
+	OnAppSwitch()
+	StopAllHandlers()
+}
+
 type HandlerPruner struct {
-	vdev *VirtualDev
+	vdev IVirtualDev
 }
 
 func (hp *HandlerPruner) OnPageChange() {
-	hp.vdev.pageManager.AttachListener(func(_, previousPage int) {
-		hp.StopPageHandlers(previousPage)
+	hp.vdev.PageManager().AttachListener(func(_, previousPage int) {
+		hp.stopPageHandlers(previousPage)
 	})
 }
 
-func (hp *HandlerPruner) StopPageHandlers(pageNo int) {
-	page := hp.vdev.Config.Pages[pageNo]
+func (hp *HandlerPruner) stopPageHandlers(pageNo int) {
+	page := hp.vdev.Config().Pages[pageNo]
 
 	if page.TouchPanelBackgroundHandler != nil {
 		go hp.stopHandler(page.TouchPanelBackgroundHandler, page.TouchPanelBackground, fmt.Sprintf("page %d background", pageNo))
@@ -65,7 +71,7 @@ func (hp *HandlerPruner) StopPageHandlers(pageNo int) {
 
 func (hp *HandlerPruner) OnAppSwitch() {
 	applicationManager.AttachListener(func(activeApp string) {
-		page := hp.vdev.Config.Pages[hp.vdev.pageManager.page]
+		page := hp.vdev.Config().Pages[hp.vdev.PageManager().GetPage()]
 
 		for i, key := range page.Keys {
 			_, hasNewActiveApp := key.Application[activeApp]
@@ -123,8 +129,8 @@ func (hp *HandlerPruner) OnAppSwitch() {
 }
 
 func (hp *HandlerPruner) StopAllHandlers() {
-	for page := range hp.vdev.Config.Pages {
-		hp.StopPageHandlers(page)
+	for page := range hp.vdev.Config().Pages {
+		hp.stopPageHandlers(page)
 	}
 }
 
@@ -132,7 +138,7 @@ func (hp *HandlerPruner) stopHandler(handler api.VisualHandler, name, context st
 	if !handler.IsRunning() {
 		return
 	}
-	hp.vdev.logger.Printf("Stopping handler: %s on %s\n", name, context)
+	hp.vdev.Logger().Printf("Stopping handler: %s on %s\n", name, context)
 	handler.Stop()
-	hp.vdev.logger.Printf("Stopped handler: %s on %s\n", name, context)
+	hp.vdev.Logger().Printf("Stopped handler: %s on %s\n", name, context)
 }

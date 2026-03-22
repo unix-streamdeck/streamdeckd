@@ -7,12 +7,19 @@ import (
 	"github.com/unix-streamdeck/api/v2"
 )
 
-type Backgrounder struct {
-	vdev   *VirtualDev
-	sdInfo api.StreamDeckInfoV1
+type IBackgrounder interface {
+	SetLcdBackground(backgrounder api.LcdBackgrounder)
+	SetKeyBackground(backgrounder api.KeyGridBackgrounder)
+	SetIndividualLcdBackground(backgrounder api.LcdSegmentBackgrounder, index int)
+	SetIndividualKeyBackground(backgrounder api.KeyBackgrounder, index int)
+	AttachPageChangeListener()
 }
 
-func (bg *Backgrounder) setLcdBackground(backgrounder api.LcdBackgrounder) {
+type Backgrounder struct {
+	vdev IVirtualDev
+}
+
+func (bg *Backgrounder) SetLcdBackground(backgrounder api.LcdBackgrounder) {
 	if backgrounder.GetTouchPanelBackground() == "" {
 		return
 	}
@@ -30,12 +37,12 @@ func (bg *Backgrounder) setLcdBackground(backgrounder api.LcdBackgrounder) {
 	}
 
 	if backgrounder.GetTouchPanelBackgroundHandlerFields() != nil {
-		go backgrounder.GetTouchPanelBackgroundHandler().StartGrid(backgrounder.GetTouchPanelBackgroundHandlerFields(), api.LCD, bg.sdInfo, func(imgs []image.Image) {
-			if len(imgs) == bg.sdInfo.KnobCols {
+		go backgrounder.GetTouchPanelBackgroundHandler().StartGrid(backgrounder.GetTouchPanelBackgroundHandlerFields(), api.LCD, *bg.vdev.SdInfo(), func(imgs []image.Image) {
+			if len(imgs) == bg.vdev.SdInfo().KnobCols {
 				backgrounder.SetTouchPanelBackgroundBuff(imgs)
 
 				for u := range imgs {
-					bg.vdev.SetPanelBackground(u, bg.vdev.pageManager.page)
+					bg.vdev.SetPanelBackground(u, bg.vdev.PageManager().GetPage())
 				}
 			}
 		})
@@ -48,22 +55,22 @@ func (bg *Backgrounder) setLcdBackground(backgrounder api.LcdBackgrounder) {
 
 	img, err := LoadImage(backgrounder.GetTouchPanelBackground())
 	if err != nil {
-		bg.vdev.logger.Println(err)
+		bg.vdev.Logger().Println(err)
 		return
 	}
 
-	img = api.ResizeImageWH(img, bg.sdInfo.LcdBackgroundWidth, bg.sdInfo.LcdBackgroundHeight)
+	img = api.ResizeImageWH(img, bg.vdev.SdInfo().LcdBackgroundWidth, bg.vdev.SdInfo().LcdBackgroundHeight)
 
-	imgs := bg.sdInfo.SplitBackgroundImage(img, api.LCD)
+	imgs := bg.vdev.SdInfo().SplitBackgroundImage(img, api.LCD)
 
 	backgrounder.SetTouchPanelBackgroundBuff(imgs)
 
 	for index, _ := range imgs {
-		bg.vdev.SetPanelBackground(index, bg.vdev.pageManager.page)
+		bg.vdev.SetPanelBackground(index, bg.vdev.PageManager().GetPage())
 	}
 }
 
-func (bg *Backgrounder) setKeyBackground(backgrounder api.KeyGridBackgrounder) {
+func (bg *Backgrounder) SetKeyBackground(backgrounder api.KeyGridBackgrounder) {
 	if backgrounder.GetKeyGridBackground() == "" {
 		return
 	}
@@ -81,12 +88,12 @@ func (bg *Backgrounder) setKeyBackground(backgrounder api.KeyGridBackgrounder) {
 	}
 
 	if backgrounder.GetKeyGridBackgroundHandler() != nil {
-		go backgrounder.GetKeyGridBackgroundHandler().StartGrid(backgrounder.GetKeyGridBackgroundHandlerFields(), api.KEY, bg.sdInfo, func(imgs []image.Image) {
-			if len(imgs) == bg.sdInfo.Cols*bg.sdInfo.Rows {
+		go backgrounder.GetKeyGridBackgroundHandler().StartGrid(backgrounder.GetKeyGridBackgroundHandlerFields(), api.KEY, *bg.vdev.SdInfo(), func(imgs []image.Image) {
+			if len(imgs) == bg.vdev.SdInfo().Cols*bg.vdev.SdInfo().Rows {
 				backgrounder.SetKeyGridBackgroundBuff(imgs)
 
 				for u := range imgs {
-					bg.vdev.SetKeyBackground(u, bg.vdev.pageManager.page)
+					bg.vdev.SetKeyBackground(u, bg.vdev.PageManager().GetPage())
 				}
 			}
 		})
@@ -99,22 +106,22 @@ func (bg *Backgrounder) setKeyBackground(backgrounder api.KeyGridBackgrounder) {
 
 	img, err := LoadImage(backgrounder.GetKeyGridBackground())
 	if err != nil {
-		bg.vdev.logger.Println(err)
+		bg.vdev.Logger().Println(err)
 		return
 	}
 
-	img = api.ResizeImageWH(img, bg.sdInfo.KeyGridBackgroundWidth, bg.sdInfo.KeyGridBackgroundHeight)
+	img = api.ResizeImageWH(img, bg.vdev.SdInfo().KeyGridBackgroundWidth, bg.vdev.SdInfo().KeyGridBackgroundHeight)
 
-	imgs := bg.sdInfo.SplitBackgroundImage(img, api.KEY)
+	imgs := bg.vdev.SdInfo().SplitBackgroundImage(img, api.KEY)
 
 	backgrounder.SetKeyGridBackgroundBuff(imgs)
 
 	for index, _ := range imgs {
-		bg.vdev.SetKeyBackground(index, bg.vdev.pageManager.page)
+		bg.vdev.SetKeyBackground(index, bg.vdev.PageManager().GetPage())
 	}
 }
 
-func (bg *Backgrounder) setIndividualLcdBackground(backgrounder api.LcdSegmentBackgrounder, index int) {
+func (bg *Backgrounder) SetIndividualLcdBackground(backgrounder api.LcdSegmentBackgrounder, index int) {
 	if backgrounder.GetTouchPanelBackground() == "" {
 		return
 	}
@@ -132,10 +139,10 @@ func (bg *Backgrounder) setIndividualLcdBackground(backgrounder api.LcdSegmentBa
 	}
 
 	if backgrounder.GetTouchPanelBackgroundHandlerFields() != nil {
-		go backgrounder.GetTouchPanelBackgroundHandler().Start(backgrounder.GetTouchPanelBackgroundHandlerFields(), api.LCD, bg.sdInfo, func(img image.Image) {
+		go backgrounder.GetTouchPanelBackgroundHandler().Start(backgrounder.GetTouchPanelBackgroundHandlerFields(), api.LCD, *bg.vdev.SdInfo(), func(img image.Image) {
 			backgrounder.SetTouchPanelBackgroundBuff(img)
 
-			bg.vdev.SetPanelBackground(index, bg.vdev.pageManager.page)
+			bg.vdev.SetPanelBackground(index, bg.vdev.PageManager().GetPage())
 		})
 		return
 	}
@@ -146,18 +153,18 @@ func (bg *Backgrounder) setIndividualLcdBackground(backgrounder api.LcdSegmentBa
 
 	img, err := LoadImage(backgrounder.GetTouchPanelBackground())
 	if err != nil {
-		bg.vdev.logger.Println(err)
+		bg.vdev.Logger().Println(err)
 		return
 	}
 
-	img = api.ResizeImageWH(img, bg.sdInfo.LcdWidth, bg.sdInfo.LcdHeight)
+	img = api.ResizeImageWH(img, bg.vdev.SdInfo().LcdWidth, bg.vdev.SdInfo().LcdHeight)
 
 	backgrounder.SetTouchPanelBackgroundBuff(img)
 
-	bg.vdev.SetPanelBackground(index, bg.vdev.pageManager.page)
+	bg.vdev.SetPanelBackground(index, bg.vdev.PageManager().GetPage())
 }
 
-func (bg *Backgrounder) setIndividualKeyBackground(backgrounder api.KeyBackgrounder, index int) {
+func (bg *Backgrounder) SetIndividualKeyBackground(backgrounder api.KeyBackgrounder, index int) {
 	if backgrounder.GetKeyBackground() == "" {
 		return
 	}
@@ -175,10 +182,10 @@ func (bg *Backgrounder) setIndividualKeyBackground(backgrounder api.KeyBackgroun
 	}
 
 	if backgrounder.GetKeyBackgroundHandler() != nil {
-		go backgrounder.GetKeyBackgroundHandler().Start(backgrounder.GetKeyBackgroundHandlerFields(), api.KEY, bg.sdInfo, func(img image.Image) {
+		go backgrounder.GetKeyBackgroundHandler().Start(backgrounder.GetKeyBackgroundHandlerFields(), api.KEY, *bg.vdev.SdInfo(), func(img image.Image) {
 			backgrounder.SetKeyBackgroundBuff(img)
 
-			bg.vdev.SetKeyBackground(index, bg.vdev.pageManager.page)
+			bg.vdev.SetKeyBackground(index, bg.vdev.PageManager().GetPage())
 		})
 		return
 	}
@@ -193,31 +200,31 @@ func (bg *Backgrounder) setIndividualKeyBackground(backgrounder api.KeyBackgroun
 		return
 	}
 
-	img = api.ResizeImage(img, bg.sdInfo.IconSize)
+	img = api.ResizeImage(img, bg.vdev.SdInfo().IconSize)
 
-	bg.vdev.SetKeyBackground(index, bg.vdev.pageManager.page)
+	bg.vdev.SetKeyBackground(index, bg.vdev.PageManager().GetPage())
 }
 
 func (bg *Backgrounder) AttachPageChangeListener() {
 
-	bg.vdev.pageManager.AttachListener(func(newPage, _ int) {
+	bg.vdev.PageManager().AttachListener(func(newPage, _ int) {
 
-		currentPage := bg.vdev.Config.Pages[newPage]
+		currentPage := bg.vdev.Config().Pages[newPage]
 
-		go bg.setKeyBackground(&currentPage)
+		go bg.SetKeyBackground(&currentPage)
 
-		go bg.setLcdBackground(&currentPage)
+		go bg.SetLcdBackground(&currentPage)
 
 		for i := range currentPage.Keys {
 			key := &currentPage.Keys[i]
 
-			go bg.setIndividualKeyBackground(key, i)
+			go bg.SetIndividualKeyBackground(key, i)
 		}
 
 		for i := range currentPage.Knobs {
 			knob := &currentPage.Knobs[i]
 
-			go bg.setIndividualLcdBackground(knob, i)
+			go bg.SetIndividualLcdBackground(knob, i)
 		}
 	})
 }

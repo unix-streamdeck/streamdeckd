@@ -200,7 +200,7 @@ func (c *ScreensaverConnection) RegisterScreensaverActiveListener() {
 		if locked != v.Body[0].(bool) {
 			locked = v.Body[0].(bool)
 			for _, deck := range Devs {
-				if deck.IsOpen {
+				if deck.IsOpen() {
 					deck.HandleScreenLockChange(locked)
 				}
 			}

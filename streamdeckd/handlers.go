@@ -51,6 +51,6 @@ func LoadModule(path string) {
 func UnmountHandlers() {
 	for s := range Devs {
 		dev := Devs[s]
-		dev.handlerPruner.StopAllHandlers()
+		dev.HandlerPruner().StopAllHandlers()
 	}
 }

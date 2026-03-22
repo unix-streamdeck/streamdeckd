@@ -11,7 +11,7 @@ import (
 	"github.com/unix-streamdeck/api/v2"
 )
 
-var applicationManager = ApplicationManager{}
+var applicationManager IApplicationManager = &ApplicationManager{}
 
 var locked = false
 

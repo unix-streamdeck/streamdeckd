@@ -5,22 +5,27 @@ import (
 	streamdeck "github.com/unix-streamdeck/driver"
 )
 
+type IInputManager interface {
+	HandleKeyInput(key *api.KeyV3, event streamdeck.InputEvent)
+	HandleKnobInput(knob *api.KnobV3, event streamdeck.InputEvent)
+}
+
 type InputManager struct {
-	vdev *VirtualDev
+	vdev IVirtualDev
 }
 
 func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEvent) {
 	keyConfig, ok := key.Application[key.ActiveApplication]
 	if !ok {
-		im.vdev.logger.Println("Err getting correct config for key")
+		im.vdev.Logger().Println("Err getting correct config for key")
 		return
 	}
 	if event.EventType == streamdeck.KEY_PRESS {
-		im.HandleStandardActions(keyConfig)
+		im.handleStandardActions(keyConfig)
 
 		if keyConfig.KeyHandler != "" {
 			var deckInfo api.StreamDeckInfoV1
-			deckInfo = im.vdev.sdInfo
+			deckInfo = *im.vdev.SdInfo()
 			if keyConfig.KeyHandlerStruct == nil {
 				var handler api.InputHandler
 				modules := AvailableModules()
@@ -30,7 +35,7 @@ func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEve
 					}
 				}
 				if handler == nil {
-					im.vdev.logger.Println("Could not find handler:", keyConfig.KeyHandler)
+					im.vdev.Logger().Println("Could not find handler:", keyConfig.KeyHandler)
 					return
 				}
 				keyConfig.KeyHandlerStruct = handler
@@ -54,12 +59,12 @@ func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEve
 		if event.EventType == streamdeck.KEY_PRESS {
 			err := kb.KeyDown(keyConfig.KeyHold)
 			if err != nil {
-				im.vdev.logger.Println(err)
+				im.vdev.Logger().Println(err)
 			}
 		} else {
 			err := kb.KeyUp(keyConfig.KeyHold)
 			if err != nil {
-				im.vdev.logger.Println(err)
+				im.vdev.Logger().Println(err)
 			}
 		}
 	}
@@ -68,12 +73,12 @@ func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEve
 func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.InputEvent) {
 	knobConfig, ok := knob.Application[knob.ActiveApplication]
 	if !ok {
-		im.vdev.logger.Println("Err getting correct config for knob")
+		im.vdev.Logger().Println("Err getting correct config for knob")
 		return
 	}
 	if knobConfig.KnobOrTouchHandler != "" {
 		var deckInfo api.StreamDeckInfoV1
-		deckInfo = im.vdev.sdInfo
+		deckInfo = *im.vdev.SdInfo()
 		if knobConfig.KnobOrTouchHandlerStruct == nil {
 			var handler api.InputHandler
 			modules := AvailableModules()
@@ -83,7 +88,7 @@ func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.Input
 				}
 			}
 			if handler == nil {
-				im.vdev.logger.Println("Could not find handler:", knobConfig.KnobOrTouchHandler)
+				im.vdev.Logger().Println("Could not find handler:", knobConfig.KnobOrTouchHandler)
 				return
 			}
 			knobConfig.KnobOrTouchHandlerStruct = handler
@@ -110,27 +115,27 @@ func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.Input
 	} else if event.EventType == streamdeck.KNOB_CW {
 		actions = knobConfig.KnobTurnUpAction
 	}
-	im.HandleStandardActions(&actions)
+	im.handleStandardActions(&actions)
 }
 
-func (im *InputManager) HandleStandardActions(ia api.InputActions) {
+func (im *InputManager) handleStandardActions(ia api.InputActions) {
 	if ia.GetCommand() != "" {
 		RunCommand(ia.GetCommand())
 	}
 	if ia.GetKeyBind() != "" {
 		err := ExecuteKeybind(ia.GetKeyBind())
 		if err != nil {
-			im.vdev.logger.Println("[ERROR] Failed to execute keybind:", err)
+			im.vdev.Logger().Println("[ERROR] Failed to execute keybind:", err)
 		}
 	}
 	if ia.GetSwitchPage() != 0 {
 		page := ia.GetSwitchPage() - 1
-		im.vdev.pageManager.SetPage(page)
+		im.vdev.PageManager().SetPage(page)
 	}
 	if ia.GetBrightness() != 0 {
 		err := im.vdev.SetBrightness(uint8(ia.GetBrightness()))
 		if err != nil {
-			im.vdev.logger.Println(err)
+			im.vdev.Logger().Println(err)
 		}
 	}
 	if ia.GetUrl() != "" {
