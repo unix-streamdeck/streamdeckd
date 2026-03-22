@@ -11,7 +11,7 @@ require (
 	github.com/linuxdeepin/go-x11-client v0.0.0-20240415051504-c8e43d028ff9
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe
-	github.com/unix-streamdeck/api/v2 v2.0.15
+	github.com/unix-streamdeck/api/v2 v2.0.16
 	github.com/unix-streamdeck/driver v0.0.0-20260313153150-8a1327d02063
 	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.42.0

@@ -21,18 +21,18 @@ var isRunning = true
 
 func main() {
 	log.Default().SetFlags(log.Lshortfile | log.Ltime)
+	log.Default().SetPrefix("(global) ")
 	checkDuplicateStreamdeckdInstance()
 	configPtr := flag.String("config", "", "Path to config file")
 	flag.Parse()
 	streamdeckd.SetConfigPath(*configPtr)
 	cleanupHook()
-	defer HandlePanic()
 	go streamdeckd.InitDBUS()
 	go streamdeckd.UpdateApplication()
 	go streamdeckd.EnableVirtualKeyboard()
 	examples.RegisterBaseModules()
 	streamdeckd.LoadConfig()
-	streamdeckd.Devs = make(map[string]*streamdeckd.VirtualDev)
+	streamdeckd.Devs = make(map[string]streamdeckd.IVirtualDev)
 	screensaverDbus, err := streamdeckd.ConnectScreensaver()
 	if err != nil {
 		log.Println(err)
@@ -62,13 +62,6 @@ func attemptConnection() {
 	}
 }
 
-func HandlePanic() {
-	if err := recover(); err != nil {
-		log.Println("panic occurred:", err)
-		shutdown()
-	}
-}
-
 func cleanupHook() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGSTOP, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGINT)
@@ -81,9 +74,9 @@ func cleanupHook() {
 func shutdown() {
 	log.Println("Cleaning up")
 	isRunning = false
-	go streamdeckd.UnmountHandlers()
+	streamdeckd.UnmountHandlers()
 	for s := range streamdeckd.Devs {
-		streamdeckd.Devs[s].Stop()
+		streamdeckd.Devs[s].Close()
 	}
 	os.Exit(0)
 }

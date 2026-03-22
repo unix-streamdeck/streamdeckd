@@ -15,7 +15,7 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-type VolumeLcdHandler struct {
+type VolumeHandler struct {
 	Running    bool
 	Quit       chan bool
 	Lock       *semaphore.Weighted
@@ -30,7 +30,7 @@ type VolumeLcdHandler struct {
 	client     *pulseaudio.Client
 }
 
-func (v *VolumeLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (v *VolumeHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 
 	if v.Quit == nil {
 		v.Quit = make(chan bool)
@@ -39,14 +39,14 @@ func (v *VolumeLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckInfoV
 		v.Lock = semaphore.NewWeighted(1)
 	}
 	if v.MuteBuff == nil {
-		v.MuteBuff = v.GetImage("mute_icon", knob, info)
+		v.MuteBuff = v.GetImage("mute_icon", fields, handlerType, info)
 	}
 	if v.UnmuteBuff == nil {
-		v.UnmuteBuff = v.GetImage("unmute_icon", knob, info)
+		v.UnmuteBuff = v.GetImage("unmute_icon", fields, handlerType, info)
 	}
-	devType, ok := knob.LcdHandlerFields["device_type"]
+	devType, ok := fields["device_type"]
 	if !ok {
-		devType, ok = knob.SharedHandlerFields["device_type"]
+		devType, ok = fields["device_type"]
 		if !ok {
 			log.Println("Device type missing")
 			return
@@ -55,9 +55,9 @@ func (v *VolumeLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckInfoV
 	if devType == "sink_input" || devType == "source_output" {
 		var inputName string
 		props := make(map[string]string)
-		inputName, ok := knob.LcdHandlerFields["input_name"].(string)
+		inputName, ok := fields["input_name"].(string)
 		if !ok {
-			propss, ok := knob.LcdHandlerFields["props"]
+			propss, ok := fields["props"]
 			if !ok {
 				log.Println("No Input Name or Props")
 				return
@@ -74,17 +74,17 @@ func (v *VolumeLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckInfoV
 	}
 	v.DevType = devType.(string)
 	v.Running = true
-	v.Run(knob, info, callback)
+	v.Run(handlerType, info, callback)
 }
-func (v *VolumeLcdHandler) IsRunning() bool {
+func (v *VolumeHandler) IsRunning() bool {
 	return v.Running
 }
 
-func (v *VolumeLcdHandler) SetRunning(running bool) {
+func (v *VolumeHandler) SetRunning(running bool) {
 	v.Running = running
 }
 
-func (v *VolumeLcdHandler) Stop() {
+func (v *VolumeHandler) Stop() {
 	v.Running = false
 	v.Quit <- true
 	v.FirstLoop = true
@@ -92,27 +92,28 @@ func (v *VolumeLcdHandler) Stop() {
 	v.Volume = 0
 }
 
-func (v *VolumeLcdHandler) GetImage(index string, knob api.KnobConfigV3, info api.StreamDeckInfoV1) image.Image {
-	path, ok := knob.LcdHandlerFields[index]
+func (v *VolumeHandler) GetImage(index string, fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1) image.Image {
+	path, ok := fields[index]
+	w, h := info.GetDimensions(handlerType)
 	if !ok {
 		log.Println("image missing: " + index)
-		return image.NewNRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
+		return image.NewNRGBA(image.Rect(0, 0, w, h))
 	}
 	f, err := os.Open(path.(string))
 	defer f.Close()
 	if err != nil {
 		log.Println(err)
-		return image.NewNRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
+		return image.NewNRGBA(image.Rect(0, 0, w, h))
 	}
 	img, _, err := image.Decode(f)
 	if err != nil {
 		log.Println(err)
-		return image.NewNRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
+		return image.NewNRGBA(image.Rect(0, 0, w, h))
 	}
-	return api.ResizeImageWH(img, info.LcdWidth, info.LcdHeight)
+	return api.ResizeImageWH(img, w, h)
 }
 
-func (v *VolumeLcdHandler) Run(knob api.KnobConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (v *VolumeHandler) Run(handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	ctx := context.Background()
 	err := v.Lock.Acquire(ctx, 1)
 	if err != nil {
@@ -133,7 +134,7 @@ func (v *VolumeLcdHandler) Run(knob api.KnobConfigV3, info api.StreamDeckInfoV1,
 	if err != nil {
 		return
 	}
-	err = update(v, info, callback)
+	err = update(v, handlerType, info, callback)
 	if err != nil {
 		log.Println(err)
 	}
@@ -143,7 +144,7 @@ func (v *VolumeLcdHandler) Run(knob api.KnobConfigV3, info api.StreamDeckInfoV1,
 			log.Println("Volume Quit")
 			return
 		case <-v.client.Events:
-			err := update(v, info, callback)
+			err := update(v, handlerType, info, callback)
 			if err != nil {
 				log.Println(err)
 			}
@@ -151,9 +152,10 @@ func (v *VolumeLcdHandler) Run(knob api.KnobConfigV3, info api.StreamDeckInfoV1,
 	}
 }
 
-func update(v *VolumeLcdHandler, info api.StreamDeckInfoV1, callback func(image image.Image)) error {
+func update(v *VolumeHandler, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) error {
 	var device pulseaudio.Device
 	var err error
+	w, h := info.GetDimensions(handlerType)
 	if v.DevType == "sink" {
 		device, err = v.client.GetDefaultSink()
 	} else if v.DevType == "source" {
@@ -184,7 +186,7 @@ func update(v *VolumeLcdHandler, info api.StreamDeckInfoV1, callback func(image 
 		}
 	}
 	if err != nil {
-		img := image.NewNRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
+		img := image.NewNRGBA(image.Rect(0, 0, w, h))
 		var text string
 		if v.DevType == "sink" || v.DevType == "source" {
 			text = "Could not find default " + v.DevType
@@ -228,10 +230,10 @@ func update(v *VolumeLcdHandler, info api.StreamDeckInfoV1, callback func(image 
 		}
 
 		if img == nil {
-			image.NewNRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
+			image.NewNRGBA(image.Rect(0, 0, w, h))
 		}
 
-		imgParsed, err := api.DrawProgressBarWithAccent(img, text, 5, float64(info.LcdHeight-25), 20, float64(info.LcdWidth-10), float64(vol), "#cc3333")
+		imgParsed, err := api.DrawProgressBarWithAccent(img, text, 5, float64(h-25), 20, float64(w-10), float64(vol), "#cc3333")
 
 		if err != nil {
 			log.Println(err)
@@ -242,14 +244,10 @@ func update(v *VolumeLcdHandler, info api.StreamDeckInfoV1, callback func(image 
 	}
 }
 
-type VolumeKnobOrTouchHandler struct {
-	client *pulseaudio.Client
-}
-
-func (v *VolumeKnobOrTouchHandler) Input(knob api.KnobConfigV3, info api.StreamDeckInfoV1, event api.InputEvent) {
-	dev, ok := knob.KnobOrTouchHandlerFields["device_type"]
+func (v *VolumeHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
+	dev, ok := fields["device_type"]
 	if !ok {
-		dev, ok = knob.SharedHandlerFields["device_type"]
+		dev, ok = fields["device_type"]
 		if !ok {
 			log.Println("Device type missing")
 			return
@@ -259,9 +257,9 @@ func (v *VolumeKnobOrTouchHandler) Input(knob api.KnobConfigV3, info api.StreamD
 	if dev == "sink_input" || dev == "source_output" {
 		var inputName string
 		props := make(map[string]string)
-		inputName, ok := knob.KnobOrTouchHandlerFields["input_name"].(string)
+		inputName, ok := fields["input_name"].(string)
 		if !ok {
-			propss, ok := knob.KnobOrTouchHandlerFields["props"]
+			propss, ok := fields["props"]
 			if !ok {
 				log.Println("No Input Name or Props")
 				return
@@ -336,129 +334,39 @@ func updateDevice(device pulseaudio.Device, event api.InputEvent) {
 		if !muted && device.GetVolume() < 1 {
 			device.SetVolume(device.GetVolume() + (float32(event.RotateNotches) * 0.01))
 		}
-	} else if event.EventType == api.KNOB_PRESS || event.EventType == api.SCREEN_SHORT_TAP {
+	} else if event.EventType == api.KNOB_PRESS || event.EventType == api.SCREEN_SHORT_TAP || event.EventType == api.KEY_PRESS {
 		device.ToggleMute()
 	}
 }
 
-type VolumeKeyHandler struct {
-	client *pulseaudio.Client
-}
-
-func (v *VolumeKeyHandler) Key(key api.KeyConfigV3, info api.StreamDeckInfoV1) {
-	dev, ok := key.KeyHandlerFields["device_type"]
-	if !ok {
-		log.Println("Device type missing")
-		return
-	}
-	var err error
-	if dev == "sink_input" || dev == "source_output" {
-		var inputName string
-		props := make(map[string]string)
-		inputName, ok := key.KeyHandlerFields["input_name"].(string)
-		if !ok {
-			propss, ok := key.KeyHandlerFields["props"]
-			if !ok {
-				log.Println("No Input Name or Props")
-				return
-			}
-			for key, value := range propss.(map[string]interface{}) {
-				if value == nil {
-					continue
-				}
-				props[key] = value.(string)
-			}
-		}
-		if dev == "sink_input" {
-			var devices []pulseaudio.SinkInput
-			if inputName == "" {
-				devices, err = v.client.GetSinkInputsByProps(props)
-			} else {
-				devices, err = v.client.GetSinkInputsByName(inputName)
-			}
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			for _, device := range devices {
-				updateDevice(device, api.InputEvent{EventType: api.KNOB_PRESS})
-			}
-		} else {
-			var devices []pulseaudio.SourceOutput
-			if inputName == "" {
-				devices, err = v.client.GetSourceOutputsByProps(props)
-			} else {
-				devices, err = v.client.GetSourceOutputsByName(inputName)
-			}
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			for _, device := range devices {
-				updateDevice(device, api.InputEvent{EventType: api.KNOB_PRESS})
-			}
-		}
-
-	} else {
-		var device pulseaudio.Device
-		if dev == "sink" {
-			device, err = v.client.GetDefaultSink()
-		} else if dev == "source" {
-			device, err = v.client.GetDefaultSource()
-		}
-		if device == nil {
-			err = errors.New("No device found")
-		}
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		updateDevice(device, api.InputEvent{EventType: api.KNOB_PRESS})
-	}
-
-}
-
 func RegisterVolume() api.Module {
 	return api.Module{
-		NewLcd: func() api.LcdHandler {
+		NewForeground: func() api.ForegroundHandler {
 			client, err := pulseaudio.NewClient()
 			if err != nil {
 				panic(err)
 			}
-			return &VolumeLcdHandler{Running: true, Lock: semaphore.NewWeighted(1), FirstLoop: true, client: client}
+			return &VolumeHandler{Running: true, Lock: semaphore.NewWeighted(1), FirstLoop: true, client: client}
 		},
-		LcdFields: []api.Field{
+		ForegroundFields: []api.Field{
 			{Title: "Unmuted Icon", Name: "unmute_icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Muted Icon", Name: "mute_icon", Type: api.File},
 			{Title: "Device Type", Name: "device_type", Type: api.Text},
 			{Title: "Input Name", Name: "input_name", Type: api.Text},
 			{Title: "Props", Name: "props", Type: api.Text},
 		},
-		NewKnobOrTouch: func() api.KnobOrTouchHandler {
+		NewInput: func() api.InputHandler {
 			client, err := pulseaudio.NewClient()
 			if err != nil {
 				panic(err)
 			}
-			return &VolumeKnobOrTouchHandler{client: client}
+			return &VolumeHandler{client: client}
 		},
-		KnobOrTouchFields: []api.Field{
+		InputFields: []api.Field{
 			{Title: "Device Type", Name: "device_type", Type: api.Text},
 			{Title: "Input Name", Name: "input_name", Type: api.Text},
 			{Title: "Props", Name: "props", Type: api.Text},
 		},
-		NewKey: func() api.KeyHandler {
-			client, err := pulseaudio.NewClient()
-			if err != nil {
-				panic(err)
-			}
-			return &VolumeKeyHandler{client: client}
-		},
-		KeyFields: []api.Field{
-			{Title: "Device Type", Name: "device_type", Type: api.Text},
-			{Title: "Input Name", Name: "input_name", Type: api.Text},
-			{Title: "Props", Name: "props", Type: api.Text},
-		},
-
 		Name: "Volume",
 	}
 }

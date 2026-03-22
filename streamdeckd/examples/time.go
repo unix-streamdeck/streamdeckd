@@ -8,45 +8,43 @@ import (
 	"github.com/unix-streamdeck/api/v2"
 )
 
-type TimeIconHandler struct {
+type TimeHandler struct {
 	Running bool
 	Quit    chan bool
 }
 
-func (t *TimeIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (t *TimeHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	t.Running = true
 	if t.Quit == nil {
 		t.Quit = make(chan bool)
 	}
-	go t.timeLoop(k, info, callback)
+	go t.timeLoop(fields, handlerType, info, callback)
 }
 
-func (t *TimeIconHandler) IsRunning() bool {
+func (t *TimeHandler) IsRunning() bool {
 	return t.Running
 }
 
-func (t *TimeIconHandler) SetRunning(running bool) {
+func (t *TimeHandler) SetRunning(running bool) {
 	t.Running = running
 }
 
-func (t *TimeIconHandler) Stop() {
+func (t *TimeHandler) Stop() {
 	t.Running = false
 	t.Quit <- true
 }
 
-func (t *TimeIconHandler) timeLoop(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (t *TimeHandler) timeLoop(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	for {
 		select {
 		case <-t.Quit:
 			return
 		default:
-			img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+			w, h := info.GetDimensions(handlerType)
+			img := image.NewRGBA(image.Rect(0, 0, w, h))
 			t := time.Now()
 			tString := t.Format("15:04:05")
-			imgParsed, err := api.DrawText(img, tString, api.DrawTextOptions{
-				FontSize:          int64(k.TextSize),
-				VerticalAlignment: api.VerticalAlignment(k.TextAlignment),
-			})
+			imgParsed, err := api.DrawText(img, tString, api.DrawTextOptions{})
 			if err != nil {
 				log.Println(err)
 			} else {
@@ -58,7 +56,7 @@ func (t *TimeIconHandler) timeLoop(k api.KeyConfigV3, info api.StreamDeckInfoV1,
 }
 
 func RegisterTime() api.Module {
-	return api.Module{NewIcon: func() api.IconHandler {
-		return &TimeIconHandler{Running: true}
+	return api.Module{NewForeground: func() api.ForegroundHandler {
+		return &TimeHandler{Running: true}
 	}, Name: "Time"}
 }

@@ -12,11 +12,25 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/unix-streamdeck/api/v2"
+	streamdeck "github.com/unix-streamdeck/driver"
 )
 
 var conn *dbus.Conn
 
-var sDbus *StreamDeckDBus
+var sDbus IStreamDeckDBus
+
+type IStreamDeckDBus interface {
+	GetDeckInfo() (string, *dbus.Error)
+	GetConfig() (string, *dbus.Error)
+	ReloadConfig() *dbus.Error
+	SetPage(serial string, page int) *dbus.Error
+	SetConfig(configString string) *dbus.Error
+	CommitConfig() *dbus.Error
+	GetModules() (string, *dbus.Error)
+	PressButton(serial string, keyIndex int) *dbus.Error
+	GetHandlerExample(serial string, keyString string) (string, *dbus.Error)
+	GetKnobHandlerExample(serial string, keyString string) (string, *dbus.Error)
+}
 
 type StreamDeckDBus struct {
 }
@@ -24,7 +38,7 @@ type StreamDeckDBus struct {
 func (s StreamDeckDBus) GetDeckInfo() (string, *dbus.Error) {
 	var decks []api.StreamDeckInfoV1
 	for _, dev := range Devs {
-		decks = append(decks, dev.sdInfo)
+		decks = append(decks, *dev.SdInfo())
 	}
 	infoString, err := json.Marshal(decks)
 	if err != nil {
@@ -51,9 +65,9 @@ func (StreamDeckDBus) ReloadConfig() *dbus.Error {
 
 func (StreamDeckDBus) SetPage(serial string, page int) *dbus.Error {
 	for s := range Devs {
-		if Devs[s].Deck.Serial == serial {
+		if Devs[s].Serial() == serial {
 			dev := Devs[s]
-			dev.SetPage(page)
+			dev.PageManager().SetPage(page)
 			return nil
 		}
 	}
@@ -86,10 +100,12 @@ func (StreamDeckDBus) GetModules() (string, *dbus.Error) {
 
 func (StreamDeckDBus) PressButton(serial string, keyIndex int) *dbus.Error {
 	dev, ok := Devs[serial]
-	if !ok || !dev.IsOpen {
+	if !ok || !dev.IsOpen() {
 		return dbus.MakeFailedError(errors.New("Can't find connected device: " + serial))
 	}
-	HandleKeyInput(dev, &dev.Config.Pages[dev.Page].Keys[keyIndex], true)
+	dev.InputManager().HandleKeyInput(&dev.Config().Pages[dev.PageManager().GetPage()].Keys[keyIndex], streamdeck.InputEvent{
+		EventType: streamdeck.KEY_PRESS,
+	})
 	return nil
 }
 
@@ -99,30 +115,29 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
 	}
-	key.SharedState = make(map[string]interface{})
 	if key.IconHandler == "" || key.IconHandler == "Default" {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
-	var handler api.IconHandler
+	var handler api.ForegroundHandler
 	modules := AvailableModules()
 	for _, module := range modules {
 		if module.Name == key.IconHandler {
-			handler = module.NewIcon()
+			handler = module.NewForeground()
 			break
 		}
 	}
 	if handler == nil {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
-	var dev api.StreamDeckInfoV1
+	var dev *api.StreamDeckInfoV1
 	sd, ok := Devs[serial]
 	if !ok {
 		return "", dbus.MakeFailedError(errors.New("could not find device"))
 	}
-	dev = sd.sdInfo
+	dev = sd.SdInfo()
 	var img image.Image
 	log.Println("Created and running " + key.IconHandler + " for dbus")
-	handler.Start(*key, dev, func(image image.Image) {
+	handler.Start(key.IconHandlerFields, api.LCD, *dev, func(image image.Image) {
 		if image.Bounds().Max.X != dev.IconSize || image.Bounds().Max.Y != dev.IconSize {
 			image = api.ResizeImage(image, dev.IconSize)
 		}
@@ -153,30 +168,29 @@ func (StreamDeckDBus) GetKnobHandlerExample(serial string, keyString string) (st
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
 	}
-	key.SharedState = make(map[string]interface{})
 	if key.LcdHandler == "" || key.LcdHandler == "Default" {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
-	var handler api.LcdHandler
+	var handler api.ForegroundHandler
 	modules := AvailableModules()
 	for _, module := range modules {
 		if module.Name == key.LcdHandler {
-			handler = module.NewLcd()
+			handler = module.NewForeground()
 			break
 		}
 	}
 	if handler == nil {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
-	var dev api.StreamDeckInfoV1
+	var dev *api.StreamDeckInfoV1
 	sd, ok := Devs[serial]
 	if !ok {
 		return "", dbus.MakeFailedError(errors.New("could not find device"))
 	}
-	dev = sd.sdInfo
+	dev = sd.SdInfo()
 	var img image.Image
 	log.Println("Created and running " + key.LcdHandler + " for dbus")
-	go handler.Start(*key, dev, func(image image.Image) {
+	go handler.Start(key.LcdHandlerFields, api.LCD, *dev, func(image image.Image) {
 		if image.Bounds().Max.X != dev.LcdWidth || image.Bounds().Max.Y != dev.LcdHeight {
 			image = api.ResizeImageWH(image, dev.LcdWidth, dev.LcdHeight)
 		}
@@ -202,9 +216,9 @@ func (StreamDeckDBus) GetKnobHandlerExample(serial string, keyString string) (st
 	}
 }
 
-func EmitPage(dev *VirtualDev, page int) {
+func EmitPage(dev IVirtualDev, page int) {
 	if conn != nil {
-		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", dev.Deck.Serial, page)
+		conn.Emit("/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd.Page", dev.Serial(), page)
 	}
 }
 

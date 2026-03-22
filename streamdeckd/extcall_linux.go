@@ -46,13 +46,7 @@ func UpdateApplication() {
 
 func setApplication(activePs string) {
 	activePs = strings.Trim(activePs, "\n")
-	if currentApplication != activePs {
-		currentApplication = activePs
-		log.Println("Application updated to: " + currentApplication)
-		for _, dev := range Devs {
-			dev.ApplicationUpdated()
-		}
-	}
+	applicationManager.SetApplication(activePs)
 }
 
 type HyprlandActiveWindow struct {
@@ -206,7 +200,7 @@ func (c *ScreensaverConnection) RegisterScreensaverActiveListener() {
 		if locked != v.Body[0].(bool) {
 			locked = v.Body[0].(bool)
 			for _, deck := range Devs {
-				if deck.IsOpen {
+				if deck.IsOpen() {
 					deck.HandleScreenLockChange(locked)
 				}
 			}

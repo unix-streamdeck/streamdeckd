@@ -35,10 +35,10 @@ import "github.com/unix-streamdeck/api/v2"
 func GetModule() api.Module {
     return api.Module{
         Name:       "MyModule",
-        NewIcon:    func() api.IconHandler { return &MyIconHandler{} },
-        NewKey:     func() api.KeyHandler { return &MyKeyHandler{} },
-        IconFields: []api.Field{ /* ... */ },
-        KeyFields:  []api.Field{ /* ... */ },
+        NewForeground:    func() api.ForegroundHandler { return &MyForegroundHandler{} },
+        NewInput:     func() api.InputHandler { return &MyInputHandler{} },
+        ForegroundFields: []api.Field{ /* ... */ },
+        InputFields:  []api.Field{ /* ... */ },
     }
 }
 ```

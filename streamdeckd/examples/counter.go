@@ -8,33 +8,30 @@ import (
 	"github.com/unix-streamdeck/api/v2"
 )
 
-type CounterIconHandler struct {
+type CounterHandler struct {
 	Count    int
 	Running  bool
 	Callback func(image image.Image)
 	Update   chan int
 }
 
-func (c *CounterIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (c *CounterHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	if c.Callback == nil {
 		c.Callback = callback
 	}
 	if c.Update == nil {
 		log.Println("Test")
 		c.Update = make(chan int)
-		k.SharedState["channel"] = c.Update
 	}
 	if c.Running {
 		for {
 			select {
-			case <-c.Update:
-				c.Count = c.Count + 1
-				img := image.NewRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+			case delta := <-c.Update:
+				c.Count = c.Count + delta
+				width, height := info.GetDimensions(handlerType)
+				img := image.NewRGBA(image.Rect(0, 0, width, height))
 				Count := strconv.Itoa(c.Count)
-				imgParsed, err := api.DrawText(img, Count, api.DrawTextOptions{
-					FontSize:          int64(k.TextSize),
-					VerticalAlignment: api.VerticalAlignment(k.TextAlignment),
-				})
+				imgParsed, err := api.DrawText(img, Count, api.DrawTextOptions{})
 				if err != nil {
 					log.Println(err)
 				} else {
@@ -48,32 +45,43 @@ func (c *CounterIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1,
 	}
 }
 
-func (c *CounterIconHandler) IsRunning() bool {
+func (c *CounterHandler) IsRunning() bool {
 	return c.Running
 }
 
-func (c *CounterIconHandler) SetRunning(running bool) {
+func (c *CounterHandler) SetRunning(running bool) {
 	c.Running = running
 }
 
-func (c CounterIconHandler) Stop() {
+func (c *CounterHandler) Stop() {
 	c.Running = false
 }
 
-type CounterKeyHandler struct{}
-
-func (CounterKeyHandler) Key(key api.KeyConfigV3, info api.StreamDeckInfoV1) {
-	channel, ok := key.SharedState["channel"]
-	if !ok {
-		return
+func (c *CounterHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
+	var delta int
+	if event.EventType == api.KEY_PRESS || event.EventType == api.KNOB_PRESS || event.EventType == api.SCREEN_SHORT_TAP {
+		delta = 1
 	}
-	channel.(chan int) <- 1
+
+	if event.EventType == api.KNOB_CW {
+		delta = int(event.RotateNotches)
+	}
+
+	if event.EventType == api.KNOB_CCW {
+		delta = int(event.RotateNotches) * -1
+	}
+
+	if c.Update != nil {
+		c.Update <- delta
+	}
 }
 
 func RegisterCounter() api.Module {
-	return api.Module{NewIcon: func() api.IconHandler {
-		return &CounterIconHandler{Running: true, Count: 0}
-	}, NewKey: func() api.KeyHandler {
-		return &CounterKeyHandler{}
-	}, Name: "Counter"}
+	return api.Module{
+		NewForeground: func() api.ForegroundHandler {
+			return &CounterHandler{Running: true, Count: 0}
+		},
+		NewInput: func() api.InputHandler {
+			return &CounterHandler{Running: true, Count: 0}
+		}, Name: "Counter"}
 }

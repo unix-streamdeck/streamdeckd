@@ -66,63 +66,12 @@ imgWithText, _ := api.DrawText(resizedImg, "Hello", 0, "CENTER")
 ### Implementing handlers
 
 ```go
-// Implement a key handler
-type MyKeyHandler struct{}
-
-func (h *MyKeyHandler) Key(key api.KeyConfigV3, info api.StreamDeckInfoV1) {
-    // Handle key press
+// Implement a handler
+type MyHandler struct{
+	running bool
 }
 
-// Implement an icon handler
-type MyIconHandler struct {
-    running bool
-}
-
-func (h *MyIconHandler) Start(key api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
-    h.running = true
-    // Generate and update icon
-    // Call callback with new images when needed
-}
-
-func (h *MyIconHandler) IsRunning() bool {
-    return h.running
-}
-
-func (h *MyIconHandler) SetRunning(running bool) {
-    h.running = running
-}
-
-func (h *MyIconHandler) Stop() {
-    h.running = false
-    // Clean up resources and stop calling callback
-}
-
-// Implement an LCD handler (for Stream Deck Plus)
-type MyLcdHandler struct {
-    running bool
-}
-
-func (h *MyLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
-    h.running = true
-    // Generate and update LCD image
-}
-
-func (h *MyLcdHandler) IsRunning() bool {
-    return h.running
-}
-
-func (h *MyLcdHandler) SetRunning(running bool) {
-    h.running = running
-}
-
-func (h *MyLcdHandler) Stop() {
-    h.running = false
-}
-
-// Implement a knob or touch handler (for Stream Deck Plus)
-type MyKnobHandler struct{}
-
-func (h *MyKnobHandler) Input(knob api.KnobConfigV3, info api.StreamDeckInfoV1, event api.InputEvent) {
+func (h *MyHandler) Input(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, event InputEvent) {
     switch event.EventType {
     case api.KNOB_CW:
         // Handle clockwise rotation
@@ -130,7 +79,26 @@ func (h *MyKnobHandler) Input(knob api.KnobConfigV3, info api.StreamDeckInfoV1, 
         // Handle counter-clockwise rotation
     case api.KNOB_PRESS:
         // Handle knob press
+    case api.KEY_PRESS:
+		// Handle key press
     }
+}
+
+func (h *MyHandler) Start(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(image image.Image)) {
+	// Generate image and send it back via callback
+}
+
+func (h *MyHandler) IsRunning() bool {
+    return h.running
+}
+
+func (h *MyHandler) SetRunning(running bool) {
+    h.running = running
+}
+
+func (h *MyHandler) Stop() {
+    h.running = false
+    // Clean up resources and stop calling callback
 }
 ```
 
@@ -139,10 +107,10 @@ func (h *MyKnobHandler) Input(knob api.KnobConfigV3, info api.StreamDeckInfoV1, 
 The API provides several interfaces for handling Stream Deck interactions:
 
 - `Handler`: Base interface for all handlers
-- `IconHandler`: For handling dynamic icons/images
-- `KeyHandler`: For handling key press events
-- `LcdHandler`: For handling LCD displays (Stream Deck Plus)
-- `KnobOrTouchHandler`: For handling knob rotations and touch events (Stream Deck Plus)
+- `ForegroundHandler`: For handling dynamic icons/images
+- `InputHandler`: For handling input events
+- `BackgroundHandler`: For handling dynamic backgrounds for individual displays, or whole deck
+- `CombinedHandler`: For handlers that can do foregrounds and handle input, if this handler is applied to the foreground and input of a specific key/lcd segment, the same instance of the struct will be used, so resources can be shared
 
 Key components:
 

@@ -47,14 +47,14 @@ var operationsMap = map[string]KeypressOperation{
 	"LoopStatus": LoopStatus,
 }
 
-type LcdKnobHandlerType string
+type PlayerctlHandlerType string
 
 const (
-	Playback LcdKnobHandlerType = "Playback"
-	Volume   LcdKnobHandlerType = "Volume"
+	Playback PlayerctlHandlerType = "Playback"
+	Volume   PlayerctlHandlerType = "Volume"
 )
 
-var playerFilters = map[LcdKnobHandlerType]func(player *mpris.Player) bool{
+var playerFilters = map[PlayerctlHandlerType]func(player *mpris.Player) bool{
 	Playback: func(player *mpris.Player) bool {
 		return true
 	},
@@ -64,7 +64,7 @@ var playerFilters = map[LcdKnobHandlerType]func(player *mpris.Player) bool{
 	},
 }
 
-var calculateTextAndPercentage = map[LcdKnobHandlerType]func(player *mpris.Player) (string, float64){
+var calculateTextAndPercentage = map[PlayerctlHandlerType]func(player *mpris.Player) (string, float64){
 	Playback: func(player *mpris.Player) (string, float64) {
 		position, err := player.GetPosition()
 		if err != nil {
@@ -93,7 +93,7 @@ var calculateTextAndPercentage = map[LcdKnobHandlerType]func(player *mpris.Playe
 	},
 }
 
-type PlayerCtlLcdHandler struct {
+type PlayerCtlHandler struct {
 	Running                  bool
 	Quit                     chan bool
 	Lock                     *semaphore.Weighted
@@ -107,11 +107,11 @@ type PlayerCtlLcdHandler struct {
 	Text                     string
 	FinalImage               image.Image
 	PreviousPlayer           string
-	Type                     LcdKnobHandlerType
+	Type                     PlayerctlHandlerType
 	ActivePlayer             *mpris.Player
 }
 
-func (v *PlayerCtlLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (v *PlayerCtlHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	if v.Quit == nil {
 		v.Quit = make(chan bool)
 	}
@@ -119,43 +119,44 @@ func (v *PlayerCtlLcdHandler) Start(knob api.KnobConfigV3, info api.StreamDeckIn
 		v.Lock = semaphore.NewWeighted(1)
 	}
 	if v.CurrentPlayerImage == nil {
-		v.CurrentPlayerImage = v.GetImage("icon", knob, info)
+		v.CurrentPlayerImage = v.GetImage("icon", fields, info, handlerType)
 		if v.CurrentPlayerImage != nil {
 			v.StaticImage = true
 		}
 	}
 
-	accentColour, ok := knob.LcdHandlerFields["colour"]
+	accentColour, ok := fields["colour"]
 
 	if ok {
 		v.AccentColour = accentColour.(string)
 	}
 
-	handlerType, ok := knob.LcdHandlerFields["type"]
+	playerctlHandlerType, ok := fields["type"]
 
 	if !ok {
 		log.Println("Type not specified")
 		return
 	}
 
-	v.Type = LcdKnobHandlerType(handlerType.(string))
+	v.Type = PlayerctlHandlerType(playerctlHandlerType.(string))
 
-	playerName, ok := knob.LcdHandlerFields["player_name"]
+	playerName, ok := fields["player_name"]
 	if ok {
 		v.PlayerName = playerName.(string)
 	}
 	v.Running = true
-	v.Run(info, callback)
+	v.Run(info, handlerType, callback)
 }
-func (v *PlayerCtlLcdHandler) IsRunning() bool {
+
+func (v *PlayerCtlHandler) IsRunning() bool {
 	return v.Running
 }
 
-func (v *PlayerCtlLcdHandler) SetRunning(running bool) {
+func (v *PlayerCtlHandler) SetRunning(running bool) {
 	v.Running = running
 }
 
-func (v *PlayerCtlLcdHandler) Stop() {
+func (v *PlayerCtlHandler) Stop() {
 	v.Running = false
 	v.Quit <- true
 	v.CurrentPlayerImage = nil
@@ -169,8 +170,8 @@ func (v *PlayerCtlLcdHandler) Stop() {
 	v.ActivePlayer = nil
 }
 
-func (v *PlayerCtlLcdHandler) GetImage(index string, knob api.KnobConfigV3, info api.StreamDeckInfoV1) image.Image {
-	path, ok := knob.LcdHandlerFields[index]
+func (v *PlayerCtlHandler) GetImage(index string, fields map[string]any, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
+	path, ok := fields[index]
 	if !ok {
 		return nil
 	}
@@ -185,10 +186,10 @@ func (v *PlayerCtlLcdHandler) GetImage(index string, knob api.KnobConfigV3, info
 		log.Println(err)
 		return nil
 	}
-	return resizeThumbnail(img, info)
+	return resizeThumbnail(img, info, handlerType)
 }
 
-func (v *PlayerCtlLcdHandler) Run(info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (v *PlayerCtlHandler) Run(info api.StreamDeckInfoV1, handlerType api.HandlerType, callback func(image image.Image)) {
 	ctx := context.Background()
 	err := v.Lock.Acquire(ctx, 1)
 	defer v.Lock.Release(1)
@@ -203,7 +204,6 @@ func (v *PlayerCtlLcdHandler) Run(info api.StreamDeckInfoV1, callback func(image
 			if playerNeedsRefreshing(v.ActivePlayer) {
 				v.ActivePlayer = choosePlayer(v.Client, v.PlayerName, v.PreviousPlayer, playerFilters[v.Type])
 				if v.ActivePlayer == nil {
-					//log.Println("No player found")
 					break
 				}
 				v.PreviousPlayer = v.ActivePlayer.GetShortName()
@@ -212,13 +212,14 @@ func (v *PlayerCtlLcdHandler) Run(info api.StreamDeckInfoV1, callback func(image
 			img = v.CurrentPlayerImage
 			previousImage := v.CurrentPlayerImage
 			if !v.StaticImage {
-				img, err = v.FindImage(v.ActivePlayer, info)
+				img, err = v.FindImage(v.ActivePlayer, info, handlerType)
 				if img == nil {
 					if v.CurrentPlayerImageSource == v.PreviousPlayer {
 						img = v.CurrentPlayerImage
 					} else {
-						img = image.NewNRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
-						img = resizeThumbnail(img, info)
+						w, h := info.GetDimensions(handlerType)
+						img = image.NewNRGBA(image.Rect(0, 0, w, h))
+						img = resizeThumbnail(img, info, handlerType)
 						img, err = api.DrawText(img, v.PreviousPlayer, api.DrawTextOptions{
 							VerticalAlignment: api.Center,
 						})
@@ -230,7 +231,7 @@ func (v *PlayerCtlLcdHandler) Run(info api.StreamDeckInfoV1, callback func(image
 			imgNeedsRefreshing := previousImage != img || v.FinalImage == nil
 			finalImage := v.FinalImage
 			if imgNeedsRefreshing {
-				finalImage = overlayImage(img, info)
+				finalImage = overlayImage(img, info, handlerType)
 				v.FinalImage = finalImage
 			}
 			text, percentage := calculateTextAndPercentage[v.Type](v.ActivePlayer)
@@ -252,7 +253,8 @@ func (v *PlayerCtlLcdHandler) Run(info api.StreamDeckInfoV1, callback func(image
 			if v.AccentColour == "" {
 				v.AccentColour = getAverageColour(img)
 			}
-			imgParsed, err := api.DrawProgressBarWithAccent(finalImage, text, 5, float64(info.LcdHeight-25), 20, float64(info.LcdWidth-10), percentage, v.AccentColour)
+			w, h := info.GetDimensions(handlerType)
+			imgParsed, err := api.DrawProgressBarWithAccent(finalImage, text, 5, float64(h-25), 20, float64(w-10), percentage, v.AccentColour)
 			if err != nil {
 				log.Println(err)
 			} else {
@@ -263,7 +265,7 @@ func (v *PlayerCtlLcdHandler) Run(info api.StreamDeckInfoV1, callback func(image
 	}
 }
 
-func (v *PlayerCtlLcdHandler) FindImage(player *mpris.Player, info api.StreamDeckInfoV1) (image.Image, error) {
+func (v *PlayerCtlHandler) FindImage(player *mpris.Player, info api.StreamDeckInfoV1, handlerType api.HandlerType) (image.Image, error) {
 	metadata, err := player.GetMetadata()
 	if err == nil && metadata != nil {
 		artUrl, err := metadata.ArtURL()
@@ -278,7 +280,7 @@ func (v *PlayerCtlLcdHandler) FindImage(player *mpris.Player, info api.StreamDec
 				err = nil
 			}
 			if img != nil {
-				img = resizeThumbnail(img, info)
+				img = resizeThumbnail(img, info, handlerType)
 				v.CurrentPlayerImage = img
 				v.CurrentPlayerImageSource = artUrl
 				return img, nil
@@ -352,34 +354,33 @@ func loadImage(path string) (image.Image, error) {
 	return img, nil
 }
 
-type PlayerCtlKnobOrTouchHandler struct {
-	Client         *dbus.Conn
-	PreviousPlayer string
-}
+func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
 
-func (v *PlayerCtlKnobOrTouchHandler) Input(knob api.KnobConfigV3, info api.StreamDeckInfoV1, event api.InputEvent) {
+	handlerTypeString, ok := fields["type"]
 
-	handlerTypeString, ok := knob.KnobOrTouchHandlerFields["type"]
-
-	if !ok {
+	if !ok && handlerType == api.LCD {
 		log.Println("Type not specified")
 		return
 	}
 
-	handlerType := LcdKnobHandlerType(handlerTypeString.(string))
+	if handlerType == api.KEY {
+		handlerTypeString = "Playback"
+	}
 
-	playerName, ok := knob.KnobOrTouchHandlerFields["player_name"]
+	playerctlHandlerType := PlayerctlHandlerType(handlerTypeString.(string))
+
+	playerName, ok := fields["player_name"]
 	var playerNameString string
 	if ok {
 		playerNameString = playerName.(string)
 	}
-	player := choosePlayer(v.Client, playerNameString, v.PreviousPlayer, playerFilters[handlerType])
+	player := choosePlayer(v.Client, playerNameString, v.PreviousPlayer, playerFilters[playerctlHandlerType])
 	if player == nil {
 		return
 	}
 	v.PreviousPlayer = player.GetName()
 
-	if handlerType == Volume {
+	if playerctlHandlerType == Volume {
 		volume, err := player.GetVolume()
 		if err != nil {
 			log.Println(err)
@@ -388,9 +389,9 @@ func (v *PlayerCtlKnobOrTouchHandler) Input(knob api.KnobConfigV3, info api.Stre
 		volume = math.Round(volume * 100.0)
 
 		if event.EventType == api.KNOB_CCW {
-			volume -= 1.0
+			volume -= 1.0 * float64(event.RotateNotches)
 		} else if event.EventType == api.KNOB_CW {
-			volume += 1.0
+			volume += 1.0 * float64(event.RotateNotches)
 		}
 		volume /= 100.0
 		err = player.SetVolume(volume)
@@ -429,66 +430,51 @@ func (v *PlayerCtlKnobOrTouchHandler) Input(knob api.KnobConfigV3, info api.Stre
 				return
 			}
 			err = player.SetShuffle(!shuffle)
+		} else if event.EventType == api.KEY_PRESS {
+			operation, ok := fields["operation"]
+			if !ok {
+				log.Println("No MPRIS player operation specified")
+				return
+			}
+			op, ok := operationsMap[operation.(string)]
+			if !ok {
+				log.Println("Invalid MPRIS player operation specified")
+				return
+			}
+			var err error
+			switch op {
+			case PlayPause:
+				err = player.PlayPause()
+			case Play:
+				err = player.Play()
+			case Pause:
+				err = player.Pause()
+			case Previous:
+				err = player.Previous()
+			case Next:
+				err = player.Next()
+			case Shuffle:
+				shuffle, err := player.GetShuffle()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				err = player.SetShuffle(!shuffle)
+				break
+			case LoopStatus:
+				status, err := player.GetLoopStatus()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				err = player.SetLoopStatus(getNextLoopStatus(status))
+				break
+			}
+			if err != nil {
+				log.Println(err)
+				return
+			}
 		}
-	}
-}
-
-type PlayerCtlKeyHandler struct {
-	Client         *dbus.Conn
-	PreviousPlayer string
-}
-
-func (v *PlayerCtlKeyHandler) Key(key api.KeyConfigV3, info api.StreamDeckInfoV1) {
-	operation, ok := key.KeyHandlerFields["operation"]
-	if !ok {
-		log.Println("No MPRIS player operation specified")
-	}
-	op, ok := operationsMap[operation.(string)]
-	if !ok {
-		log.Println("Invalid MPRIS player operation specified")
-	}
-	playerName, ok := key.KeyHandlerFields["player_name"]
-	var playerNameString string
-	if ok {
-		playerNameString = playerName.(string)
-	}
-	player := choosePlayer(v.Client, playerNameString, v.PreviousPlayer, playerFilters[Playback])
-	if player == nil {
-		return
-	}
-	v.PreviousPlayer = player.GetName()
-	var err error
-	switch op {
-	case PlayPause:
-		err = player.PlayPause()
-	case Play:
-		err = player.Play()
-	case Pause:
-		err = player.Pause()
-	case Previous:
-		err = player.Previous()
-	case Next:
-		err = player.Next()
-	case Shuffle:
-		shuffle, err := player.GetShuffle()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		err = player.SetShuffle(!shuffle)
-		break
-	case LoopStatus:
-		status, err := player.GetLoopStatus()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		err = player.SetLoopStatus(getNextLoopStatus(status))
-		break
-	}
-	if err != nil {
-		log.Println(err)
-		return
 	}
 }
 
@@ -582,8 +568,9 @@ func pad(timeSegment string) string {
 	return timeSegment
 }
 
-func resizeThumbnail(img image.Image, info api.StreamDeckInfoV1) image.Image {
-	newSize := float64(info.LcdHeight - 30)
+func resizeThumbnail(img image.Image, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
+	_, height := info.GetDimensions(handlerType)
+	newSize := float64(height - 30)
 	scalingFactor := newSize / float64(img.Bounds().Max.Y)
 	x := float64(img.Bounds().Max.X) * scalingFactor
 	y := float64(img.Bounds().Max.Y) * scalingFactor
@@ -591,11 +578,12 @@ func resizeThumbnail(img image.Image, info api.StreamDeckInfoV1) image.Image {
 	return img
 }
 
-func overlayImage(img image.Image, info api.StreamDeckInfoV1) image.Image {
+func overlayImage(img image.Image, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
+	width, height := info.GetDimensions(handlerType)
 	mprisImg := img
-	img = image.NewNRGBA(image.Rect(0, 0, info.LcdWidth, info.LcdHeight))
+	img = image.NewNRGBA(image.Rect(0, 0, width, height))
 	ggImg := gg.NewContextForImage(img)
-	ggImg.DrawImageAnchored(mprisImg, info.LcdWidth/2, 35, 0.5, 0.5)
+	ggImg.DrawImageAnchored(mprisImg, width/2, 35, 0.5, 0.5)
 	return ggImg.Image()
 }
 
@@ -667,33 +655,26 @@ func RegisterPlayerCtl() api.Module {
 
 	return api.Module{
 		Name: "Playerctl",
-		NewKey: func() api.KeyHandler {
+		NewForeground: func() api.ForegroundHandler {
 			client, err := dbus.SessionBus()
 			if err != nil {
 				panic(err)
 			}
-			return &PlayerCtlKeyHandler{Client: client}
+			return &PlayerCtlHandler{Client: client}
 		},
-		KeyFields: []api.Field{
-			{Title: "Operation", Name: "operation", Type: api.Select, ListItems: slices.Collect(maps.Keys(operationsMap))},
-		},
-		NewLcd: func() api.LcdHandler {
-			client, err := dbus.SessionBus()
-			if err != nil {
-				panic(err)
-			}
-			return &PlayerCtlLcdHandler{Running: true, Lock: semaphore.NewWeighted(1), Client: client}
-		},
-		LcdFields: []api.Field{
+		ForegroundFields: []api.Field{
 			{Title: "Icon", Name: "icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Accent Colour", Name: "colour", Type: api.Colour},
 		},
-		NewKnobOrTouch: func() api.KnobOrTouchHandler {
+		NewInput: func() api.InputHandler {
 			client, err := dbus.SessionBus()
 			if err != nil {
 				panic(err)
 			}
-			return &PlayerCtlKnobOrTouchHandler{Client: client}
+			return &PlayerCtlHandler{Running: true, Lock: semaphore.NewWeighted(1), Client: client}
+		},
+		InputFields: []api.Field{
+			{Title: "Operation", Name: "operation", Type: api.Select, ListItems: slices.Collect(maps.Keys(operationsMap))},
 		},
 		LinkedFields: []api.Field{
 			{Title: "Player Name", Name: "player_name", Type: api.Text},

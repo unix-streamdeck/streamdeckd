@@ -12,7 +12,7 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-type ToggleIconHandler struct {
+type ToggleHandler struct {
 	Status       bool
 	Running      bool
 	Lock         *semaphore.Weighted
@@ -23,7 +23,7 @@ type ToggleIconHandler struct {
 	FirstLoop    bool
 }
 
-func (c *ToggleIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (c *ToggleHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
 	if c.Lock == nil {
 		c.Lock = semaphore.NewWeighted(1)
 	}
@@ -31,36 +31,37 @@ func (c *ToggleIconHandler) Start(k api.KeyConfigV3, info api.StreamDeckInfoV1, 
 		c.Quit = make(chan bool)
 	}
 	if c.UpIconBuff == nil {
-		c.UpIconBuff = c.GetImage("up_icon", k, info)
+		c.UpIconBuff = c.GetImage("up_icon", fields, handlerType, info)
 	}
 	if c.DownIconBuff == nil {
-		c.DownIconBuff = c.GetImage("down_icon", k, info)
+		c.DownIconBuff = c.GetImage("down_icon", fields, handlerType, info)
 	}
 	c.FirstLoop = true
-	go c.loop(k, callback)
+	go c.loop(fields, callback)
 }
 
-func (c *ToggleIconHandler) GetImage(index string, k api.KeyConfigV3, info api.StreamDeckInfoV1) image.Image {
-	path, ok := k.IconHandlerFields[index]
+func (c *ToggleHandler) GetImage(index string, fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1) image.Image {
+	path, ok := fields[index]
+	w, h := info.GetDimensions(handlerType)
 	if !ok {
 		log.Println("image missing: " + index)
-		return image.NewNRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+		return image.NewNRGBA(image.Rect(0, 0, w, h))
 	}
 	f, err := os.Open(path.(string))
 	defer f.Close()
 	if err != nil {
 		log.Println(err)
-		return image.NewNRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+		return image.NewNRGBA(image.Rect(0, 0, w, h))
 	}
 	img, _, err := image.Decode(f)
 	if err != nil {
 		log.Println(err)
-		return image.NewNRGBA(image.Rect(0, 0, info.IconSize, info.IconSize))
+		return image.NewNRGBA(image.Rect(0, 0, w, h))
 	}
-	return api.ResizeImage(img, info.IconSize)
+	return api.ResizeImageWH(img, w, h)
 }
 
-func (c *ToggleIconHandler) loop(k api.KeyConfigV3, callback func(image image.Image)) {
+func (c *ToggleHandler) loop(fields map[string]any, callback func(image image.Image)) {
 	ctx := context.Background()
 	err := c.Lock.Acquire(ctx, 1)
 	if err != nil {
@@ -72,7 +73,7 @@ func (c *ToggleIconHandler) loop(k api.KeyConfigV3, callback func(image image.Im
 		case <-c.Quit:
 			return
 		default:
-			command, ok := k.IconHandlerFields["check_command"]
+			command, ok := fields["check_command"]
 
 			if !ok {
 				break
@@ -86,7 +87,7 @@ func (c *ToggleIconHandler) loop(k api.KeyConfigV3, callback func(image image.Im
 			if err != nil {
 				status = false
 			}
-			sharedStatus, ok := k.SharedState["status"].(bool)
+			sharedStatus, ok := fields["status"].(bool)
 			if !ok {
 				sharedStatus = false
 			}
@@ -95,7 +96,7 @@ func (c *ToggleIconHandler) loop(k api.KeyConfigV3, callback func(image image.Im
 				continue
 			}
 			sharedStatus = status
-			k.SharedState["status"] = sharedStatus
+			fields["status"] = sharedStatus
 			c.FirstLoop = false
 			img := c.UpIconBuff
 			if sharedStatus == false {
@@ -107,28 +108,26 @@ func (c *ToggleIconHandler) loop(k api.KeyConfigV3, callback func(image image.Im
 	}
 }
 
-func (c *ToggleIconHandler) IsRunning() bool {
+func (c *ToggleHandler) IsRunning() bool {
 	return c.Running
 }
 
-func (c *ToggleIconHandler) SetRunning(running bool) {
+func (c *ToggleHandler) SetRunning(running bool) {
 	c.Running = running
 }
 
-func (c *ToggleIconHandler) Stop() {
+func (c *ToggleHandler) Stop() {
 	c.Running = false
 	c.Quit <- true
 }
 
-type ToggleKeyHandler struct{}
-
-func (ToggleKeyHandler) Key(key api.KeyConfigV3, info api.StreamDeckInfoV1) {
-	sharedStatus := key.SharedState["status"].(bool)
+func (t *ToggleHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
+	sharedStatus := fields["status"].(bool)
 	index := "down_command"
 	if !sharedStatus {
 		index = "up_command"
 	}
-	command, ok := key.KeyHandlerFields[index]
+	command, ok := fields[index]
 	commandString := command.(string)
 	if !ok {
 		return
@@ -153,16 +152,16 @@ func RegisterToggle() api.Module {
 
 	return api.Module{
 		Name: "Toggle",
-		NewIcon: func() api.IconHandler {
-			return &ToggleIconHandler{Running: true, Lock: semaphore.NewWeighted(1), FirstLoop: true}
+		NewForeground: func() api.ForegroundHandler {
+			return &ToggleHandler{Running: true, Lock: semaphore.NewWeighted(1), FirstLoop: true}
 		},
-		NewKey: func() api.KeyHandler { return &ToggleKeyHandler{} },
-		IconFields: []api.Field{
+		NewInput: func() api.InputHandler { return &ToggleHandler{} },
+		ForegroundFields: []api.Field{
 			{Title: "Up Icon", Name: "up_icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Down Icon", Name: "down_icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Check Command", Name: "check_command", Type: api.Text},
 		},
-		KeyFields: []api.Field{
+		InputFields: []api.Field{
 			{Title: "Up Command", Name: "up_command", Type: api.Text},
 			{Title: "Down Command", Name: "down_command", Type: api.Text},
 		},

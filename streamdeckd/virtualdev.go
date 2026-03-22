@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"image"
 	"log"
-	"math"
+	"os"
 	"regexp"
 	"sync"
 	"time"
@@ -16,7 +16,30 @@ import (
 
 var disconnectSem sync.Mutex
 var connectSem sync.Mutex
-var Devs map[string]*VirtualDev
+var Devs map[string]IVirtualDev
+
+type IVirtualDev interface {
+	IsOpen() bool
+	Config() api.DeckV3
+	SetConfig(v3 api.DeckV3)
+	SdInfo() *api.StreamDeckInfoV1
+	Serial() string
+	Foregrounder() IForegrounder
+	Backgrounder() IBackgrounder
+	PageManager() IPageManager
+	HandlerPruner() IHandlerPruner
+	InputManager() IInputManager
+	Logger() *log.Logger
+
+	Open(rawDev *streamdeck.Device) error
+	SetKeyBackground(keyIndex int, page int)
+	SetKeyForeground(img image.Image, keyIndex int, page int)
+	SetPanelBackground(knobIndex int, page int)
+	SetPanelForeground(img image.Image, knobIndex int, page int)
+	SetBrightness(brightness uint8) error
+	HandleScreenLockChange(locked bool)
+	Close()
+}
 
 func OpenDevice() error {
 	connectSem.Lock()
@@ -33,179 +56,170 @@ func OpenDevice() error {
 			continue
 		}
 		dev, ok := Devs[rawDev.Serial]
-		if ok && dev.IsOpen {
+		if ok && dev.IsOpen() {
 			continue
 		}
-		err = rawDev.Open()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		if !ok {
-			// initial connect
-			config := findConfig(rawDev)
-			dev = &VirtualDev{
-				Deck:           rawDev,
-				Page:           0,
-				IsOpen:         true,
-				Config:         config,
-				keyUpdateChan:  make(chan int),
-				knobUpdateChan: make(chan int),
-				KeyBGBuffs:     make([]image.Image, rawDev.Keys),
-				KeyFGBuffs:     make([]image.Image, rawDev.Keys),
-				PanelBGBuffs:   make([]image.Image, rawDev.LcdColumns),
-				PanelFGBuffs:   make([]image.Image, rawDev.LcdColumns),
-			}
-			dev.SetSdInfo()
-			Devs[rawDev.Serial] = dev
-		} else {
-			//reconnect
-			dev.IsOpen = true
-			dev.Deck = rawDev
-			dev.sdInfo.LastConnected = time.Now()
-			dev.sdInfo.Connected = true
+
+		if dev == nil {
+			dev = &VirtualDev{}
 		}
 
-		w := (dev.Deck.Pixels * uint(dev.Deck.Columns)) + (dev.Deck.PaddingX * uint(dev.Deck.Columns-1))
-		h := (dev.Deck.Pixels * uint(dev.Deck.Rows)) + (dev.Deck.PaddingX * uint(dev.Deck.Rows-1))
-		go dev.setKeyBackground(&dev.Config, int(w), int(h))
-
-		go dev.setLcdBackground(&dev.Config, dev.sdInfo.LcdWidth*dev.sdInfo.LcdCols, dev.sdInfo.LcdHeight)
-
-		go dev.HandleInput()
-		dev.Render()
-		dev.SetPage(dev.Page)
-		log.Println(fmt.Sprintf("Device (%s) connected", rawDev.Serial))
+		err := dev.Open(rawDev)
+		if err == nil {
+			log.Println(fmt.Sprintf("Device (%s) connected", rawDev.Serial))
+		}
 	}
 	return nil
 }
 
-func findConfig(device *streamdeck.Device) api.DeckV3 {
-	if migrateConfigFromV1 {
-		config.Decks[0].Serial = device.Serial
-		_ = SaveConfig()
-		migrateConfigFromV1 = false
-		return config.Decks[0]
-	}
-	for _, deck := range config.Decks {
-		if deck.Serial == device.Serial {
-			return deck
-		}
-	}
-
-	return makeEmptyDeckConfig(device)
-}
-
-func makeEmptyDeckConfig(device *streamdeck.Device) api.DeckV3 {
-	var pages []api.PageV3
-	page := api.PageV3{}
-	for i := 0; i < int(device.Rows)*int(device.Columns); i++ {
-		applications := make(map[string]*api.KeyConfigV3)
-		applications[""] = &api.KeyConfigV3{}
-		page.Keys = append(page.Keys, api.KeyV3{
-			Application: applications,
-		})
-	}
-	pages = append(pages, page)
-	devConf := api.DeckV3{Serial: device.Serial, Pages: pages}
-	config.Decks = append(config.Decks, devConf)
-	_ = SaveConfig()
-	return devConf
-}
-
 type VirtualDev struct {
-	Deck           *streamdeck.Device
-	Page           int
-	IsOpen         bool
-	Config         api.DeckV3
+
+	//Internal Properties
 	mu             sync.Mutex
 	shuttingDown   bool
-	sdInfo         api.StreamDeckInfoV1
 	keyUpdateChan  chan int
 	knobUpdateChan chan int
-	KeyFGBuffs     []image.Image
-	KeyBGBuffs     []image.Image
-	PanelFGBuffs   []image.Image
-	PanelBGBuffs   []image.Image
+	keyFGBuffs     []image.Image
+	keyBGBuffs     []image.Image
+	panelFGBuffs   []image.Image
+	panelBGBuffs   []image.Image
+
+	//External Properties
+	isOpen        bool
+	config        api.DeckV3
+	sdInfo        *api.StreamDeckInfoV1
+	deck          *streamdeck.Device
+	foregrounder  IForegrounder
+	backgrounder  IBackgrounder
+	pageManager   IPageManager
+	handlerPruner IHandlerPruner
+	inputManager  IInputManager
+	logger        *log.Logger
 }
 
-func (dev *VirtualDev) SetPage(page int) {
-	if locked {
-		return
+func (dev *VirtualDev) Open(rawDev *streamdeck.Device) error {
+
+	err := rawDev.Open()
+	if err != nil {
+		log.Println(err)
+		return err
 	}
-	if page != dev.Page {
-		dev.unmountPageHandlersOnPageSwitch(dev.Config.Pages[dev.Page])
-	}
-	dev.Page = page
-	currentPage := dev.Config.Pages[page]
 
-	w := (dev.Deck.Pixels * uint(dev.Deck.Columns)) + (dev.Deck.PaddingX * uint(dev.Deck.Columns-1))
-	h := (dev.Deck.Pixels * uint(dev.Deck.Rows)) + (dev.Deck.PaddingX * uint(dev.Deck.Rows-1))
-	go dev.setKeyBackground(&dev.Config.Pages[page], int(w), int(h))
+	if dev.deck == nil {
+		// initial connect
+		config := findConfig(rawDev)
+		dev = &VirtualDev{
+			deck:           rawDev,
+			isOpen:         true,
+			config:         config,
+			keyUpdateChan:  make(chan int),
+			knobUpdateChan: make(chan int),
+			keyBGBuffs:     make([]image.Image, rawDev.Keys),
+			keyFGBuffs:     make([]image.Image, rawDev.Keys),
+			panelBGBuffs:   make([]image.Image, rawDev.LcdColumns),
+			panelFGBuffs:   make([]image.Image, rawDev.LcdColumns),
+		}
+		dev.setSdInfo()
 
-	go dev.setLcdBackground(&dev.Config.Pages[page], dev.sdInfo.LcdWidth*dev.sdInfo.LcdCols, dev.sdInfo.LcdHeight)
+		dev.backgrounder = &Backgrounder{
+			vdev: dev,
+		}
 
-	if dev.Config.Pages[page].GetKeyGridBackgroundHandler() != nil {
-		go dev.Config.GetKeyGridBackgroundHandler().Stop()
+		dev.pageManager = &PageManager{
+			vdev: dev,
+			page: 0,
+		}
+
+		dev.handlerPruner = &HandlerPruner{
+			vdev: dev,
+		}
+
+		dev.inputManager = &InputManager{
+			vdev: dev,
+		}
+
+		dev.foregrounder = &Foregrounder{
+			vdev: dev,
+		}
+
+		dev.backgrounder.AttachPageChangeListener()
+
+		dev.foregrounder.AttachPageChangeListener()
+		dev.foregrounder.AttachAppChangeListener()
+
+		dev.handlerPruner.OnPageChange()
+		dev.handlerPruner.OnAppSwitch()
+
+		dev.logger = log.New(os.Stdout, fmt.Sprintf("(%s) ", dev.sdInfo.Serial), log.Lshortfile|log.Ltime)
+
+		Devs[rawDev.Serial] = dev
 	} else {
-		go dev.setKeyBackground(&dev.Config, int(w), int(h))
+		//reconnect
+		dev.isOpen = true
+		dev.deck = rawDev
+		dev.sdInfo.LastConnected = time.Now()
+		dev.sdInfo.Connected = true
 	}
 
-	if dev.Config.Pages[page].GetTouchPanelBackgroundHandler() != nil {
-		go dev.Config.GetTouchPanelBackgroundHandler().Stop()
-	} else {
-		go dev.setLcdBackground(&dev.Config, dev.sdInfo.LcdWidth*dev.sdInfo.LcdCols, dev.sdInfo.LcdHeight)
-	}
+	dev.pageManager.SetPage(dev.pageManager.GetPage())
 
-	for i, _ := range currentPage.Keys {
-		key := &currentPage.Keys[i]
+	go dev.backgrounder.SetKeyBackground(&dev.config)
 
-		go dev.setIndividualKeyBackground(key, i, dev.sdInfo.IconSize, dev.sdInfo.IconSize)
+	go dev.backgrounder.SetLcdBackground(&dev.config)
 
-		if key.Application == nil {
-			key.Application = map[string]*api.KeyConfigV3{}
-			key.Application[""] = &api.KeyConfigV3{}
-			currentPage.Keys[i] = *key
-			log.Println(fmt.Sprintf("Setting empty application on key: %d on page: %d", i, page))
-			SaveConfig()
-		}
-		_, keyHasApp := key.Application[currentApplication]
-		if key.ActiveApplication != "" && !keyHasApp {
-			key.ActiveApplication = ""
-		}
-		if keyHasApp {
-			key.ActiveApplication = currentApplication
-		}
-		go SetKey(dev, key.Application[key.ActiveApplication], i, page, key.ActiveApplication)
-	}
-	for i, _ := range currentPage.Knobs {
-		knob := &currentPage.Knobs[i]
+	go dev.handleInput()
+	dev.render()
 
-		go dev.setIndividualLcdBackground(knob, i, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
-
-		if knob.Application == nil {
-			knob.Application = map[string]*api.KnobConfigV3{}
-			knob.Application[""] = &api.KnobConfigV3{}
-			currentPage.Knobs[i] = *knob
-			log.Println(fmt.Sprintf("Setting empty application on knob: %d on page: %d", i, page))
-			SaveConfig()
-		}
-		_, knobHasApp := knob.Application[currentApplication]
-		if knob.ActiveApplication != "" && !knobHasApp {
-			knob.ActiveApplication = ""
-		}
-		if knobHasApp {
-			knob.ActiveApplication = currentApplication
-		}
-		go SetKnob(dev, knob.Application[knob.ActiveApplication], i, page, knob.ActiveApplication)
-	}
-	dev.sdInfo.Page = page
-	EmitPage(dev, page)
+	return nil
 }
 
-func (dev *VirtualDev) CompositeKeyImage(keyIndex int, page int) {
+func (dev *VirtualDev) IsOpen() bool {
+	return dev.isOpen
+}
+
+func (dev *VirtualDev) Config() api.DeckV3 {
+	return dev.config
+}
+
+func (dev *VirtualDev) SetConfig(config api.DeckV3) {
+	dev.config = config
+}
+
+func (dev *VirtualDev) SdInfo() *api.StreamDeckInfoV1 {
+	return dev.sdInfo
+}
+
+func (dev *VirtualDev) Serial() string {
+	return dev.deck.Serial
+}
+
+func (dev *VirtualDev) Foregrounder() IForegrounder {
+	return dev.foregrounder
+}
+
+func (dev *VirtualDev) Backgrounder() IBackgrounder {
+	return dev.backgrounder
+}
+
+func (dev *VirtualDev) PageManager() IPageManager {
+	return dev.pageManager
+}
+
+func (dev *VirtualDev) HandlerPruner() IHandlerPruner {
+	return dev.handlerPruner
+}
+
+func (dev *VirtualDev) InputManager() IInputManager {
+	return dev.inputManager
+}
+
+func (dev *VirtualDev) Logger() *log.Logger {
+	return dev.logger
+}
+
+func (dev *VirtualDev) SetKeyBackground(keyIndex int, page int) {
 	var background image.Image
-	keyV3 := dev.Config.Pages[page].Keys[keyIndex]
+	keyV3 := dev.config.Pages[page].Keys[keyIndex]
 	keyConfigV3 := keyV3.Application[keyV3.ActiveApplication]
 
 	kcbg := keyConfigV3.GetKeyBackgroundBuff()
@@ -222,7 +236,7 @@ func (dev *VirtualDev) CompositeKeyImage(keyIndex int, page int) {
 	}
 
 	if background == nil {
-		pbg := dev.Config.Pages[page].GetTouchPanelBackgroundBuff()
+		pbg := dev.config.Pages[page].GetTouchPanelBackgroundBuff()
 
 		if pbg != nil {
 			background = pbg[keyIndex]
@@ -230,21 +244,21 @@ func (dev *VirtualDev) CompositeKeyImage(keyIndex int, page int) {
 	}
 
 	if background == nil {
-		cbg := dev.Config.GetKeyGridBackgroundBuff()
+		cbg := dev.config.GetKeyGridBackgroundBuff()
 
 		if cbg != nil {
 			background = cbg[keyIndex]
 		}
 	}
 
-	if dev.KeyBGBuffs[keyIndex] != background {
-		dev.KeyBGBuffs[keyIndex] = background
+	if dev.keyBGBuffs[keyIndex] != background {
+		dev.keyBGBuffs[keyIndex] = background
 		dev.keyUpdateChan <- keyIndex
 	}
 }
 
 func (dev *VirtualDev) SetKeyForeground(img image.Image, keyIndex int, page int) {
-	if dev.Page != page {
+	if dev.pageManager.GetPage() != page {
 		return
 	}
 
@@ -253,15 +267,15 @@ func (dev *VirtualDev) SetKeyForeground(img image.Image, keyIndex int, page int)
 		img = api.ResizeImage(img, dev.sdInfo.IconSize)
 	}
 
-	if dev.KeyFGBuffs[keyIndex] != img {
-		dev.KeyFGBuffs[keyIndex] = img
+	if dev.keyFGBuffs[keyIndex] != img {
+		dev.keyFGBuffs[keyIndex] = img
 		dev.keyUpdateChan <- keyIndex
 	}
 }
 
-func (dev *VirtualDev) CompositePanelImage(knobIndex int, page int) {
+func (dev *VirtualDev) SetPanelBackground(knobIndex int, page int) {
 	var background image.Image
-	knobV3 := dev.Config.Pages[page].Knobs[knobIndex]
+	knobV3 := dev.config.Pages[page].Knobs[knobIndex]
 	knobConfigV3 := knobV3.Application[knobV3.ActiveApplication]
 
 	kcbg := knobConfigV3.GetTouchPanelBackgroundBuff()
@@ -278,27 +292,27 @@ func (dev *VirtualDev) CompositePanelImage(knobIndex int, page int) {
 	}
 
 	if background == nil {
-		pbg := dev.Config.Pages[page].GetTouchPanelBackgroundBuff()
+		pbg := dev.config.Pages[page].GetTouchPanelBackgroundBuff()
 		if pbg != nil {
 			background = pbg[knobIndex]
 		}
 	}
 
 	if background == nil {
-		cbg := dev.Config.GetTouchPanelBackgroundBuff()
+		cbg := dev.config.GetTouchPanelBackgroundBuff()
 		if cbg != nil {
 			background = cbg[knobIndex]
 		}
 	}
 
-	if dev.PanelBGBuffs[knobIndex] != background {
-		dev.PanelBGBuffs[knobIndex] = background
+	if dev.panelBGBuffs[knobIndex] != background {
+		dev.panelBGBuffs[knobIndex] = background
 		dev.knobUpdateChan <- knobIndex
 	}
 }
 
 func (dev *VirtualDev) SetPanelForeground(img image.Image, knobIndex int, page int) {
-	if dev.Page != page {
+	if dev.pageManager.GetPage() != page {
 		return
 	}
 
@@ -307,122 +321,82 @@ func (dev *VirtualDev) SetPanelForeground(img image.Image, knobIndex int, page i
 		img = api.ResizeImageWH(img, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
 	}
 
-	if dev.PanelFGBuffs[knobIndex] != img {
-		dev.PanelFGBuffs[knobIndex] = img
+	if dev.panelFGBuffs[knobIndex] != img {
+		dev.panelFGBuffs[knobIndex] = img
 		dev.knobUpdateChan <- knobIndex
 	}
 }
 
-func (dev *VirtualDev) UnmountHandlers() {
-	for i := range dev.Config.Pages {
-		dev.unmountPageHandlersOnPageSwitch(dev.Config.Pages[i])
-	}
-}
-
 func (dev *VirtualDev) SetBrightness(brightness uint8) error {
-	return dev.Deck.SetBrightness(brightness)
+	return dev.deck.SetBrightness(brightness)
 }
 
-func (dev *VirtualDev) SetSdInfo() {
+func (dev *VirtualDev) setSdInfo() {
 
-	manufacturer, err := dev.Deck.Device.GetManufacturer()
+	manufacturer, err := dev.deck.Device.GetManufacturer()
 	if err != nil {
-		log.Println(err)
+		dev.logger.Println(err)
 	}
-	product, err := dev.Deck.Device.GetProduct()
+	product, err := dev.deck.Device.GetProduct()
 	if err != nil {
-		log.Println(err)
+		dev.logger.Println(err)
 	}
+
 	info := api.StreamDeckInfoV1{
-		Cols:          int(dev.Deck.Columns),
-		Rows:          int(dev.Deck.Rows),
-		IconSize:      int(dev.Deck.Pixels),
-		Page:          0,
-		Serial:        dev.Deck.Serial,
-		Name:          manufacturer + " " + product,
-		Connected:     true,
-		LastConnected: time.Now(),
-		LcdWidth:      int(dev.Deck.LcdWidth),
-		LcdHeight:     int(dev.Deck.LcdHeight),
-		LcdCols:       int(dev.Deck.LcdColumns),
-		KnobCols:      int(dev.Deck.Knobs),
-		PaddingX:      int(dev.Deck.PaddingX),
-		PaddingY:      int(dev.Deck.PaddingY),
+		Cols:                    int(dev.deck.Columns),
+		Rows:                    int(dev.deck.Rows),
+		IconSize:                int(dev.deck.Pixels),
+		Page:                    0,
+		Serial:                  dev.deck.Serial,
+		Name:                    manufacturer + " " + product,
+		Connected:               true,
+		LastConnected:           time.Now(),
+		LcdWidth:                int(dev.deck.LcdWidth),
+		LcdHeight:               int(dev.deck.LcdHeight),
+		LcdCols:                 int(dev.deck.LcdColumns),
+		KnobCols:                int(dev.deck.Knobs),
+		PaddingX:                int(dev.deck.PaddingX),
+		PaddingY:                int(dev.deck.PaddingY),
+		KeyGridBackgroundWidth:  int((dev.deck.Pixels * uint(dev.deck.Columns)) + (dev.deck.PaddingX * uint(dev.deck.Columns-1))),
+		KeyGridBackgroundHeight: int((dev.deck.Pixels * uint(dev.deck.Rows)) + (dev.deck.PaddingX * uint(dev.deck.Rows-1))),
+		LcdBackgroundWidth:      int(dev.deck.LcdWidth * uint(dev.deck.LcdColumns)),
+		LcdBackgroundHeight:     int(dev.deck.LcdHeight),
 	}
 
-	dev.sdInfo = info
-}
-
-func (dev *VirtualDev) ApplicationUpdated() {
-	if locked {
-		return
-	}
-	page := dev.Config.Pages[dev.Page]
-	for i := range page.Keys {
-		key := &page.Keys[i]
-		_, keyHasApp := key.Application[currentApplication]
-		activeApp := key.ActiveApplication
-		if key.Application[key.ActiveApplication].KeyHold != 0 && (keyHasApp || key.ActiveApplication != "") {
-			kb.KeyUp(key.Application[key.ActiveApplication].KeyHold)
-		}
-		if key.ActiveApplication != "" && !keyHasApp {
-			key.ActiveApplication = ""
-		}
-		if keyHasApp {
-			key.ActiveApplication = currentApplication
-		}
-		if key.ActiveApplication != activeApp {
-			go SetKey(dev, key.Application[key.ActiveApplication], i, dev.Page, key.ActiveApplication)
-		}
-	}
-	for i := range page.Knobs {
-		knob := &page.Knobs[i]
-		_, keyHasApp := knob.Application[currentApplication]
-		activeApp := knob.ActiveApplication
-		if knob.ActiveApplication != "" && !keyHasApp {
-			knob.ActiveApplication = ""
-		}
-		if keyHasApp {
-			knob.ActiveApplication = currentApplication
-		}
-		if knob.ActiveApplication != activeApp {
-			go SetKnob(dev, knob.Application[knob.ActiveApplication], i, dev.Page, knob.ActiveApplication)
-		}
-	}
-	dev.unmountPageHandlersOnAppSwitch(page)
+	dev.sdInfo = &info
 }
 
 func (dev *VirtualDev) HandleScreenLockChange(locked bool) {
 	if locked {
-		dev.UnmountHandlers()
-		dev.Deck.Reset()
+		dev.handlerPruner.StopAllHandlers()
+		dev.deck.Reset()
 	} else {
-		dev.SetPage(dev.Page)
+		dev.pageManager.SetPage(dev.pageManager.GetPage())
 	}
 }
 
-func (dev *VirtualDev) Render() {
-	err := dev.Deck.SetImage(0, image.NewRGBA(image.Rect(0, 0, int(dev.Deck.Pixels), int(dev.Deck.Pixels))))
+func (dev *VirtualDev) render() {
+	err := dev.deck.SetImage(0, image.NewRGBA(image.Rect(0, 0, dev.sdInfo.IconSize, dev.sdInfo.IconSize)))
 	if err != nil {
-		log.Println(err)
+		dev.logger.Println(err)
 		return
 	}
 
-	go dev.RenderKey()
+	go dev.renderKey()
 
-	go dev.RenderKnob()
+	go dev.renderKnob()
 }
 
-func (dev *VirtualDev) RenderKey() {
-	for dev.IsOpen && !dev.shuttingDown {
+func (dev *VirtualDev) renderKey() {
+	for dev.isOpen && !dev.shuttingDown {
 
 		keyIndex := <-dev.keyUpdateChan
 
-		mergedImage, err := api.LayerImages(int(dev.Deck.Pixels), int(dev.Deck.Pixels), dev.KeyBGBuffs[keyIndex], dev.KeyFGBuffs[keyIndex])
+		mergedImage, err := api.LayerImages(dev.sdInfo.IconSize, dev.sdInfo.IconSize, dev.keyBGBuffs[keyIndex], dev.keyFGBuffs[keyIndex])
 
 		if err != nil {
 			dev.keyUpdateChan <- keyIndex
-			log.Println(err)
+			dev.logger.Println(err)
 			continue
 		}
 
@@ -430,7 +404,7 @@ func (dev *VirtualDev) RenderKey() {
 
 		dev.mu.Lock()
 
-		err = dev.Deck.SetImage(uint8(keyIndex), mergedImage)
+		err = dev.deck.SetImage(uint8(keyIndex), mergedImage)
 
 		dev.mu.Unlock()
 
@@ -438,30 +412,30 @@ func (dev *VirtualDev) RenderKey() {
 			dev.keyUpdateChan <- keyIndex
 			match, _ := regexp.MatchString(`.*hidapi.*`, err.Error())
 			if match {
-				dev.Disconnect()
+				dev.disconnect()
 				return
 			}
 			match, _ = regexp.MatchString(`.*dimensions.*`, err.Error())
 			if match {
-				log.Println(fmt.Sprintf("%s provided: %d x %d", err.Error(), bounds.X, bounds.Y))
+				dev.logger.Println(fmt.Sprintf("%s provided: %d x %d", err.Error(), bounds.X, bounds.Y))
 				return
 			}
 
-			log.Println(err)
+			dev.logger.Println(err)
 		}
 	}
 }
 
-func (dev *VirtualDev) RenderKnob() {
-	for dev.IsOpen && !dev.shuttingDown {
+func (dev *VirtualDev) renderKnob() {
+	for dev.isOpen && !dev.shuttingDown {
 
 		knobIndex := <-dev.knobUpdateChan
 
-		mergedImage, err := api.LayerImages(int(dev.Deck.LcdWidth), int(dev.Deck.LcdHeight), dev.PanelBGBuffs[knobIndex], dev.PanelFGBuffs[knobIndex])
+		mergedImage, err := api.LayerImages(dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight, dev.panelBGBuffs[knobIndex], dev.panelFGBuffs[knobIndex])
 
 		if err != nil {
 			dev.knobUpdateChan <- knobIndex
-			log.Println(err)
+			dev.logger.Println(err)
 			continue
 		}
 
@@ -469,7 +443,7 @@ func (dev *VirtualDev) RenderKnob() {
 
 		dev.mu.Lock()
 
-		err = dev.Deck.SetLcdImage(knobIndex, mergedImage)
+		err = dev.deck.SetLcdImage(knobIndex, mergedImage)
 
 		dev.mu.Unlock()
 
@@ -477,385 +451,77 @@ func (dev *VirtualDev) RenderKnob() {
 			dev.knobUpdateChan <- knobIndex
 			match, _ := regexp.MatchString(`.*hidapi.*`, err.Error())
 			if match {
-				dev.Disconnect()
+				dev.disconnect()
 				return
 			}
 			match, _ = regexp.MatchString(`.*dimensions.*`, err.Error())
 			if match {
-				log.Println(fmt.Sprintf("%s provided: %d x %d", err.Error(), bounds.X, bounds.Y))
+				dev.logger.Println(fmt.Sprintf("%s provided: %d x %d", err.Error(), bounds.X, bounds.Y))
 				return
 			}
 
-			log.Println(err)
+			dev.logger.Println(err)
 		}
 	}
 }
 
-func (dev *VirtualDev) HandleInput() {
+func (dev *VirtualDev) handleInput() {
 	defer func() {
 		if err := recover(); err != nil {
-			dev.Disconnect()
+			dev.disconnect()
 		}
 	}()
-	dev.Deck.HandleInput(func(event streamdeck.InputEvent) {
+	dev.deck.HandleInput(func(event streamdeck.InputEvent) {
 		if !locked {
 			if event.EventType == streamdeck.KEY_PRESS || event.EventType == streamdeck.KEY_RELEASE {
-				page := dev.Config.Pages[dev.Page]
+				page := dev.config.Pages[dev.pageManager.GetPage()]
 				if uint8(len(page.Keys)) > event.Index {
-					HandleKeyInput(dev, &page.Keys[event.Index], event.EventType == streamdeck.KEY_PRESS)
+					dev.inputManager.HandleKeyInput(&page.Keys[event.Index], event)
 				}
 			} else if event.EventType == streamdeck.SCREEN_SWIPE {
 				if event.ScreenEndX < event.ScreenX {
-					if dev.Page < len(dev.Config.Pages)-1 {
-						dev.SetPage(dev.Page + 1)
+					if dev.pageManager.GetPage() < len(dev.config.Pages)-1 {
+						dev.pageManager.SetPage(dev.pageManager.GetPage() + 1)
 					}
 				} else {
-					if dev.Page > 0 {
-						dev.SetPage(dev.Page - 1)
+					if dev.pageManager.GetPage() > 0 {
+						dev.pageManager.SetPage(dev.pageManager.GetPage() - 1)
 					}
 				}
-			} else if dev.Deck.HasLCD && dev.Deck.HasKnobs {
-				page := dev.Config.Pages[dev.Page]
+			} else if dev.deck.HasLCD && dev.deck.HasKnobs {
+				page := dev.config.Pages[dev.pageManager.GetPage()]
 				if uint8(len(page.Knobs)) > event.Index {
-					HandleKnobInput(dev, &page.Knobs[event.Index], event)
+					dev.inputManager.HandleKnobInput(&page.Knobs[event.Index], event)
 				}
 			}
 		}
 	})
 }
 
-func (dev *VirtualDev) Disconnect() {
+func (dev *VirtualDev) disconnect() {
 	disconnectSem.Lock()
 	defer disconnectSem.Unlock()
-	if !dev.IsOpen {
+	if !dev.isOpen {
 		return
 	}
-	log.Println("Device (" + dev.Deck.Serial + ") disconnected")
-	err := dev.Deck.Close()
+	dev.logger.Println("Device (" + dev.deck.Serial + ") disconnected")
+	err := dev.deck.Close()
 	if err != nil {
-		log.Println(err)
+		dev.logger.Println(err)
 	}
-	dev.IsOpen = false
+	dev.isOpen = false
 	dev.sdInfo.Connected = false
 	dev.sdInfo.LastDisconnected = time.Now()
-	dev.UnmountHandlers()
+	dev.handlerPruner.StopAllHandlers()
 }
 
-func (dev *VirtualDev) unmountPageHandlersOnPageSwitch(page api.PageV3) {
-
-	if page.KeyGridBackgroundHandler != nil {
-		page.KeyGridBackgroundHandler.Stop()
-	}
-
-	if page.TouchPanelBackgroundHandler != nil {
-		page.TouchPanelBackgroundHandler.Stop()
-	}
-
-	for i2 := 0; i2 < len(page.Keys); i2++ {
-		key := &page.Keys[i2]
-
-		if key.KeyBackgroundHandler != nil {
-			key.KeyBackgroundHandler.Stop()
-		}
-
-		for _, keyConfig := range key.Application {
-
-			if keyConfig.KeyBackgroundHandler != nil {
-				keyConfig.KeyBackgroundHandler.Stop()
-			}
-
-			if keyConfig.IconHandlerStruct != nil {
-				log.Printf("Stopping %s\n", keyConfig.IconHandler)
-				if keyConfig.IconHandlerStruct.IsRunning() {
-					go UnmountKeyHandler(keyConfig)
-				}
-			}
-		}
-
-	}
-	for i2 := 0; i2 < len(page.Knobs); i2++ {
-		knob := &page.Knobs[i2]
-
-		if knob.TouchPanelBackgroundHandler != nil {
-			knob.TouchPanelBackgroundHandler.Stop()
-		}
-
-		for _, knobConfig := range knob.Application {
-
-			if knobConfig.TouchPanelBackgroundHandler != nil {
-				knobConfig.TouchPanelBackgroundHandler.Stop()
-			}
-
-			if knobConfig.LcdHandlerStruct != nil {
-				log.Printf("Stopping %s\n", knobConfig.LcdHandler)
-				if knobConfig.LcdHandlerStruct.IsRunning() {
-					go UnmountKnobHandler(knobConfig)
-				}
-			}
-		}
-	}
-}
-
-func (dev *VirtualDev) unmountPageHandlersOnAppSwitch(page api.PageV3) {
-
-	for i2 := 0; i2 < len(page.Keys); i2++ {
-		key := &page.Keys[i2]
-
-		_, keyHasApp := key.Application[currentApplication]
-		for app := range key.Application {
-			keyConfig := key.Application[app]
-
-			if keyConfig.KeyBackgroundHandler != nil {
-				keyConfig.KeyBackgroundHandler.Stop()
-			}
-
-			if (keyHasApp && app == currentApplication) || (!keyHasApp && app == "") {
-				continue
-			}
-			if keyConfig.IconHandlerStruct != nil && keyConfig.IconHandlerStruct.IsRunning() {
-				log.Printf("Stopping %s\n", keyConfig.IconHandler)
-				if keyConfig.IconHandlerStruct.IsRunning() {
-					go UnmountKeyHandler(keyConfig)
-				}
-			}
-		}
-
-	}
-	for i2 := 0; i2 < len(page.Knobs); i2++ {
-		knob := &page.Knobs[i2]
-
-		_, keyHasApp := knob.Application[currentApplication]
-		for app := range knob.Application {
-			knobConfig := knob.Application[app]
-
-			if knobConfig.TouchPanelBackgroundHandler != nil {
-				go knobConfig.TouchPanelBackgroundHandler.Stop()
-			}
-
-			if (keyHasApp && app == currentApplication) || (!keyHasApp && app == "") {
-				continue
-			}
-			if knobConfig.LcdHandlerStruct != nil && knobConfig.LcdHandlerStruct.IsRunning() {
-				log.Printf("Stopping %s\n", knobConfig.LcdHandler)
-				if knobConfig.LcdHandlerStruct.IsRunning() {
-					go UnmountKnobHandler(knobConfig)
-				}
-			}
-		}
-	}
-}
-
-func (dev *VirtualDev) setLcdBackground(backgrounder api.LcdBackgrounder, w, h int) {
-	if backgrounder.GetTouchPanelBackground() == "" {
-		return
-	}
-
-	if backgrounder.GetTouchPanelBackgroundHandler() == nil {
-		var handler api.TouchPanelBackgroundHandler
-
-		for _, module := range modules {
-			if module.Name == backgrounder.GetTouchPanelBackground() {
-				handler = module.NewTouchPanelBackgroundHandler()
-			}
-		}
-
-		backgrounder.SetTouchPanelBackgroundHandler(handler)
-	}
-
-	if backgrounder.GetTouchPanelBackgroundHandlerFields() != nil {
-		go backgrounder.GetTouchPanelBackgroundHandler().Start(backgrounder.GetTouchPanelBackgroundHandlerFields(), dev.sdInfo, func(imgs []image.Image) {
-			if len(imgs) == int(dev.Deck.Knobs) {
-				backgrounder.SetTouchPanelBackgroundBuff(imgs)
-
-				for u := range imgs {
-					dev.CompositePanelImage(u, dev.Page)
-				}
-			}
-		})
-		return
-	}
-
-	if backgrounder.GetTouchPanelBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetTouchPanelBackground())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	img = api.ResizeImageWH(img, w, h)
-
-	var imgs []image.Image
-
-	for lcdIndex := range int(dev.Deck.LcdColumns) {
-		x0, y0 := dev.sdInfo.LcdWidth*lcdIndex, 0
-		x1, y1 := dev.sdInfo.LcdWidth*(lcdIndex+1), dev.sdInfo.LcdHeight
-
-		imgs = append(imgs, api.SubImage(img, x0, y0, x1, y1))
-	}
-
-	backgrounder.SetTouchPanelBackgroundBuff(imgs)
-
-	for index, _ := range imgs {
-		dev.CompositePanelImage(index, dev.Page)
-	}
-}
-
-func (dev *VirtualDev) setKeyBackground(backgrounder api.KeyGridBackgrounder, w, h int) {
-	if backgrounder.GetKeyGridBackground() == "" {
-		return
-	}
-
-	if backgrounder.GetKeyGridBackgroundHandler() == nil {
-		var handler api.KeyGridBackgroundHandler
-
-		for _, module := range modules {
-			if module.Name == backgrounder.GetKeyGridBackground() {
-				handler = module.NewKeyGridBackground()
-			}
-		}
-
-		backgrounder.SetKeyGridBackgroundHandler(handler)
-	}
-
-	if backgrounder.GetKeyGridBackgroundHandler() != nil {
-		go backgrounder.GetKeyGridBackgroundHandler().Start(backgrounder.GetKeyGridBackgroundHandlerFields(), dev.sdInfo, func(imgs []image.Image) {
-			if len(imgs) == int(dev.Deck.Keys) {
-				backgrounder.SetKeyGridBackgroundBuff(imgs)
-
-				for u := range imgs {
-					dev.CompositeKeyImage(u, dev.Page)
-				}
-			}
-		})
-		return
-	}
-
-	if backgrounder.GetKeyGridBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetKeyGridBackground())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	img = api.ResizeImageWH(img, w, h)
-
-	var imgs []image.Image
-	for keyIndex := range int(dev.Deck.Keys) {
-		keyX := keyIndex % int(dev.Deck.Columns)
-		keyY := int(math.Floor(float64(keyIndex) / float64(dev.Deck.Columns)))
-
-		x0, y0 := keyX*int(dev.Deck.Pixels+dev.Deck.PaddingX), keyY*int(dev.Deck.Pixels+dev.Deck.PaddingY)
-		x1, y1 := keyX*int(dev.Deck.Pixels+dev.Deck.PaddingX)+int(dev.Deck.Pixels), keyY*int(dev.Deck.Pixels+dev.Deck.PaddingY)+int(dev.Deck.Pixels)
-
-		imgs = append(imgs, api.SubImage(img, x0, y0, x1, y1))
-	}
-	backgrounder.SetKeyGridBackgroundBuff(imgs)
-
-	for index, _ := range imgs {
-		dev.CompositeKeyImage(index, dev.Page)
-	}
-}
-
-func (dev *VirtualDev) setIndividualLcdBackground(backgrounder api.LcdSegmentBackgrounder, index, w, h int) {
-	if backgrounder.GetTouchPanelBackground() == "" {
-		return
-	}
-
-	if backgrounder.GetTouchPanelBackgroundHandler() == nil {
-		var handler api.TouchPanelBackgroundHandler
-
-		for _, module := range modules {
-			if module.Name == backgrounder.GetTouchPanelBackground() {
-				handler = module.NewTouchPanelBackgroundHandler()
-			}
-		}
-
-		backgrounder.SetTouchPanelBackgroundHandler(handler)
-	}
-
-	if backgrounder.GetTouchPanelBackgroundHandlerFields() != nil {
-		go backgrounder.GetTouchPanelBackgroundHandler().StartIndividual(backgrounder.GetTouchPanelBackgroundHandlerFields(), dev.sdInfo, func(img image.Image) {
-			backgrounder.SetTouchPanelBackgroundBuff(img)
-
-			dev.CompositePanelImage(index, dev.Page)
-		})
-		return
-	}
-
-	if backgrounder.GetTouchPanelBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetTouchPanelBackground())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	img = api.ResizeImageWH(img, w, h)
-
-	backgrounder.SetTouchPanelBackgroundBuff(img)
-
-	dev.CompositePanelImage(index, dev.Page)
-}
-
-func (dev *VirtualDev) setIndividualKeyBackground(backgrounder api.KeyBackgrounder, index, w, h int) {
-	if backgrounder.GetKeyBackground() == "" {
-		return
-	}
-
-	if backgrounder.GetKeyBackgroundHandler() == nil {
-		var handler api.KeyGridBackgroundHandler
-
-		for _, module := range modules {
-			if module.Name == backgrounder.GetKeyBackground() {
-				handler = module.NewKeyGridBackground()
-			}
-		}
-
-		backgrounder.SetKeyBackgroundHandler(handler)
-	}
-
-	if backgrounder.GetKeyBackgroundHandler() != nil {
-		go backgrounder.GetKeyBackgroundHandler().StartIndividual(backgrounder.GetKeyBackgroundHandlerFields(), dev.sdInfo, func(img image.Image) {
-			backgrounder.SetKeyBackgroundBuff(img)
-
-			dev.CompositeKeyImage(index, dev.Page)
-		})
-		return
-	}
-
-	if backgrounder.GetKeyBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetKeyBackground())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	img = api.ResizeImageWH(img, w, h)
-
-	dev.CompositeKeyImage(index, dev.Page)
-}
-
-func (dev *VirtualDev) Stop() {
+func (dev *VirtualDev) Close() {
 	dev.shuttingDown = true
-	if dev.IsOpen {
-		err := dev.Deck.Reset()
+	if dev.isOpen {
+		err := dev.deck.Reset()
 		if err != nil {
-			log.Println(err)
+			dev.logger.Println(err)
 		}
-		err = dev.Deck.Close()
-		if err != nil {
-			log.Println(err)
-		}
+		dev.disconnect()
 	}
 }

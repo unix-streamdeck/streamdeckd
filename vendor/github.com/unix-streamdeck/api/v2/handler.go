@@ -14,41 +14,30 @@ type VisualHandler interface {
 
 type InputHandler interface {
 	Handler
+	Input(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, event InputEvent)
 }
 
-type IconHandler interface {
+type ForegroundHandler interface {
 	VisualHandler
-	Start(key KeyConfigV3, info StreamDeckInfoV1, callback func(image image.Image))
+	Start(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(image image.Image))
 }
 
-type KeyHandler interface {
-	InputHandler
-	Key(key KeyConfigV3, info StreamDeckInfoV1)
-}
-
-type LcdHandler interface {
+type CombinedHandler interface {
 	VisualHandler
-	Start(key KnobConfigV3, info StreamDeckInfoV1, callback func(image image.Image))
-}
-
-type KnobOrTouchHandler interface {
 	InputHandler
-	Input(key KnobConfigV3, info StreamDeckInfoV1, event InputEvent)
 }
 
 type BackgroundHandler interface {
-	VisualHandler
-	Start(fields map[string]any, info StreamDeckInfoV1, callback func(images []image.Image))
-	StartIndividual(fields map[string]any, info StreamDeckInfoV1, callback func(img image.Image))
+	ForegroundHandler
+	StartGrid(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(images []image.Image))
 }
 
-type KeyGridBackgroundHandler interface {
-	BackgroundHandler
-}
+type HandlerType uint8
 
-type TouchPanelBackgroundHandler interface {
-	BackgroundHandler
-}
+const (
+	LCD HandlerType = iota
+	KEY
+)
 
 type InputEventType uint8
 
@@ -58,6 +47,9 @@ const (
 	KNOB_PRESS
 	SCREEN_SHORT_TAP
 	SCREEN_LONG_TAP
+	SCREEN_SWIPE
+	KEY_PRESS
+	KEY_RELEASE
 )
 
 type InputEvent struct {
