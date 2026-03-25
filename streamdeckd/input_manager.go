@@ -8,10 +8,12 @@ import (
 type IInputManager interface {
 	HandleKeyInput(key *api.KeyV3, event streamdeck.InputEvent)
 	HandleKnobInput(knob *api.KnobV3, event streamdeck.InputEvent)
+	GetKeyState(index int) bool
 }
 
 type InputManager struct {
-	vdev IVirtualDev
+	vdev      IVirtualDev
+	KeyStates []bool
 }
 
 func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEvent) {
@@ -21,40 +23,18 @@ func (im *InputManager) HandleKeyInput(key *api.KeyV3, event streamdeck.InputEve
 		return
 	}
 	if event.EventType == streamdeck.KEY_PRESS {
+		im.KeyStates[event.Index] = true
+		im.vdev.RedrawKey(int(event.Index))
+
 		im.handleStandardActions(keyConfig)
 
-		if keyConfig.KeyHandler != "" {
-			var deckInfo api.StreamDeckInfoV1
-			deckInfo = *im.vdev.SdInfo()
-			if keyConfig.KeyHandlerStruct == nil {
-				var handler api.InputHandler
-				modules := AvailableModules()
-				for _, module := range modules {
-					if module.Name == keyConfig.KeyHandler {
-						handler = module.NewInput()
-					}
-				}
-				if handler == nil {
-					im.vdev.Logger().Println("Could not find handler:", keyConfig.KeyHandler)
-					return
-				}
-				keyConfig.KeyHandlerStruct = handler
-			}
-			trimmedKeyConfig := api.KeyConfigV3{KeyHandlerFields: keyConfig.KeyHandlerFields}
-			if keyConfig.IconHandler == keyConfig.KeyHandler {
-				trimmedKeyConfig.KeyHandlerFields = mergeSharedConfig(keyConfig.SharedHandlerFields, keyConfig.KeyHandlerFields)
-				iconHandler := keyConfig.IconHandlerStruct
-				comboHandler, ok := iconHandler.(api.CombinedHandler)
-				if ok {
-					keyConfig.KeyHandlerStruct = comboHandler
-				}
-			}
-			keyConfig.KeyHandlerStruct.Input(trimmedKeyConfig.KeyHandlerFields, api.KEY, deckInfo, api.InputEvent{
-				EventType:     api.InputEventType(event.EventType),
-				RotateNotches: event.RotateNotches,
-			})
-		}
+		im.handleHandlerAction(keyConfig, api.KEY, event)
+
+	} else {
+		im.KeyStates[event.Index] = false
+		im.vdev.RedrawKey(int(event.Index))
 	}
+
 	if keyConfig.KeyHold != 0 {
 		if event.EventType == streamdeck.KEY_PRESS {
 			err := kb.KeyDown(keyConfig.KeyHold)
@@ -76,37 +56,7 @@ func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.Input
 		im.vdev.Logger().Println("Err getting correct config for knob")
 		return
 	}
-	if knobConfig.KnobOrTouchHandler != "" {
-		var deckInfo api.StreamDeckInfoV1
-		deckInfo = *im.vdev.SdInfo()
-		if knobConfig.KnobOrTouchHandlerStruct == nil {
-			var handler api.InputHandler
-			modules := AvailableModules()
-			for _, module := range modules {
-				if module.Name == knobConfig.KnobOrTouchHandler {
-					handler = module.NewInput()
-				}
-			}
-			if handler == nil {
-				im.vdev.Logger().Println("Could not find handler:", knobConfig.KnobOrTouchHandler)
-				return
-			}
-			knobConfig.KnobOrTouchHandlerStruct = handler
-		}
-		trimmedKnobConfig := api.KnobConfigV3{KnobOrTouchHandlerFields: knobConfig.KnobOrTouchHandlerFields}
-		if knobConfig.LcdHandler == knobConfig.KnobOrTouchHandler {
-			trimmedKnobConfig.KnobOrTouchHandlerFields = mergeSharedConfig(knobConfig.SharedHandlerFields, knobConfig.KnobOrTouchHandlerFields)
-			iconHandler := knobConfig.LcdHandlerStruct
-			comboHandler, ok := iconHandler.(api.CombinedHandler)
-			if ok {
-				knobConfig.KnobOrTouchHandlerStruct = comboHandler
-			}
-		}
-		knobConfig.KnobOrTouchHandlerStruct.Input(trimmedKnobConfig.KnobOrTouchHandlerFields, api.LCD, deckInfo, api.InputEvent{
-			EventType:     api.InputEventType(event.EventType),
-			RotateNotches: event.RotateNotches,
-		})
-	}
+	im.handleHandlerAction(knobConfig, api.LCD, event)
 	var actions api.KnobActionV3
 	if event.EventType == streamdeck.KNOB_PRESS {
 		actions = knobConfig.KnobPressAction
@@ -116,6 +66,41 @@ func (im *InputManager) HandleKnobInput(knob *api.KnobV3, event streamdeck.Input
 		actions = knobConfig.KnobTurnUpAction
 	}
 	im.handleStandardActions(&actions)
+}
+
+func (im *InputManager) handleHandlerAction(foregroundActions api.ForegroundAndInputHandlerConfig, handlerType api.HandlerType, event streamdeck.InputEvent) {
+	if foregroundActions.GetInputHandler() != "" {
+		var deckInfo api.StreamDeckInfoV1
+		deckInfo = *im.vdev.SdInfo()
+		if foregroundActions.GetInputHandlerInstance() == nil {
+			var handler api.InputHandler
+			modules := AvailableModules()
+			for _, module := range modules {
+				if module.Name == foregroundActions.GetInputHandler() {
+					handler = module.NewInput()
+				}
+			}
+			if handler == nil {
+				im.vdev.Logger().Println("Could not find handler:", foregroundActions.GetInputHandler())
+				return
+			}
+			foregroundActions.SetInputHandlerInstance(handler)
+		}
+		fields := foregroundActions.GetInputHandlerFields()
+
+		if foregroundActions.GetForegroundHandler() == foregroundActions.GetInputHandler() {
+			fields = mergeSharedConfig(foregroundActions.GetSharedHandlerFields(), foregroundActions.GetInputHandlerFields())
+			foregroundHandler := foregroundActions.GetForegroundHandlerInstance()
+			comboHandler, ok := foregroundHandler.(api.CombinedHandler)
+			if ok {
+				foregroundActions.SetInputHandlerInstance(comboHandler)
+			}
+		}
+		foregroundActions.GetInputHandlerInstance().Input(fields, handlerType, deckInfo, api.InputEvent{
+			EventType:     api.InputEventType(event.EventType),
+			RotateNotches: event.RotateNotches,
+		})
+	}
 }
 
 func (im *InputManager) handleStandardActions(ia api.InputActions) {
@@ -144,4 +129,8 @@ func (im *InputManager) handleStandardActions(ia api.InputActions) {
 	if ia.GetObsCommand() != "" {
 		runObsCommand(ia.GetObsCommand(), ia.GetObsCommandParams())
 	}
+}
+
+func (im *InputManager) GetKeyState(index int) bool {
+	return im.KeyStates[index]
 }

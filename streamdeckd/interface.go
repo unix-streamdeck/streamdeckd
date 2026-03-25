@@ -1,9 +1,12 @@
 package streamdeckd
 
 import (
+	"bytes"
+	_ "embed"
 	"errors"
 	"fmt"
 	"image"
+	"image/png"
 	"log"
 	"os"
 	"os/exec"
@@ -14,6 +17,9 @@ import (
 var applicationManager IApplicationManager = &ApplicationManager{}
 
 var locked = false
+
+//go:embed rounded-corners.png
+var roundedCorners []byte
 
 func LoadImage(path string) (image.Image, error) {
 	f, err := os.Open(path)
@@ -91,4 +97,14 @@ func mergeSharedConfig(sharedConfig map[string]any, individualConfig map[string]
 	}
 
 	return merged
+}
+
+func getRoundedCornersImage(iconSize int) (image.Image, error) {
+	img, err := png.Decode(bytes.NewBuffer(roundedCorners))
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return api.ResizeImage(img, iconSize), nil
 }

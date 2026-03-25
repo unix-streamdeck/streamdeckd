@@ -43,6 +43,18 @@ type ForegroundActions interface {
 	GetTextColour() string
 }
 
+type ForegroundAndInputHandlerConfig interface {
+	GetForegroundHandler() string
+	GetForegroundHandlerInstance() ForegroundHandler
+	SetForegroundHandlerInstance(handler ForegroundHandler)
+	GetForegroundHandlerFields() map[string]any
+	GetInputHandler() string
+	GetInputHandlerInstance() InputHandler
+	SetInputHandlerInstance(handler InputHandler)
+	GetInputHandlerFields() map[string]any
+	GetSharedHandlerFields() map[string]any
+}
+
 type ConfigV3 struct {
 	Modules           []string            `json:"modules,omitempty"`
 	Decks             []DeckV3            `json:"decks"`

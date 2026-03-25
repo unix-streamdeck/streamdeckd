@@ -580,9 +580,7 @@ func (d *Device) SetBrightness(percent uint8) error {
 // 0 being the top-left button.
 func (d *Device) SetImage(index uint8, img image.Image) error {
 	d.mu.Lock()
-	//log.Println(d.Serial, "Mutex Acquired")
 	defer func() {
-		//log.Println(d.Serial, "Mutex Released")
 		d.mu.Unlock()
 	}()
 	if !d.HasScreen {
@@ -906,8 +904,6 @@ func PlusInputHandler(d *Device, cback func(event InputEvent)) {
 	for {
 		keyBuff := make([]byte, d.KeyStateOffset+len(d.KeyState)+3)
 
-		copy(d.KeyState, keyBuff[d.KeyStateOffset:])
-
 		_, err := d.Device.Read(keyBuff)
 
 		if err != nil {
@@ -915,13 +911,22 @@ func PlusInputHandler(d *Device, cback func(event InputEvent)) {
 		}
 		if keyBuff[1] == 0x00 {
 			// keys
-			for i := d.KeyStateOffset; i < len(keyBuff); i++ {
+			for i := d.KeyStateOffset; i < d.KeyStateOffset+len(d.KeyState); i++ {
 				keyIndex := uint8(i - d.KeyStateOffset)
-				if keyBuff[i] == 0x01 {
-					cback(InputEvent{
-						EventType: KEY_PRESS,
-						Index:     d.TranslateKeyIndex(keyIndex, d.Columns),
-					})
+				if keyBuff[i] != d.KeyState[keyIndex] {
+					if keyBuff[i] == 0x01 {
+						d.KeyState[keyIndex] = 0x01
+						cback(InputEvent{
+							EventType: KEY_PRESS,
+							Index:     d.TranslateKeyIndex(keyIndex, d.Columns),
+						})
+					} else {
+						d.KeyState[keyIndex] = 0x00
+						cback(InputEvent{
+							EventType: KEY_RELEASE,
+							Index:     d.TranslateKeyIndex(keyIndex, d.Columns),
+						})
+					}
 				}
 			}
 		} else if keyBuff[1] == 0x02 {

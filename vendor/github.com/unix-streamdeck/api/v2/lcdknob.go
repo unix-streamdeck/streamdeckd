@@ -106,6 +106,42 @@ type KnobConfigV3 struct {
 	TouchPanelBackgroundHandlerFields map[string]any    `json:"touch_panel_background_handler_fields"`
 }
 
+func (kc *KnobConfigV3) SetForegroundHandlerInstance(handler ForegroundHandler) {
+	kc.LcdHandlerStruct = handler
+}
+
+func (kc *KnobConfigV3) GetForegroundHandlerFields() map[string]any {
+	return kc.LcdHandlerFields
+}
+
+func (kc *KnobConfigV3) GetForegroundHandlerInstance() ForegroundHandler {
+	return kc.LcdHandlerStruct
+}
+
+func (kc *KnobConfigV3) GetForegroundHandler() string {
+	return kc.LcdHandler
+}
+
+func (kc *KnobConfigV3) GetInputHandler() string {
+	return kc.KnobOrTouchHandler
+}
+
+func (kc *KnobConfigV3) GetInputHandlerInstance() InputHandler {
+	return kc.KnobOrTouchHandlerStruct
+}
+
+func (kc *KnobConfigV3) SetInputHandlerInstance(handler InputHandler) {
+	kc.KnobOrTouchHandlerStruct = handler
+}
+
+func (kc *KnobConfigV3) GetInputHandlerFields() map[string]any {
+	return kc.KnobOrTouchHandlerFields
+}
+
+func (kc *KnobConfigV3) GetSharedHandlerFields() map[string]any {
+	return kc.SharedHandlerFields
+}
+
 func (kc *KnobConfigV3) GetIcon() string {
 	return kc.Icon
 }

@@ -75,6 +75,42 @@ type KeyConfigV3 struct {
 	KeyBackgroundHandlerFields map[string]any    `json:"key_background_handler_fields"`
 }
 
+func (kc *KeyConfigV3) SetForegroundHandlerInstance(handler ForegroundHandler) {
+	kc.IconHandlerStruct = handler
+}
+
+func (kc *KeyConfigV3) GetForegroundHandlerFields() map[string]any {
+	return kc.IconHandlerFields
+}
+
+func (kc *KeyConfigV3) GetForegroundHandlerInstance() ForegroundHandler {
+	return kc.IconHandlerStruct
+}
+
+func (kc *KeyConfigV3) GetForegroundHandler() string {
+	return kc.IconHandler
+}
+
+func (kc *KeyConfigV3) GetInputHandler() string {
+	return kc.KeyHandler
+}
+
+func (kc *KeyConfigV3) GetInputHandlerInstance() InputHandler {
+	return kc.KeyHandlerStruct
+}
+
+func (kc *KeyConfigV3) SetInputHandlerInstance(handler InputHandler) {
+	kc.KeyHandlerStruct = handler
+}
+
+func (kc *KeyConfigV3) GetInputHandlerFields() map[string]any {
+	return kc.KeyHandlerFields
+}
+
+func (kc *KeyConfigV3) GetSharedHandlerFields() map[string]any {
+	return kc.SharedHandlerFields
+}
+
 func (kc *KeyConfigV3) GetIcon() string {
 	return kc.Icon
 }

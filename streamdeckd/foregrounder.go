@@ -24,7 +24,12 @@ func (f *Foregrounder) SetKnob(currentKnobConfig *api.KnobConfigV3, knobIndex in
 		go f.SetKnob(currentKnobConfig, knobIndex, page, activeApp)
 	})
 	if currentKnobConfig.LcdHandler != "" {
-		f.setKnobHandler(currentKnobConfig, knobIndex, page, activeApp)
+		f.setHandler(currentKnobConfig, api.LCD, knobIndex, activeApp, func(img image.Image) {
+			if img.Bounds().Dx() != f.vdev.SdInfo().LcdWidth || img.Bounds().Dy() != f.vdev.SdInfo().LcdHeight {
+				img = api.ResizeImageWH(img, f.vdev.SdInfo().LcdWidth, f.vdev.SdInfo().LcdHeight)
+			}
+			f.vdev.SetPanelForeground(img, knobIndex, page)
+		})
 	}
 	if currentKnobConfig.LcdHandlerStruct == nil {
 		img := f.loadStaticImage(currentKnobConfig, f.vdev.SdInfo().LcdWidth, f.vdev.SdInfo().LcdHeight)
@@ -34,45 +39,18 @@ func (f *Foregrounder) SetKnob(currentKnobConfig *api.KnobConfigV3, knobIndex in
 	}
 }
 
-func (f *Foregrounder) setKnobHandler(currentKnobConfig *api.KnobConfigV3, knobIndex int, page int, activeApp string) {
-	if currentKnobConfig.LcdHandlerStruct == nil {
-		var handler api.ForegroundHandler
-		modules := AvailableModules()
-		for _, module := range modules {
-			if module.Name == currentKnobConfig.LcdHandler {
-				handler = module.NewForeground()
-			}
-		}
-		if handler == nil {
-			f.vdev.Logger().Println("Could not find handler:", currentKnobConfig.LcdHandler)
-			return
-		}
-		f.vdev.Logger().Printf("Created %s\n", currentKnobConfig.LcdHandler)
-		currentKnobConfig.LcdHandlerStruct = handler
-	}
-	f.vdev.Logger().Printf("Started %s on knob %d with app profile %s\n", currentKnobConfig.LcdHandler, knobIndex, activeApp)
-	trimmedKnobConfig := api.KnobConfigV3{LcdHandlerFields: currentKnobConfig.LcdHandlerFields}
-
-	if currentKnobConfig.LcdHandler == currentKnobConfig.KnobOrTouchHandler {
-		trimmedKnobConfig.LcdHandlerFields = mergeSharedConfig(currentKnobConfig.SharedHandlerFields, currentKnobConfig.LcdHandlerFields)
-	}
-
-	go currentKnobConfig.LcdHandlerStruct.Start(trimmedKnobConfig.LcdHandlerFields,
-		api.LCD, *f.vdev.SdInfo(), func(image image.Image) {
-			if image.Bounds().Max.X != f.vdev.SdInfo().LcdWidth || image.Bounds().Max.Y != f.vdev.SdInfo().LcdHeight {
-				image = api.ResizeImageWH(image, f.vdev.SdInfo().LcdWidth, f.vdev.SdInfo().LcdHeight)
-			}
-			f.vdev.SetPanelForeground(image, knobIndex, page)
-		})
-}
-
 func (f *Foregrounder) SetKey(currentKeyConfig *api.KeyConfigV3, keyIndex int, page int, activeApp string) {
 	defer HandlePanic(func() {
 		f.vdev.Logger().Println("Restarting SetKey")
 		go f.SetKey(currentKeyConfig, keyIndex, page, activeApp)
 	})
 	if currentKeyConfig.IconHandler != "" {
-		f.setKeyHandler(currentKeyConfig, keyIndex, page, activeApp)
+		f.setHandler(currentKeyConfig, api.KEY, keyIndex, activeApp, func(img image.Image) {
+			if img.Bounds().Dx() != f.vdev.SdInfo().IconSize || img.Bounds().Dy() != f.vdev.SdInfo().IconSize {
+				img = api.ResizeImage(img, f.vdev.SdInfo().IconSize)
+			}
+			f.vdev.SetKeyForeground(img, keyIndex, page)
+		})
 	}
 	if currentKeyConfig.IconHandlerStruct == nil {
 		img := f.loadStaticImage(currentKeyConfig, f.vdev.SdInfo().IconSize, f.vdev.SdInfo().IconSize)
@@ -82,36 +60,32 @@ func (f *Foregrounder) SetKey(currentKeyConfig *api.KeyConfigV3, keyIndex int, p
 	}
 }
 
-func (f *Foregrounder) setKeyHandler(currentKeyConfig *api.KeyConfigV3, keyIndex int, page int, activeApp string) {
-	if currentKeyConfig.IconHandlerStruct == nil {
+func (f *Foregrounder) setHandler(foregroundActions api.ForegroundAndInputHandlerConfig, handlerType api.HandlerType, index int, activeApp string, callback func(img image.Image)) {
+	if foregroundActions.GetForegroundHandlerInstance() == nil {
 		var handler api.ForegroundHandler
 		modules := AvailableModules()
 		for _, module := range modules {
-			if module.Name == currentKeyConfig.IconHandler {
+			if module.Name == foregroundActions.GetForegroundHandler() {
 				handler = module.NewForeground()
 			}
 		}
 		if handler == nil {
-			f.vdev.Logger().Println("Could not find handler:", currentKeyConfig.IconHandler)
+			f.vdev.Logger().Println("Could not find handler:", foregroundActions.GetForegroundHandler())
 			return
 		}
-		f.vdev.Logger().Printf("Created %s\n", currentKeyConfig.IconHandler)
-		currentKeyConfig.IconHandlerStruct = handler
+		f.vdev.Logger().Printf("Created %s\n", foregroundActions.GetForegroundHandler())
+		foregroundActions.SetForegroundHandlerInstance(handler)
 	}
-	f.vdev.Logger().Printf("Started %s on key %d with app profile `%s`\n", currentKeyConfig.IconHandler, keyIndex, activeApp)
-	trimmedKeyConfig := api.KeyConfigV3{IconHandlerFields: currentKeyConfig.IconHandlerFields}
+	f.vdev.Logger().Printf("Started %s on key %d with app profile `%s`\n", foregroundActions.GetForegroundHandler(), index, activeApp)
 
-	if currentKeyConfig.IconHandler == currentKeyConfig.KeyHandler {
-		trimmedKeyConfig.IconHandlerFields = mergeSharedConfig(currentKeyConfig.SharedHandlerFields, currentKeyConfig.IconHandlerFields)
+	fields := foregroundActions.GetForegroundHandlerFields()
+
+	if foregroundActions.GetForegroundHandler() == foregroundActions.GetInputHandler() {
+		fields = mergeSharedConfig(foregroundActions.GetSharedHandlerFields(), foregroundActions.GetForegroundHandlerFields())
 	}
 
-	currentKeyConfig.IconHandlerStruct.Start(trimmedKeyConfig.IconHandlerFields,
-		api.KEY, *f.vdev.SdInfo(), func(image image.Image) {
-			if image.Bounds().Max.X != f.vdev.SdInfo().IconSize || image.Bounds().Max.Y != f.vdev.SdInfo().IconSize {
-				image = api.ResizeImage(image, f.vdev.SdInfo().IconSize)
-			}
-			f.vdev.SetKeyForeground(image, keyIndex, page)
-		})
+	foregroundActions.GetForegroundHandlerInstance().Start(fields,
+		handlerType, *f.vdev.SdInfo(), callback)
 }
 
 func (f *Foregrounder) loadStaticImage(fa api.ForegroundActions, w, h int) image.Image {

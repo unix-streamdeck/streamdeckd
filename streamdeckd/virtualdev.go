@@ -12,6 +12,7 @@ import (
 
 	"github.com/unix-streamdeck/api/v2"
 	streamdeck "github.com/unix-streamdeck/driver"
+	"golang.org/x/image/draw"
 )
 
 var disconnectSem sync.Mutex
@@ -36,6 +37,7 @@ type IVirtualDev interface {
 	SetKeyForeground(img image.Image, keyIndex int, page int)
 	SetPanelBackground(knobIndex int, page int)
 	SetPanelForeground(img image.Image, knobIndex int, page int)
+	RedrawKey(keyIndex int)
 	SetBrightness(brightness uint8) error
 	HandleScreenLockChange(locked bool)
 	Close()
@@ -83,6 +85,7 @@ type VirtualDev struct {
 	keyBGBuffs     []image.Image
 	panelFGBuffs   []image.Image
 	panelBGBuffs   []image.Image
+	roundedCorners image.Image
 
 	//External Properties
 	isOpen        bool
@@ -121,6 +124,12 @@ func (dev *VirtualDev) Open(rawDev *streamdeck.Device) error {
 		}
 		dev.setSdInfo()
 
+		img, err := getRoundedCornersImage(int(rawDev.Pixels))
+
+		if err == nil {
+			dev.roundedCorners = img
+		}
+
 		dev.backgrounder = &Backgrounder{
 			vdev: dev,
 		}
@@ -135,7 +144,8 @@ func (dev *VirtualDev) Open(rawDev *streamdeck.Device) error {
 		}
 
 		dev.inputManager = &InputManager{
-			vdev: dev,
+			vdev:      dev,
+			KeyStates: make([]bool, dev.deck.Keys),
 		}
 
 		dev.foregrounder = &Foregrounder{
@@ -255,6 +265,10 @@ func (dev *VirtualDev) SetKeyBackground(keyIndex int, page int) {
 		dev.keyBGBuffs[keyIndex] = background
 		dev.keyUpdateChan <- keyIndex
 	}
+}
+
+func (dev *VirtualDev) RedrawKey(keyIndex int) {
+	dev.keyUpdateChan <- keyIndex
 }
 
 func (dev *VirtualDev) SetKeyForeground(img image.Image, keyIndex int, page int) {
@@ -392,12 +406,23 @@ func (dev *VirtualDev) renderKey() {
 
 		keyIndex := <-dev.keyUpdateChan
 
-		mergedImage, err := api.LayerImages(dev.sdInfo.IconSize, dev.sdInfo.IconSize, dev.keyBGBuffs[keyIndex], dev.keyFGBuffs[keyIndex])
+		mergedImage, err := api.LayerImages(dev.sdInfo.IconSize, dev.sdInfo.IconSize, dev.keyBGBuffs[keyIndex], dev.keyFGBuffs[keyIndex], dev.roundedCorners)
 
 		if err != nil {
 			dev.keyUpdateChan <- keyIndex
 			dev.logger.Println(err)
 			continue
+		}
+
+		if dev.inputManager.GetKeyState(keyIndex) {
+
+			bg := image.NewRGBA(image.Rect(0, 0, dev.sdInfo.IconSize, dev.sdInfo.IconSize))
+
+			mergedImage = api.ResizeImage(mergedImage, int(float64(dev.sdInfo.IconSize)*.9))
+
+			draw.Copy(bg, image.Pt(int(float64(dev.sdInfo.IconSize)*.05), int(float64(dev.sdInfo.IconSize)*.05)), mergedImage, mergedImage.Bounds(), draw.Over, &draw.Options{})
+
+			mergedImage = bg
 		}
 
 		bounds := mergedImage.Bounds().Max
