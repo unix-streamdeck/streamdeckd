@@ -17,8 +17,10 @@ type HandlerPruner struct {
 }
 
 func (hp *HandlerPruner) OnPageChange() {
-	hp.vdev.PageManager().AttachListener(func(_, previousPage int) {
-		hp.stopPageHandlers(previousPage)
+	hp.vdev.PageManager().AttachListener(func(newPage, previousPage int) {
+		if newPage != previousPage {
+			hp.stopPageHandlers(previousPage)
+		}
 	})
 }
 
