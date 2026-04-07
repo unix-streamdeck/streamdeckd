@@ -154,6 +154,11 @@ func (dev *VirtualDev) Open(rawDev *streamdeck.Device) error {
 
 		dev.backgrounder.AttachPageChangeListener()
 
+		dev.pageManager.AttachListener(func(_, _ int) {
+			dev.keyFGBuffs = make([]image.Image, rawDev.Keys)
+			dev.panelFGBuffs = make([]image.Image, rawDev.LcdColumns)
+		})
+
 		dev.foregrounder.AttachPageChangeListener()
 		dev.foregrounder.AttachAppChangeListener()
 
