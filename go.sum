@@ -8,8 +8,6 @@ github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5 h1
 github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5/go.mod h1:P5w+dDqQEbCMFAkmucNcEQ6xgAt/NP+Aw58OQfY/H/o=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/fogleman/gg v1.3.0 h1:/7zJX8F6AaYQc57WQCyN9cAIz+4bCJGO9B+dyW29am8=
-github.com/fogleman/gg v1.3.0/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/go-ole/go-ole v1.2.6/go.mod h1:pprOEPIfldk/42T2oK7lQ4v4JSDwmV0As9GaiUsvbm0=
 github.com/go-ole/go-ole v1.3.0 h1:Dt6ye7+vXGIKZ7Xtk4s6/xVdGDQynvom7xCFEdWr6uE=
 github.com/go-ole/go-ole v1.3.0/go.mod h1:5LS6F96DhAwUc7C+1HLexzMXY1xGRSryjyPPKW6zv78=
@@ -54,8 +52,8 @@ github.com/tklauser/go-sysconf v0.3.16 h1:frioLaCQSsF5Cy1jgRBrzr6t502KIIwQ0MArYI
 github.com/tklauser/go-sysconf v0.3.16/go.mod h1:/qNL9xxDhc7tx3HSRsLWNnuzbVfh3e7gh/BmM179nYI=
 github.com/tklauser/numcpus v0.11.0 h1:nSTwhKH5e1dMNsCdVBukSZrURJRoHbSEQjdEbY+9RXw=
 github.com/tklauser/numcpus v0.11.0/go.mod h1:z+LwcLq54uWZTX0u/bGobaV34u6V7KNlTZejzM6/3MQ=
-github.com/unix-streamdeck/api/v2 v2.0.17 h1:vgpBpkXv0x/S56YHY6docB7f9WXab2LWhZOjETe9Qxc=
-github.com/unix-streamdeck/api/v2 v2.0.17/go.mod h1:trzV1CEDHjSi9DAIkXOFhJyPETq7xCjg2sWjY6VtKYk=
+github.com/unix-streamdeck/api/v2 v2.0.18 h1:UOZ2B+S684xfXKntPwOMJ14A9AXl9Y7cxRQP5B1/Fl4=
+github.com/unix-streamdeck/api/v2 v2.0.18/go.mod h1:MjBNB92oPpHg0OMdWJ8687gmhEYk6EddBK4BLdQxR5Q=
 github.com/unix-streamdeck/driver v0.0.0-20260325220227-d0cc65690e5a h1:tl+YalLWhM+EVKsSvPXfLCTtL0AuaXeLd9BmuRT4Yug=
 github.com/unix-streamdeck/driver v0.0.0-20260325220227-d0cc65690e5a/go.mod h1:RiXT8GuYv4NQ0vZJ6eP2ksCD60vSYMD4wQFabALEbis=
 github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9 h1:sVzoJvwd1QtjQPsfsRYM+R7Ff0TxeWI6GunRqNH+w3U=
@@ -64,8 +62,8 @@ github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.uber.org/mock v0.6.0 h1:hyF9dfmbgIX5EfOdasqLsWD6xqpNZlXblLB/Dbnwv3Y=
 go.uber.org/mock v0.6.0/go.mod h1:KiVJ4BqZJaMj4svdfmHM0AUx4NJYO8ZNpPnZn1Z+BBU=
-golang.org/x/image v0.37.0 h1:ZiRjArKI8GwxZOoEtUfhrBtaCN+4b/7709dlT6SSnQA=
-golang.org/x/image v0.37.0/go.mod h1:/3f6vaXC+6CEanU4KJxbcUZyEePbyKbaLoDOe4ehFYY=
+golang.org/x/image v0.38.0 h1:5l+q+Y9JDC7mBOMjo4/aPhMDcxEptsX+Tt3GgRQRPuE=
+golang.org/x/image v0.38.0/go.mod h1:/3f6vaXC+6CEanU4KJxbcUZyEePbyKbaLoDOe4ehFYY=
 golang.org/x/sync v0.20.0 h1:e0PTpb7pjO8GAtTs2dQ6jYa5BWYlMuX047Dco/pItO4=
 golang.org/x/sync v0.20.0/go.mod h1:9xrNwdLfx4jkKbNva9FpL6vEN7evnE43NNNJQ2LF3+0=
 golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

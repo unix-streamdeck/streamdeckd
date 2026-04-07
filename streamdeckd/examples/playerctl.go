@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fogleman/gg"
 	"github.com/godbus/dbus/v5"
 	"github.com/unix-streamdeck/api/v2"
+	"golang.org/x/image/draw"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/Endg4meZer0/go-mpris"
@@ -64,33 +64,52 @@ var playerFilters = map[PlayerctlHandlerType]func(player *mpris.Player) bool{
 	},
 }
 
-var calculateTextAndPercentage = map[PlayerctlHandlerType]func(player *mpris.Player) (string, float64){
-	Playback: func(player *mpris.Player) (string, float64) {
+var calculateTextAndPercentage = map[PlayerctlHandlerType]func(player *mpris.Player) ([]string, float64){
+	Playback: func(player *mpris.Player) ([]string, float64) {
 		position, err := player.GetPosition()
 		if err != nil {
-			return "", 0.0
+			return []string{}, 0.0
 		}
 		meta, err := player.GetMetadata()
 		if err != nil {
-			return "", 0.0
+			return []string{}, 0.0
 		}
 		length, err := meta.Length()
 		if err != nil {
-			return "", 0.0
+			return []string{}, 0.0
 		}
-		percentage := math.Round(float64(position)*1_000_000) / math.Round(float64(length)*1_000_000) * 100.0
-		text := formatDuration(position) + "/" + formatDuration(length)
-		return text, percentage
+		percentage := int(math.Round(float64(position)*1_000_000) / math.Round(float64(length)*1_000_000) * 100.0)
+		text := []string{formatDuration(position)}
+		text = append(text, getTitleAndArtists(player)...)
+		text = append(text, formatDuration(length))
+		return text, float64(percentage)
 	},
-	Volume: func(player *mpris.Player) (string, float64) {
+	Volume: func(player *mpris.Player) ([]string, float64) {
 		vol, err := player.GetVolume()
 		if err != nil {
-			return "", 0.0
+			return []string{}, 0.0
 		}
 		volume := math.Round(vol * 100.0)
 		text := strconv.Itoa(int(volume)) + "%"
-		return text, volume
+		textA := []string{text}
+		textA = append(textA, getTitleAndArtists(player)...)
+		return textA, volume
 	},
+}
+
+func getTitleAndArtists(player *mpris.Player) []string {
+	metadata, err := player.GetMetadata()
+	if err != nil {
+		return []string{"", ""}
+	}
+	var titleAndArtists []string
+	{
+	}
+	title, _ := metadata.Title()
+	titleAndArtists = append(titleAndArtists, title)
+	artists, _ := metadata.Artist()
+	titleAndArtists = append(titleAndArtists, artists...)
+	return titleAndArtists
 }
 
 type PlayerCtlHandler struct {
@@ -104,7 +123,7 @@ type PlayerCtlHandler struct {
 	PlayerName               string
 	CurrentPlayerImageSource string
 	Percentage               float64
-	Text                     string
+	Text                     []string
 	FinalImage               image.Image
 	PreviousPlayer           string
 	Type                     PlayerctlHandlerType
@@ -164,7 +183,7 @@ func (v *PlayerCtlHandler) Stop() {
 	v.PlayerName = ""
 	v.CurrentPlayerImageSource = ""
 	v.Percentage = 0
-	v.Text = ""
+	v.Text = []string{}
 	v.FinalImage = nil
 	v.PreviousPlayer = ""
 	v.ActivePlayer = nil
@@ -242,10 +261,11 @@ func (v *PlayerCtlHandler) Run(info api.StreamDeckInfoV1, handlerType api.Handle
 			if percentage != v.Percentage {
 				infoNeedsRefreshing = true
 			}
-			if text != v.Text {
+			if strings.Join(text, ",") != strings.Join(v.Text, ",") {
 				infoNeedsRefreshing = true
 			}
 			if !imgNeedsRefreshing && !infoNeedsRefreshing {
+				time.Sleep(150 * time.Millisecond)
 				break
 			}
 			v.Percentage = percentage
@@ -254,14 +274,67 @@ func (v *PlayerCtlHandler) Run(info api.StreamDeckInfoV1, handlerType api.Handle
 				v.AccentColour = getAverageColour(img)
 			}
 			w, h := info.GetDimensions(handlerType)
-			imgParsed, err := api.DrawProgressBarWithAccent(finalImage, text, 5, float64(h-25), 20, float64(w-10), percentage, v.AccentColour)
+			imgParsed, err := api.DrawProgressBarWithAccent(finalImage, "", 5, float64(h-15), 5, float64(w-10), percentage, v.AccentColour)
+			if err != nil {
+				log.Println(err)
+				time.Sleep(150 * time.Millisecond)
+				break
+			}
+			if len(v.Text) > 0 {
+				imgParsed, err = api.DrawText(imgParsed, v.Text[0], api.DrawTextOptions{
+					Anchor: &image.Point{
+						X: 5,
+						Y: h - 15,
+					},
+					HorizontalAlignment: api.Left,
+					VerticalAlignment:   api.Bottom,
+					FontSize:            15,
+				})
+				if err == nil {
+					imgParsed, err = api.DrawText(imgParsed, v.Text[1], api.DrawTextOptions{
+						Anchor: &image.Point{
+							X: 75,
+							Y: 30,
+						},
+						HorizontalAlignment: api.Left,
+						VerticalAlignment:   api.Bottom,
+						FontSize:            15,
+						Overflow:            api.Fade,
+					})
+				}
+				if err == nil {
+					imgParsed, err = api.DrawText(imgParsed, v.Text[2], api.DrawTextOptions{
+						Anchor: &image.Point{
+							X: 75,
+							Y: 30,
+						},
+						HorizontalAlignment: api.Left,
+						VerticalAlignment:   api.Top,
+						FontSize:            15,
+						Colour:              "#999999",
+						Overflow:            api.Fade,
+					})
+				}
+			}
+			if len(v.Text) > 3 {
+				imgParsed, err = api.DrawText(imgParsed, v.Text[3], api.DrawTextOptions{
+					Anchor: &image.Point{
+						X: w - 10,
+						Y: h - 15,
+					},
+					HorizontalAlignment: api.Right,
+					VerticalAlignment:   api.Bottom,
+					FontSize:            15,
+				})
+			}
+
 			if err != nil {
 				log.Println(err)
 			} else {
 				callback(imgParsed)
 			}
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(150 * time.Millisecond)
 	}
 }
 
@@ -548,6 +621,11 @@ func choosePlayer(client *dbus.Conn, playerName, previousPlayerName string, filt
 
 func formatDuration(microseconds int64) string {
 	seconds := int(microseconds / 1000000)
+
+	if seconds > 86400 {
+		return "-"
+	}
+
 	if seconds < 60 {
 		return strconv.Itoa(seconds)
 	}
@@ -570,21 +648,28 @@ func pad(timeSegment string) string {
 
 func resizeThumbnail(img image.Image, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
 	_, height := info.GetDimensions(handlerType)
-	newSize := float64(height - 30)
-	scalingFactor := newSize / float64(img.Bounds().Max.Y)
-	x := float64(img.Bounds().Max.X) * scalingFactor
-	y := float64(img.Bounds().Max.Y) * scalingFactor
+	newSize := float64(height - 40)
+	scaleDimension := img.Bounds().Dy()
+	if img.Bounds().Dx() > img.Bounds().Dy() {
+		scaleDimension = img.Bounds().Dx()
+	}
+	scalingFactor := newSize / float64(scaleDimension)
+	x := float64(img.Bounds().Dx()) * scalingFactor
+	y := float64(img.Bounds().Dy()) * scalingFactor
 	img = api.ResizeImageWH(img, int(math.Round(x)), int(math.Round(y)))
 	return img
 }
 
 func overlayImage(img image.Image, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
 	width, height := info.GetDimensions(handlerType)
-	mprisImg := img
-	img = image.NewNRGBA(image.Rect(0, 0, width, height))
-	ggImg := gg.NewContextForImage(img)
-	ggImg.DrawImageAnchored(mprisImg, width/2, 35, 0.5, 0.5)
-	return ggImg.Image()
+	bg := image.NewNRGBA(image.Rect(0, 0, width, height))
+
+	draw.Copy(bg, image.Point{
+		X: 5,
+		Y: 5,
+	}, img, img.Bounds(), draw.Over, &draw.Options{})
+
+	return bg
 }
 
 func getAverageColour(img image.Image) string {

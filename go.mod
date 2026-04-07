@@ -6,14 +6,13 @@ require (
 	github.com/Endg4meZer0/go-mpris v1.0.5
 	github.com/bendahl/uinput v1.7.0
 	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
-	github.com/fogleman/gg v1.3.0
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/linuxdeepin/go-x11-client v0.0.0-20240415051504-c8e43d028ff9
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe
-	github.com/unix-streamdeck/api/v2 v2.0.17
+	github.com/unix-streamdeck/api/v2 v2.0.18
 	github.com/unix-streamdeck/driver v0.0.0-20260325220227-d0cc65690e5a
-	golang.org/x/image v0.37.0
+	golang.org/x/image v0.38.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.42.0
 )
