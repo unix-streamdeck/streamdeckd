@@ -54,7 +54,7 @@ func OpenDevice() error {
 		return errors.New("No streamdeck devices found")
 	}
 	for _, rawDev := range rawDevs {
-		if len(rawDev.Serial) != 12 {
+		if len(rawDev.Serial) != 12 && len(rawDev.Serial) != 14 {
 			continue
 		}
 		dev, ok := Devs[rawDev.Serial]
@@ -234,16 +234,26 @@ func (dev *VirtualDev) Logger() *log.Logger {
 
 func (dev *VirtualDev) SetKeyBackground(keyIndex int, page int) {
 	var background image.Image
-	keyV3 := dev.config.Pages[page].Keys[keyIndex]
-	keyConfigV3 := keyV3.Application[keyV3.ActiveApplication]
-
-	kcbg := keyConfigV3.GetKeyBackgroundBuff()
-
-	if kcbg != nil {
-		background = kcbg
+	var keyV3 *api.KeyV3
+	var keyConfigV3 *api.KeyConfigV3
+	if len(dev.config.Pages[page].Keys) > keyIndex {
+		keyV3 = &dev.config.Pages[page].Keys[keyIndex]
+		kcv3, ok := keyV3.Application[keyV3.ActiveApplication]
+		if ok {
+			keyConfigV3 = kcv3
+		}
 	}
 
-	if background == nil {
+	if keyConfigV3 != nil {
+		kcbg := keyConfigV3.GetKeyBackgroundBuff()
+
+		if kcbg != nil {
+			background = kcbg
+		}
+
+	}
+
+	if background == nil && keyV3 != nil {
 		kbg := keyV3.GetKeyBackgroundBuff()
 		if kbg != nil {
 			background = kbg
@@ -294,16 +304,26 @@ func (dev *VirtualDev) SetKeyForeground(img image.Image, keyIndex int, page int)
 
 func (dev *VirtualDev) SetPanelBackground(knobIndex int, page int) {
 	var background image.Image
-	knobV3 := dev.config.Pages[page].Knobs[knobIndex]
-	knobConfigV3 := knobV3.Application[knobV3.ActiveApplication]
-
-	kcbg := knobConfigV3.GetTouchPanelBackgroundBuff()
-
-	if kcbg != nil {
-		background = kcbg
+	var knobV3 *api.KnobV3
+	var knobConfigV3 *api.KnobConfigV3
+	if len(dev.config.Pages[page].Knobs) > knobIndex {
+		knobV3 = &dev.config.Pages[page].Knobs[knobIndex]
+		kcv3, ok := knobV3.Application[knobV3.ActiveApplication]
+		if ok {
+			knobConfigV3 = kcv3
+		}
 	}
 
-	if background == nil {
+	if knobConfigV3 != nil {
+		kcbg := knobConfigV3.GetTouchPanelBackgroundBuff()
+
+		if kcbg != nil {
+			background = kcbg
+		}
+
+	}
+
+	if background == nil && knobV3 != nil {
 		kbg := knobV3.GetTouchPanelBackgroundBuff()
 		if kbg != nil {
 			background = kbg

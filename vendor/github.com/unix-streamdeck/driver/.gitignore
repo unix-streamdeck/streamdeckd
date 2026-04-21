@@ -15,4 +15,3 @@
 .idea
 
 cmd/streamdeck-cli/streamdeck-cli
-vendor

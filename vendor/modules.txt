@@ -15,6 +15,9 @@ github.com/bearsh/hid/libusb/libusb/os/udev
 # github.com/bendahl/uinput v1.7.0
 ## explicit; go 1.13
 github.com/bendahl/uinput
+# github.com/boxes-ltd/imaging v1.7.5
+## explicit; go 1.24.0
+github.com/boxes-ltd/imaging
 # github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
 ## explicit; go 1.13
 github.com/christopher-dG/go-obs-websocket
@@ -67,7 +70,7 @@ github.com/tklauser/numcpus
 # github.com/unix-streamdeck/api/v2 v2.0.18
 ## explicit; go 1.25.7
 github.com/unix-streamdeck/api/v2
-# github.com/unix-streamdeck/driver v0.0.0-20260325220227-d0cc65690e5a
+# github.com/unix-streamdeck/driver v0.0.0-20260421183425-e681bb4c3bfc
 ## explicit; go 1.25.0
 github.com/unix-streamdeck/driver
 # github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9
@@ -78,6 +81,8 @@ github.com/unix-streamdeck/gg
 github.com/yusufpapurcu/wmi
 # golang.org/x/image v0.38.0
 ## explicit; go 1.25.0
+golang.org/x/image/bmp
+golang.org/x/image/ccitt
 golang.org/x/image/draw
 golang.org/x/image/font
 golang.org/x/image/font/basicfont
@@ -95,6 +100,8 @@ golang.org/x/image/font/gofont/gosmallcaps
 golang.org/x/image/font/gofont/gosmallcapsitalic
 golang.org/x/image/math/f64
 golang.org/x/image/math/fixed
+golang.org/x/image/tiff
+golang.org/x/image/tiff/lzw
 # golang.org/x/sync v0.20.0
 ## explicit; go 1.25.0
 golang.org/x/sync/semaphore

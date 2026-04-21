@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bearsh/hid"
+	"github.com/boxes-ltd/imaging"
 	"golang.org/x/image/draw"
 )
 
@@ -229,6 +230,8 @@ type Device struct {
 	mu sync.Mutex
 
 	InputHandler func(device *Device, cback func(event InputEvent))
+
+	ProductID uint16
 }
 
 // Key holds the current status of a key on the device.
@@ -412,29 +415,27 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 		}
 	case d.VendorID == VID_ELGATO && d.ProductID == PID_STREAMDECK_PLUS_XL:
 		dev = Device{
-			ID:                  d.Path,
-			Serial:              d.Serial,
-			Columns:             9,
-			Rows:                4,
-			LcdColumns:          6,
-			Keys:                36,
-			Knobs:               6,
-			Pixels:              120,
-			LcdWidth:            200,
-			LcdHeight:           100,
-			DPI:                 166,
-			PaddingX:            32,
-			PaddingY:            32,
-			featureReportSize:   32,
-			firmwareOffset:      6,
-			KeyStateOffset:      4,
-			TranslateKeyIndex:   identity,
-			imagePageSize:       1024,
-			imagePageHeaderSize: 8,
-			imagePageHeader:     rev2ImagePageHeader,
-			flipImage: func(i image.Image) image.Image {
-				return i
-			},
+			ID:                   d.Path,
+			Serial:               d.Serial,
+			Columns:              9,
+			Rows:                 4,
+			LcdColumns:           6,
+			Keys:                 36,
+			Knobs:                6,
+			Pixels:               112,
+			LcdWidth:             200,
+			LcdHeight:            100,
+			DPI:                  166,
+			PaddingX:             32,
+			PaddingY:             32,
+			featureReportSize:    64,
+			firmwareOffset:       6,
+			KeyStateOffset:       4,
+			TranslateKeyIndex:    identity,
+			imagePageSize:        1024,
+			imagePageHeaderSize:  8,
+			imagePageHeader:      rev2ImagePageHeader,
+			flipImage:            rotateCounterclockwise,
 			toImageFormat:        toJPEG,
 			getFirmwareCommand:   c_REV2_FIRMWARE,
 			resetCommand:         c_REV2_RESET,
@@ -449,6 +450,7 @@ func GetDevInfo(d hid.DeviceInfo) *Device {
 	if dev.ID != "" {
 		dev.KeyState = make([]byte, dev.Columns*dev.Rows)
 		dev.Device = &HidDevice{info: d}
+		dev.ProductID = d.ProductID
 	}
 	return &dev
 }
@@ -628,6 +630,7 @@ func (d *Device) SetLcdImage(index int, img image.Image) error {
 	defer func() {
 		d.mu.Unlock()
 	}()
+
 	if !d.HasLCD {
 		return nil
 	}
@@ -635,13 +638,19 @@ func (d *Device) SetLcdImage(index int, img image.Image) error {
 		return fmt.Errorf("supplied image has wrong dimensions, expected %[1]dx%[1]d pixels", d.Pixels)
 	}
 
-	imageBytes, err := toJPEG(d.flipImage(img))
+	imageBytes, err := d.toImageFormat(d.flipImage(img))
 	if err != nil {
 		return fmt.Errorf("cannot convert image data: %v", err)
 	}
 	imageData := imageData{
 		image:    imageBytes,
 		pageSize: d.imagePageSize - 16,
+	}
+
+	x, y, w, h := int(d.LcdWidth)*index, 0, d.LcdWidth, d.LcdHeight
+
+	if d.ProductID == PID_STREAMDECK_PLUS_XL {
+		w, h = h, w
 	}
 
 	var page int
@@ -654,10 +663,10 @@ func (d *Device) SetLcdImage(index int, img image.Image) error {
 		var header []byte
 		header = append(header, 0x02)
 		header = append(header, 0x0c)
-		header = binary.LittleEndian.AppendUint16(header, uint16(index*int(d.LcdWidth)))
-		header = binary.LittleEndian.AppendUint16(header, 0)
-		header = binary.LittleEndian.AppendUint16(header, uint16(d.LcdWidth))
-		header = binary.LittleEndian.AppendUint16(header, uint16(d.LcdHeight))
+		header = binary.LittleEndian.AppendUint16(header, uint16(x))
+		header = binary.LittleEndian.AppendUint16(header, uint16(y))
+		header = binary.LittleEndian.AppendUint16(header, uint16(w))
+		header = binary.LittleEndian.AppendUint16(header, uint16(h))
 		if lastPage {
 			header = append(header, 0x01)
 		} else {
@@ -759,25 +768,8 @@ func flipHorizontallyAndVertically(img image.Image) image.Image {
 }
 
 // rotateCounterclockwise returns the given image rotated counterclockwise.
-func rotateCounterclockwise(img image.Image) image.Image {
-	flipped := image.NewRGBA(img.Bounds())
-	draw.Copy(flipped, image.Point{}, img, img.Bounds(), draw.Src, nil)
-	for y := 0; y < flipped.Bounds().Dy(); y++ {
-		for x := y + 1; x < flipped.Bounds().Dx(); x++ {
-			c := flipped.RGBAAt(x, y)
-			flipped.SetRGBA(x, y, flipped.RGBAAt(y, x))
-			flipped.SetRGBA(y, x, c)
-		}
-	}
-	for y := 0; y < flipped.Bounds().Dy()/2; y++ {
-		yy := flipped.Bounds().Max.Y - y - 1
-		for x := 0; x < flipped.Bounds().Dx(); x++ {
-			c := flipped.RGBAAt(x, y)
-			flipped.SetRGBA(x, y, flipped.RGBAAt(x, yy))
-			flipped.SetRGBA(x, yy, c)
-		}
-	}
-	return flipped
+func rotateCounterclockwise(src image.Image) image.Image {
+	return imaging.Rotate90(src)
 }
 
 // toBMP returns the raw bytes of the given image in BMP format.
