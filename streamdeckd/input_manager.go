@@ -96,10 +96,16 @@ func (im *InputManager) handleHandlerAction(foregroundActions api.ForegroundAndI
 				foregroundActions.SetInputHandlerInstance(comboHandler)
 			}
 		}
-		foregroundActions.GetInputHandlerInstance().Input(fields, handlerType, deckInfo, api.InputEvent{
+		inputEvent := api.InputEvent{
 			EventType:     api.InputEventType(event.EventType),
 			RotateNotches: event.RotateNotches,
-		})
+		}
+		if event.EventType == streamdeck.SCREEN_SHORT_TAP || event.EventType == streamdeck.SCREEN_LONG_TAP {
+			inputEvent.ScreenTapY = event.ScreenY
+			inputEvent.ScreenTapX = event.ScreenX - uint16(int(event.Index)*deckInfo.LcdWidth)
+		}
+
+		foregroundActions.GetInputHandlerInstance().Input(fields, handlerType, deckInfo, inputEvent)
 	}
 }
 

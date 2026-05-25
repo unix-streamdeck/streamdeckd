@@ -54,10 +54,10 @@ github.com/tklauser/go-sysconf v0.3.16 h1:frioLaCQSsF5Cy1jgRBrzr6t502KIIwQ0MArYI
 github.com/tklauser/go-sysconf v0.3.16/go.mod h1:/qNL9xxDhc7tx3HSRsLWNnuzbVfh3e7gh/BmM179nYI=
 github.com/tklauser/numcpus v0.11.0 h1:nSTwhKH5e1dMNsCdVBukSZrURJRoHbSEQjdEbY+9RXw=
 github.com/tklauser/numcpus v0.11.0/go.mod h1:z+LwcLq54uWZTX0u/bGobaV34u6V7KNlTZejzM6/3MQ=
-github.com/unix-streamdeck/api/v2 v2.0.18 h1:UOZ2B+S684xfXKntPwOMJ14A9AXl9Y7cxRQP5B1/Fl4=
-github.com/unix-streamdeck/api/v2 v2.0.18/go.mod h1:MjBNB92oPpHg0OMdWJ8687gmhEYk6EddBK4BLdQxR5Q=
-github.com/unix-streamdeck/driver v0.0.0-20260421183425-e681bb4c3bfc h1:GVL5++YsmwhDsImdxC3ZYxeh9hXXIe0MiHqoATcO8oY=
-github.com/unix-streamdeck/driver v0.0.0-20260421183425-e681bb4c3bfc/go.mod h1:Db6Iv3OPLdi3aB3vxLf/1Rm839ERxJmjEUPnLtE2gRA=
+github.com/unix-streamdeck/api/v2 v2.0.19 h1:Tk8GpKsP/SVEeLEvD3eHrMolQMjhcKHlDsKNJjW2Nxo=
+github.com/unix-streamdeck/api/v2 v2.0.19/go.mod h1:MjBNB92oPpHg0OMdWJ8687gmhEYk6EddBK4BLdQxR5Q=
+github.com/unix-streamdeck/driver v0.0.0-20260525144131-083e39610f1b h1:98OISQFvs0lpBOn/JIfGrijY/J/oe35xgL0gwAs8XcY=
+github.com/unix-streamdeck/driver v0.0.0-20260525144131-083e39610f1b/go.mod h1:Db6Iv3OPLdi3aB3vxLf/1Rm839ERxJmjEUPnLtE2gRA=
 github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9 h1:sVzoJvwd1QtjQPsfsRYM+R7Ff0TxeWI6GunRqNH+w3U=
 github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9/go.mod h1:u8PzIHLdKBzOzX3FlWl85y550sXhOeqKmM8TMDSnfwU=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=

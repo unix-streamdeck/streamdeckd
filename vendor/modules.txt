@@ -67,10 +67,10 @@ github.com/tklauser/go-sysconf
 # github.com/tklauser/numcpus v0.11.0
 ## explicit; go 1.24.0
 github.com/tklauser/numcpus
-# github.com/unix-streamdeck/api/v2 v2.0.18
+# github.com/unix-streamdeck/api/v2 v2.0.19
 ## explicit; go 1.25.7
 github.com/unix-streamdeck/api/v2
-# github.com/unix-streamdeck/driver v0.0.0-20260421183425-e681bb4c3bfc
+# github.com/unix-streamdeck/driver v0.0.0-20260525144131-083e39610f1b
 ## explicit; go 1.25.0
 github.com/unix-streamdeck/driver
 # github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9

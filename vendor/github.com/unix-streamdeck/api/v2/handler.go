@@ -53,6 +53,7 @@ const (
 )
 
 type InputEvent struct {
-	EventType     InputEventType
-	RotateNotches uint8
+	EventType              InputEventType
+	RotateNotches          uint8
+	ScreenTapX, ScreenTapY uint16
 }

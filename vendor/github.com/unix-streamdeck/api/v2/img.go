@@ -380,7 +380,7 @@ func DrawProgressBarWithAccent(img image.Image, label string, x, y, h, w, progre
 
 	ggImg.SetFillStyle(gg.NewSolidPattern(HexColor(hex)))
 
-	ggImg.DrawRoundedRectangle(x, y, w/100*progress, h, 5)
+	ggImg.DrawRoundedRectangle(x, y, w/100*progress, h, math.Min(math.Min(5, h), progress))
 
 	ggImg.Fill()
 

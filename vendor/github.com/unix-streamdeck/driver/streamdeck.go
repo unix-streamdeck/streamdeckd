@@ -924,7 +924,7 @@ func PlusInputHandler(d *Device, cback func(event InputEvent)) {
 		} else if keyBuff[1] == 0x02 {
 			x := binary.LittleEndian.Uint16(keyBuff[6:])
 			y := binary.LittleEndian.Uint16(keyBuff[8:])
-			buttonIndex, err := virtButtonPressed(x)
+			buttonIndex, err := virtButtonPressed(d, x)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -933,11 +933,15 @@ func PlusInputHandler(d *Device, cback func(event InputEvent)) {
 				cback(InputEvent{
 					EventType: SCREEN_SHORT_TAP,
 					Index:     uint8(buttonIndex),
+					ScreenX:   x,
+					ScreenY:   y,
 				})
 			} else if keyBuff[4] == 0x02 {
 				cback(InputEvent{
 					EventType: SCREEN_LONG_TAP,
 					Index:     uint8(buttonIndex),
+					ScreenX:   x,
+					ScreenY:   y,
 				})
 			} else if keyBuff[4] == 0x03 {
 				x2 := binary.LittleEndian.Uint16(keyBuff[10:])
@@ -976,8 +980,8 @@ func PlusInputHandler(d *Device, cback func(event InputEvent)) {
 	}
 }
 
-func virtButtonPressed(x uint16) (int, error) {
-	if x < 0 || x > 800 {
+func virtButtonPressed(d *Device, x uint16) (int, error) {
+	if x < 0 || x > uint16(d.LcdWidth*uint(d.LcdColumns)) {
 		return 0, errors.New("Invalid x position")
 	}
 	return int(math.Floor(float64(x) / 200)), nil

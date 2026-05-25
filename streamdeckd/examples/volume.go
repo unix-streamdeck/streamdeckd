@@ -154,6 +154,7 @@ func (v *VolumeHandler) Run(handlerType api.HandlerType, info api.StreamDeckInfo
 
 func update(v *VolumeHandler, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) error {
 	var device pulseaudio.Device
+	var devFound = true
 	var err error
 	w, h := info.GetDimensions(handlerType)
 	if v.DevType == "sink" {
@@ -186,34 +187,22 @@ func update(v *VolumeHandler, handlerType api.HandlerType, info api.StreamDeckIn
 		}
 	}
 	if err != nil {
-		img := image.NewNRGBA(image.Rect(0, 0, w, h))
-		var text string
-		if v.DevType == "sink" || v.DevType == "source" {
-			text = "Could not find default " + v.DevType
-		} else if v.DevType == "sink_input" {
-			text = "Could not find sink input"
-		} else if v.DevType == "source_output" {
-			text = "Could not find source output"
+		devFound = false
+		device = pulseaudio.Sink{
+			Cvolume: []uint32{0},
 		}
-		imgParsed, err2 := api.DrawText(img, text, api.DrawTextOptions{
-			FontSize:          24,
-			VerticalAlignment: api.Center,
-		})
-		if err2 != nil {
-			log.Println(err2)
-		} else {
-			callback(imgParsed)
-		}
-		return err
-	} else {
-		var text string
+	}
+
+	var text string
+	var img = v.UnmuteBuff
+	var vol = 0
+
+	if devFound {
 		mute := device.IsMute()
 		if mute == true && mute == v.Mute && !v.FirstLoop {
 			return nil
 		}
 		v.Mute = mute
-		var img image.Image
-		var vol int
 
 		vol = int(math.Round(float64(device.GetVolume()) * 100))
 		if vol == v.Volume && !v.FirstLoop {
@@ -232,16 +221,28 @@ func update(v *VolumeHandler, handlerType api.HandlerType, info api.StreamDeckIn
 		if img == nil {
 			image.NewNRGBA(image.Rect(0, 0, w, h))
 		}
-
-		imgParsed, err := api.DrawProgressBarWithAccent(img, text, 5, float64(h-25), 20, float64(w-10), float64(vol), "#cc3333")
-
-		if err != nil {
-			log.Println(err)
-		} else {
-			callback(imgParsed)
-		}
-		return nil
+	} else {
+		text = "N/A"
 	}
+
+	imgParsed, err := api.DrawProgressBarWithAccent(img, "", 5, float64(h-15), 5, float64(w-10), float64(vol), "#cc3333")
+
+	imgParsed, err = api.DrawText(imgParsed, text, api.DrawTextOptions{
+		Anchor: &image.Point{
+			X: 5,
+			Y: h - 15,
+		},
+		HorizontalAlignment: api.Left,
+		VerticalAlignment:   api.Bottom,
+		FontSize:            15,
+	})
+
+	if err != nil {
+		log.Println(err)
+	} else {
+		callback(imgParsed)
+	}
+	return nil
 }
 
 func (v *VolumeHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {

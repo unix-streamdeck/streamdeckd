@@ -128,6 +128,7 @@ type PlayerCtlHandler struct {
 	PreviousPlayer           string
 	Type                     PlayerctlHandlerType
 	ActivePlayer             *mpris.Player
+	InputChan                chan int
 }
 
 func (v *PlayerCtlHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
@@ -219,122 +220,126 @@ func (v *PlayerCtlHandler) Run(info api.StreamDeckInfoV1, handlerType api.Handle
 		select {
 		case <-v.Quit:
 			return
-		default:
-			if playerNeedsRefreshing(v.ActivePlayer) {
-				v.ActivePlayer = choosePlayer(v.Client, v.PlayerName, v.PreviousPlayer, playerFilters[v.Type])
-				if v.ActivePlayer == nil {
-					break
-				}
-				v.PreviousPlayer = v.ActivePlayer.GetShortName()
-			}
-			var img image.Image
-			img = v.CurrentPlayerImage
-			previousImage := v.CurrentPlayerImage
-			if !v.StaticImage {
-				img, err = v.FindImage(v.ActivePlayer, info, handlerType)
-				if img == nil {
-					if v.CurrentPlayerImageSource == v.PreviousPlayer {
-						img = v.CurrentPlayerImage
-					} else {
-						w, h := info.GetDimensions(handlerType)
-						img = image.NewNRGBA(image.Rect(0, 0, w, h))
-						img = resizeThumbnail(img, info, handlerType)
-						img, err = api.DrawText(img, v.PreviousPlayer, api.DrawTextOptions{
-							VerticalAlignment: api.Center,
-						})
-						v.CurrentPlayerImage = img
-						v.CurrentPlayerImageSource = v.PreviousPlayer
-					}
-				}
-			}
-			imgNeedsRefreshing := previousImage != img || v.FinalImage == nil
-			finalImage := v.FinalImage
-			if imgNeedsRefreshing {
-				finalImage = overlayImage(img, info, handlerType)
-				v.FinalImage = finalImage
-			}
-			text, percentage := calculateTextAndPercentage[v.Type](v.ActivePlayer)
-			if math.IsNaN(percentage) || percentage < 0 || percentage > 100 {
-				percentage = 100.0
-			}
-			infoNeedsRefreshing := false
-			if percentage != v.Percentage {
-				infoNeedsRefreshing = true
-			}
-			if strings.Join(text, ",") != strings.Join(v.Text, ",") {
-				infoNeedsRefreshing = true
-			}
-			if !imgNeedsRefreshing && !infoNeedsRefreshing {
-				time.Sleep(150 * time.Millisecond)
-				break
-			}
-			v.Percentage = percentage
-			v.Text = text
-			if v.AccentColour == "" {
-				v.AccentColour = getAverageColour(img)
-			}
-			w, h := info.GetDimensions(handlerType)
-			imgParsed, err := api.DrawProgressBarWithAccent(finalImage, "", 5, float64(h-15), 5, float64(w-10), percentage, v.AccentColour)
-			if err != nil {
-				log.Println(err)
-				time.Sleep(150 * time.Millisecond)
-				break
-			}
-			if len(v.Text) > 0 {
-				imgParsed, err = api.DrawText(imgParsed, v.Text[0], api.DrawTextOptions{
-					Anchor: &image.Point{
-						X: 5,
-						Y: h - 15,
-					},
-					HorizontalAlignment: api.Left,
-					VerticalAlignment:   api.Bottom,
-					FontSize:            15,
-				})
-				if err == nil {
-					imgParsed, err = api.DrawText(imgParsed, v.Text[1], api.DrawTextOptions{
-						Anchor: &image.Point{
-							X: 75,
-							Y: 30,
-						},
-						HorizontalAlignment: api.Left,
-						VerticalAlignment:   api.Bottom,
-						FontSize:            15,
-						Overflow:            api.Fade,
-					})
-				}
-				if err == nil {
-					imgParsed, err = api.DrawText(imgParsed, v.Text[2], api.DrawTextOptions{
-						Anchor: &image.Point{
-							X: 75,
-							Y: 30,
-						},
-						HorizontalAlignment: api.Left,
-						VerticalAlignment:   api.Top,
-						FontSize:            15,
-						Colour:              "#999999",
-						Overflow:            api.Fade,
-					})
-				}
-			}
-			if len(v.Text) > 3 {
-				imgParsed, err = api.DrawText(imgParsed, v.Text[3], api.DrawTextOptions{
-					Anchor: &image.Point{
-						X: w - 10,
-						Y: h - 15,
-					},
-					HorizontalAlignment: api.Right,
-					VerticalAlignment:   api.Bottom,
-					FontSize:            15,
-				})
-			}
+		case <-v.InputChan:
+			v.update(info, handlerType, callback)
+		case <-time.After(150 * time.Millisecond):
+			v.update(info, handlerType, callback)
+		}
+	}
+}
 
-			if err != nil {
-				log.Println(err)
+func (v *PlayerCtlHandler) update(info api.StreamDeckInfoV1, handlerType api.HandlerType, callback func(image image.Image)) {
+	var err error
+	if playerNeedsRefreshing(v.ActivePlayer) {
+		v.ActivePlayer = choosePlayer(v.Client, v.PlayerName, v.PreviousPlayer, playerFilters[v.Type])
+		if v.ActivePlayer == nil {
+			return
+		}
+		v.PreviousPlayer = v.ActivePlayer.GetShortName()
+	}
+	var img image.Image
+	img = v.CurrentPlayerImage
+	previousImage := v.CurrentPlayerImage
+	if !v.StaticImage {
+		img, err = v.FindImage(v.ActivePlayer, info, handlerType)
+		if img == nil {
+			if v.CurrentPlayerImageSource == v.PreviousPlayer {
+				img = v.CurrentPlayerImage
 			} else {
-				callback(imgParsed)
+				w, h := info.GetDimensions(handlerType)
+				img = image.NewNRGBA(image.Rect(0, 0, w, h))
+				img = resizeThumbnail(img, info, handlerType)
+				img, err = api.DrawText(img, v.PreviousPlayer, api.DrawTextOptions{
+					VerticalAlignment: api.Center,
+				})
+				v.CurrentPlayerImage = img
+				v.CurrentPlayerImageSource = v.PreviousPlayer
 			}
 		}
-		time.Sleep(150 * time.Millisecond)
+	}
+	imgNeedsRefreshing := previousImage != img || v.FinalImage == nil
+	finalImage := v.FinalImage
+	if imgNeedsRefreshing {
+		finalImage = overlayImage(img, info, handlerType)
+		v.FinalImage = finalImage
+	}
+	text, percentage := calculateTextAndPercentage[v.Type](v.ActivePlayer)
+	if math.IsNaN(percentage) || percentage < 0 || percentage > 100 {
+		percentage = 100.0
+	}
+	infoNeedsRefreshing := false
+	if percentage != v.Percentage {
+		infoNeedsRefreshing = true
+	}
+	if strings.Join(text, ",") != strings.Join(v.Text, ",") {
+		infoNeedsRefreshing = true
+	}
+	if !imgNeedsRefreshing && !infoNeedsRefreshing {
+		return
+	}
+	v.Percentage = percentage
+	v.Text = text
+	if v.AccentColour == "" {
+		v.AccentColour = getAverageColour(img)
+	}
+	w, h := info.GetDimensions(handlerType)
+	imgParsed, err := api.DrawProgressBarWithAccent(finalImage, "", 5, float64(h-15), 5, float64(w-10), percentage, v.AccentColour)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if len(v.Text) > 0 {
+		imgParsed, err = api.DrawText(imgParsed, v.Text[0], api.DrawTextOptions{
+			Anchor: &image.Point{
+				X: 5,
+				Y: h - 15,
+			},
+			HorizontalAlignment: api.Left,
+			VerticalAlignment:   api.Bottom,
+			FontSize:            15,
+		})
+		if err == nil {
+			imgParsed, err = api.DrawText(imgParsed, v.Text[1], api.DrawTextOptions{
+				Anchor: &image.Point{
+					X: 75,
+					Y: 30,
+				},
+				HorizontalAlignment: api.Left,
+				VerticalAlignment:   api.Bottom,
+				FontSize:            15,
+				Overflow:            api.Fade,
+			})
+		}
+		if err == nil {
+			imgParsed, err = api.DrawText(imgParsed, v.Text[2], api.DrawTextOptions{
+				Anchor: &image.Point{
+					X: 75,
+					Y: 30,
+				},
+				HorizontalAlignment: api.Left,
+				VerticalAlignment:   api.Top,
+				FontSize:            15,
+				Colour:              "#999999",
+				Overflow:            api.Fade,
+			})
+		}
+	}
+	if len(v.Text) > 3 {
+		imgParsed, err = api.DrawText(imgParsed, v.Text[3], api.DrawTextOptions{
+			Anchor: &image.Point{
+				X: w - 10,
+				Y: h - 15,
+			},
+			HorizontalAlignment: api.Right,
+			VerticalAlignment:   api.Bottom,
+			FontSize:            15,
+		})
+	}
+
+	if err != nil {
+		log.Println(err)
+	} else {
+		callback(imgParsed)
 	}
 }
 
@@ -468,6 +473,7 @@ func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerT
 		}
 		volume /= 100.0
 		err = player.SetVolume(volume)
+		v.InputChan <- 1
 		if err != nil {
 			log.Println(err)
 			return
@@ -528,6 +534,7 @@ func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerT
 				err = player.Next()
 			case Shuffle:
 				shuffle, err := player.GetShuffle()
+				v.InputChan <- 1
 				if err != nil {
 					log.Println(err)
 					return
@@ -536,6 +543,7 @@ func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerT
 				break
 			case LoopStatus:
 				status, err := player.GetLoopStatus()
+				v.InputChan <- 1
 				if err != nil {
 					log.Println(err)
 					return
@@ -543,11 +551,14 @@ func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerT
 				err = player.SetLoopStatus(getNextLoopStatus(status))
 				break
 			}
+			v.InputChan <- 1
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		}
+
+		v.InputChan <- 1
 	}
 }
 
@@ -745,7 +756,10 @@ func RegisterPlayerCtl() api.Module {
 			if err != nil {
 				panic(err)
 			}
-			return &PlayerCtlHandler{Client: client}
+			return &PlayerCtlHandler{
+				Client:    client,
+				InputChan: make(chan int),
+			}
 		},
 		ForegroundFields: []api.Field{
 			{Title: "Icon", Name: "icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
@@ -756,7 +770,12 @@ func RegisterPlayerCtl() api.Module {
 			if err != nil {
 				panic(err)
 			}
-			return &PlayerCtlHandler{Running: true, Lock: semaphore.NewWeighted(1), Client: client}
+			return &PlayerCtlHandler{
+				Running:   true,
+				Lock:      semaphore.NewWeighted(1),
+				Client:    client,
+				InputChan: make(chan int),
+			}
 		},
 		InputFields: []api.Field{
 			{Title: "Operation", Name: "operation", Type: api.Select, ListItems: slices.Collect(maps.Keys(operationsMap))},
