@@ -10,7 +10,7 @@ require (
 	github.com/linuxdeepin/go-x11-client v0.0.0-20240415051504-c8e43d028ff9
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe
-	github.com/unix-streamdeck/api/v2 v2.0.19
+	github.com/unix-streamdeck/api/v2 v2.0.20
 	github.com/unix-streamdeck/driver v0.0.0-20260525144131-083e39610f1b
 	golang.org/x/image v0.38.0
 	golang.org/x/sync v0.20.0

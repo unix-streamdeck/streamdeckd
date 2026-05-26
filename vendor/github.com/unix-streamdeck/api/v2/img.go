@@ -153,9 +153,10 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 		Face: face,
 	}
 
+	metrics := face.Metrics()
 	d.Dot = fixed.Point26_6{
 		X: fixed.I(x),
-		Y: fixed.I(int(y) + (int(fSize) / 4)),
+		Y: fixed.I(int(y)) + (metrics.Ascent-metrics.Descent)/2,
 	}
 
 	linesSplit := strings.Split(lines, "\n")
@@ -165,11 +166,7 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 		return img, nil
 	}
 
-	linesAbove := float64(lineCount) / 2
-
-	linesAbove = linesAbove - 1
-
-	startingLineY := y - (linesAbove * fSize)
+	startingLineY := y - float64(lineCount-1)*fSize/2
 
 	for i, line := range linesSplit {
 		w, _ := getTextBounds(line, face)
@@ -182,7 +179,7 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 
 		d.Dot = fixed.Point26_6{
 			X: fixed.I(x),
-			Y: fixed.I(int(startingLineY + (float64(i) * fSize))),
+			Y: fixed.I(int(startingLineY+(float64(i)*fSize))) + (metrics.Ascent-metrics.Descent)/2,
 		}
 		d.DrawString(line)
 	}
