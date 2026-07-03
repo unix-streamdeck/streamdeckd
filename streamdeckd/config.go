@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/unix-streamdeck/api/v2"
 	streamdeck "github.com/unix-streamdeck/driver"
@@ -18,6 +19,8 @@ var basicConfig = api.ConfigV3{
 	},
 }
 var config *api.ConfigV3
+
+var configSem sync.Mutex
 
 func LoadConfig() {
 	var err error
@@ -62,6 +65,8 @@ func readConfig() (*api.ConfigV3, error) {
 }
 
 func SetConfig(configString string) error {
+	configSem.Lock()
+	defer configSem.Unlock()
 	UnmountHandlers()
 	var err error
 	config = nil
@@ -76,12 +81,13 @@ func SetConfig(configString string) error {
 				dev.SetConfig(config.Decks[i])
 			}
 		}
-		dev.PageManager().SetPage(Devs[s].PageManager().GetPage())
 	}
 	return nil
 }
 
 func ReloadConfig() error {
+	configSem.Lock()
+	defer configSem.Unlock()
 	UnmountHandlers()
 	LoadConfig()
 	for s := range Devs {
@@ -91,12 +97,13 @@ func ReloadConfig() error {
 				dev.SetConfig(config.Decks[i])
 			}
 		}
-		dev.PageManager().SetPage(Devs[s].PageManager().GetPage())
 	}
 	return nil
 }
 
 func SaveConfig() error {
+	configSem.Lock()
+	defer configSem.Unlock()
 	return SaveFile(configPath, config)
 }
 
@@ -146,6 +153,14 @@ func findConfig(device *streamdeck.Device) api.DeckV3 {
 
 func makeEmptyDeckConfig(device *streamdeck.Device) api.DeckV3 {
 	var pages []api.PageV3
+	pages = append(pages, makeEmptyPageConfig(device))
+	devConf := api.DeckV3{Serial: device.Serial, Pages: pages}
+	config.Decks = append(config.Decks, devConf)
+	_ = SaveConfig()
+	return devConf
+}
+
+func makeEmptyPageConfig(device *streamdeck.Device) api.PageV3 {
 	page := api.PageV3{}
 	for i := 0; i < int(device.Rows)*int(device.Columns); i++ {
 		applications := make(map[string]*api.KeyConfigV3)
@@ -154,9 +169,12 @@ func makeEmptyDeckConfig(device *streamdeck.Device) api.DeckV3 {
 			Application: applications,
 		})
 	}
-	pages = append(pages, page)
-	devConf := api.DeckV3{Serial: device.Serial, Pages: pages}
-	config.Decks = append(config.Decks, devConf)
-	_ = SaveConfig()
-	return devConf
+	for i := 0; i < int(device.Knobs); i++ {
+		applications := make(map[string]*api.KnobConfigV3)
+		applications[""] = &api.KnobConfigV3{}
+		page.Knobs = append(page.Knobs, api.KnobV3{
+			Application: applications,
+		})
+	}
+	return page
 }

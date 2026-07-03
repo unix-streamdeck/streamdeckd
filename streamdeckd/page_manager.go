@@ -4,6 +4,7 @@ type IPageManager interface {
 	SetPage(page int)
 	AttachListener(channel func(newPage, previousPage int))
 	GetPage() int
+	Refresh()
 }
 
 type PageManager struct {
@@ -35,4 +36,10 @@ func (pm *PageManager) AttachListener(channel func(newPage, previousPage int)) {
 
 func (pm *PageManager) GetPage() int {
 	return pm.page
+}
+
+func (pm *PageManager) Refresh() {
+	for _, listener := range pm.listeners {
+		go listener(pm.page, pm.page)
+	}
 }

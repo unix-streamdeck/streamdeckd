@@ -198,6 +198,19 @@ func (dev *VirtualDev) Config() api.DeckV3 {
 
 func (dev *VirtualDev) SetConfig(config api.DeckV3) {
 	dev.config = config
+
+	go dev.backgrounder.SetKeyBackground(&dev.config)
+	go dev.backgrounder.SetLcdBackground(&dev.config)
+
+	dev.pageManager.Refresh()
+
+	page := dev.pageManager.GetPage()
+	for i := range dev.keyBGBuffs {
+		go dev.SetKeyBackground(i, page)
+	}
+	for i := range dev.panelBGBuffs {
+		go dev.SetPanelBackground(i, page)
+	}
 }
 
 func (dev *VirtualDev) SdInfo() *api.StreamDeckInfoV1 {
