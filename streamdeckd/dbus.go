@@ -137,24 +137,36 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 	dev = sd.SdInfo()
 	var img image.Image
 	log.Println("Created and running " + key.IconHandler + " for dbus")
-	handler.Start(key.IconHandlerFields, api.LCD, *dev, func(image image.Image) {
+
+	fields := key.GetForegroundHandlerFields()
+
+	if key.GetForegroundHandler() == key.GetInputHandler() {
+		fields = mergeSharedConfig(key.GetSharedHandlerFields(), key.GetForegroundHandlerFields())
+	}
+
+	handler.Start(fields, api.LCD, *dev, func(image image.Image) {
 		if image.Bounds().Max.X != dev.IconSize || image.Bounds().Max.Y != dev.IconSize {
 			image = api.ResizeImage(image, dev.IconSize)
 		}
 		img = image
 		log.Println("Stopping " + key.IconHandler + " for dbus")
-		handler.Stop()
-		log.Println("Stopped " + key.IconHandler + " for dbus")
+		go handler.Stop()
 	})
 	counter := 0
 	for {
 		if img != nil {
+			log.Println("1")
 			buf := new(bytes.Buffer)
 			err = png.Encode(buf, img)
+			if err != nil {
+				log.Println("err")
+				return "", dbus.MakeFailedError(errors.New("Handler did not respond in a timely fashion"))
+			}
 			imageBits := buf.Bytes()
 			return "data:image/png;base64," + base64.StdEncoding.EncodeToString(imageBits), nil
 		}
 		if counter >= 100 {
+			log.Println("2")
 			return "", dbus.MakeFailedError(errors.New("Handler did not respond in a timely fashion"))
 		}
 		counter += 1
@@ -163,18 +175,18 @@ func (StreamDeckDBus) GetHandlerExample(serial string, keyString string) (string
 }
 
 func (StreamDeckDBus) GetKnobHandlerExample(serial string, keyString string) (string, *dbus.Error) {
-	var key *api.KnobConfigV3
-	err := json.Unmarshal([]byte(keyString), &key)
+	var knob *api.KnobConfigV3
+	err := json.Unmarshal([]byte(keyString), &knob)
 	if err != nil {
 		return "", dbus.MakeFailedError(err)
 	}
-	if key.LcdHandler == "" || key.LcdHandler == "Default" {
+	if knob.LcdHandler == "" || knob.LcdHandler == "Default" {
 		return "", dbus.MakeFailedError(errors.New("Invalid icon handler"))
 	}
 	var handler api.ForegroundHandler
 	modules := AvailableModules()
 	for _, module := range modules {
-		if module.Name == key.LcdHandler {
+		if module.Name == knob.LcdHandler {
 			handler = module.NewForeground()
 			break
 		}
@@ -189,15 +201,22 @@ func (StreamDeckDBus) GetKnobHandlerExample(serial string, keyString string) (st
 	}
 	dev = sd.SdInfo()
 	var img image.Image
-	log.Println("Created and running " + key.LcdHandler + " for dbus")
-	go handler.Start(key.LcdHandlerFields, api.LCD, *dev, func(image image.Image) {
+	log.Println("Created and running " + knob.LcdHandler + " for dbus")
+
+	fields := knob.GetForegroundHandlerFields()
+
+	if knob.GetForegroundHandler() == knob.GetInputHandler() {
+		fields = mergeSharedConfig(knob.GetSharedHandlerFields(), knob.GetForegroundHandlerFields())
+	}
+
+	go handler.Start(fields, api.LCD, *dev, func(image image.Image) {
 		if image.Bounds().Max.X != dev.LcdWidth || image.Bounds().Max.Y != dev.LcdHeight {
 			image = api.ResizeImageWH(image, dev.LcdWidth, dev.LcdHeight)
 		}
 		img = image
-		log.Println("Stopping " + key.LcdHandler + " for dbus")
-		handler.Stop()
-		log.Println("Stopped " + key.LcdHandler + " for dbus")
+		log.Println("Stopping " + knob.LcdHandler + " for dbus")
+		go handler.Stop()
+		//log.Println("Stopped " + key.LcdHandler + " for dbus")
 	})
 	counter := 0
 	for {

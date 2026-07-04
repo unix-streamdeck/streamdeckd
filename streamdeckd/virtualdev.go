@@ -447,8 +447,11 @@ func (dev *VirtualDev) renderKey() {
 		mergedImage, err := api.LayerImages(dev.sdInfo.IconSize, dev.sdInfo.IconSize, dev.keyBGBuffs[keyIndex], dev.keyFGBuffs[keyIndex], dev.roundedCorners)
 
 		if err != nil {
+			if err.Error() == "no images supplied" || err.Error() == "no valid images supplied" {
+				continue
+			}
+			dev.logger.Println("Error", err)
 			dev.keyUpdateChan <- keyIndex
-			dev.logger.Println(err)
 			continue
 		}
 
@@ -497,8 +500,11 @@ func (dev *VirtualDev) renderKnob() {
 		mergedImage, err := api.LayerImages(dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight, dev.panelBGBuffs[knobIndex], dev.panelFGBuffs[knobIndex])
 
 		if err != nil {
+			if err.Error() == "no images supplied" || err.Error() == "no valid images supplied" {
+				continue
+			}
+			dev.logger.Println("Error", err)
 			dev.knobUpdateChan <- knobIndex
-			dev.logger.Println(err)
 			continue
 		}
 
@@ -525,6 +531,7 @@ func (dev *VirtualDev) renderKnob() {
 
 			dev.logger.Println(err)
 		}
+
 	}
 }
 

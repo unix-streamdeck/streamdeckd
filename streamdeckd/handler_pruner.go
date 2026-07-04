@@ -131,6 +131,12 @@ func (hp *HandlerPruner) OnAppSwitch() {
 }
 
 func (hp *HandlerPruner) StopAllHandlers() {
+	if hp.vdev.Config().KeyGridBackgroundHandler != nil {
+		hp.vdev.Config().KeyGridBackgroundHandler.Stop()
+	}
+	if hp.vdev.Config().TouchPanelBackgroundHandler != nil {
+		hp.vdev.Config().TouchPanelBackgroundHandler.Stop()
+	}
 	for page := range hp.vdev.Config().Pages {
 		hp.stopPageHandlers(page)
 	}
