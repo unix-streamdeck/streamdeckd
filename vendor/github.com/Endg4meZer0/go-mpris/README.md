@@ -1,6 +1,6 @@
 # GO-MPRIS
 
-A Go library for reading data from and controlling players using MPRIS.
+A Go library for reading data from players and controlling them using MPRIS.
 
 ## Install
 ```

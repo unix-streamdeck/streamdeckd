@@ -12,7 +12,7 @@ import (
 	"time"
 	_ "unsafe"
 
-	"github.com/shirou/gopsutil/v3/process"
+	process "github.com/mitchellh/go-ps"
 	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
 	"github.com/unix-streamdeck/streamdeckd/streamdeckd/examples"
 )
@@ -54,8 +54,8 @@ func checkDuplicateInstance() {
 		log.Println("Could not check for other instances of streamdeckd, assuming no others running")
 	}
 	for _, proc := range processes {
-		name, err := proc.Name()
-		if err == nil && name == "streamdeckd" && int(proc.Pid) != os.Getpid() {
+		name := proc.Executable()
+		if name == "streamdeckd" && int(proc.Pid()) != os.Getpid() {
 			log.Fatalln("Another instance of streamdeckd is already running, exiting...")
 		}
 	}

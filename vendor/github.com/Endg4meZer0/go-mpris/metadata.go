@@ -94,12 +94,14 @@ func (md Metadata) AlbumArtist() ([]string, error) {
 		return nil, nil
 	}
 
-	v, ok := variant.([]string)
-	if !ok {
+	switch v := variant.(type) {
+	case []string:
+		return v, nil
+	case string:
+		return []string{v}, nil
+	default:
 		return nil, errors.New("could not parse xesam:albumArtist")
 	}
-
-	return v, nil
 }
 
 // Returns the track artist(s).
@@ -109,12 +111,14 @@ func (md Metadata) Artist() ([]string, error) {
 		return nil, nil
 	}
 
-	v, ok := variant.([]string)
-	if !ok {
+	switch v := variant.(type) {
+	case []string:
+		return v, nil
+	case string:
+		return []string{v}, nil
+	default:
 		return nil, errors.New("could not parse xesam:artist")
 	}
-
-	return v, nil
 }
 
 // Returns the track lyrics.

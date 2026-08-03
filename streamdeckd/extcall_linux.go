@@ -12,21 +12,12 @@ import (
 
 	"github.com/bendahl/uinput"
 	"github.com/godbus/dbus/v5"
-	x "github.com/linuxdeepin/go-x11-client"
 	"golang.org/x/sys/unix"
 )
-
-var c *x.Conn
 
 var kb uinput.Keyboard
 
 func UpdateApplication() {
-	sessionType, found := unix.Getenv("XDG_SESSION_TYPE")
-
-	if found && sessionType == "x11" {
-		updateX11Application()
-		return
-	}
 
 	desktopSession, found := unix.Getenv("XDG_CURRENT_DESKTOP")
 	if !found {
@@ -105,27 +96,6 @@ func updateKDEApplication() {
 			setApplication(outString)
 		}
 		time.Sleep(time.Duration((errCounter+1)*50) * time.Millisecond)
-	}
-}
-
-func updateX11Application() {
-	c, _ = x.NewConn()
-	defer c.Close()
-	var activeWindow x.Window
-	for {
-		win, _ := x.GetInputFocus(c).Reply(c)
-		if activeWindow != win.Focus {
-			activeWindow = win.Focus
-			active, err := exec.Command("xdotool", "getactivewindow", "getwindowclassname").Output()
-			if err != nil {
-				active = []byte("")
-			}
-			activePs := string(active)
-			log.Println(activePs)
-			activePs = strings.Trim(activePs, "\n")
-			setApplication(activePs)
-		}
-		time.Sleep(50 * time.Millisecond)
 	}
 }
 
