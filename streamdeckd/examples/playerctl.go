@@ -103,8 +103,6 @@ func getTitleAndArtists(player *mpris.Player) []string {
 		return []string{"", ""}
 	}
 	var titleAndArtists []string
-	{
-	}
 	title, _ := metadata.Title()
 	titleAndArtists = append(titleAndArtists, title)
 	artists, _ := metadata.Artist()
@@ -230,7 +228,7 @@ func (v *PlayerCtlHandler) Run(info api.StreamDeckInfoV1, handlerType api.Handle
 
 func (v *PlayerCtlHandler) update(info api.StreamDeckInfoV1, handlerType api.HandlerType, callback func(image image.Image)) {
 	var err error
-	if playerNeedsRefreshing(v.ActivePlayer) {
+	if playerNeedsRefreshing(v.ActivePlayer, v.PlayerName) {
 		v.ActivePlayer = choosePlayer(v.Client, v.PlayerName, v.PreviousPlayer, playerFilters[v.Type])
 		if v.ActivePlayer == nil {
 			return
@@ -733,11 +731,14 @@ func clamp(value, min, max int) int {
 	return value
 }
 
-func playerNeedsRefreshing(player *mpris.Player) bool {
+func playerNeedsRefreshing(player *mpris.Player, playerName string) bool {
 	if player == nil {
 		return true
 	}
-	if player.GetShortName() == "playerctld" {
+	if playerName != "" && playerName == player.GetShortName() {
+		return false
+	}
+	if playerName == "" && player.GetShortName() == "playerctld" {
 		return false
 	}
 	status, err := player.GetPlaybackStatus()
