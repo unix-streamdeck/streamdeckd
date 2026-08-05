@@ -55,12 +55,13 @@ const (
 )
 
 type DrawTextOptions struct {
-	FontSize            int64
-	VerticalAlignment   VerticalAlignment
-	HorizontalAlignment HorizontalAlignment
-	FontFace            string
-	Colour              string
-	Overflow            Overflow
+	FontSize                 int64
+	MaxFontSize, MinFontSize int64
+	VerticalAlignment        VerticalAlignment
+	HorizontalAlignment      HorizontalAlignment
+	FontFace                 string
+	Colour                   string
+	Overflow                 Overflow
 	// With anchor set, the alignments indicate the position of the text the anchor will be in, e.g BOTTOM & RIGHT will put the anchor in the bottom right of the text, so all text will be up and left of it
 	Anchor *image.Point
 }
@@ -78,6 +79,10 @@ type IContext interface {
 }
 
 func DrawText(img image.Image, text string, options DrawTextOptions) (image.Image, error) {
+
+	if options.MinFontSize > options.MaxFontSize {
+		return nil, errors.New("max font size cannot be smaller than min font size")
+	}
 
 	if options.Overflow == "" {
 		options.Overflow = Wrap
@@ -116,7 +121,21 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 	if err != nil {
 		return nil, err
 	}
+
+	maxFontSize := float64(availableWidth)
+	if options.MaxFontSize != 0 {
+		maxFontSize = float64(options.MaxFontSize)
+	}
+
 	fSize := calculateFontSize(f, text, availableWidth, availableHeight, options.Overflow)
+
+	if fSize > maxFontSize {
+		fSize = maxFontSize
+	}
+
+	if fSize < float64(options.MinFontSize) {
+		fSize = float64(options.MinFontSize)
+	}
 
 	if options.FontSize != 0 {
 		fSize = float64(options.FontSize)

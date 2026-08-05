@@ -235,14 +235,14 @@ dbus-send --session --dest=com.unixstreamdeck.streamdeckd \
 
 ---
 
-### GetHandlerExample & GetKnobHandlerExample
+### GetLayersExample
 
-Simulate a handler config, and get an example response of what image that handler would generate with that config
+Simulate layers config, and get an example response of what a composited image those layers would generate with that config
 
 **Parameters:**
 - `serial` (string): Device serial number
-- `key/knobConfig` (string): JSON string containing a key config
-
+- `layers` (string): JSON string containing a list of layers
+- `handlerType` (unsigned int): Numerical representation of the [handler types](https://github.com/unix-streamdeck/api/blob/master/handler.go)
 **Returns** Error message if invalid, b64 encoded png string if valid
 
 ---

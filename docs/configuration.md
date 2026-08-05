@@ -105,7 +105,7 @@ Stream Deck Mini (6 keys):
 
 ## Button Configuration
 
-Each button has an `application` object that maps application names to actions.
+Each button has an `application` object that maps application names to actions, nested inside is a list of "layers", those layers map to handlers that can update images on the device, handle inputs from the device, or for more complex handlers, do both
 
 ### Basic Button
 
@@ -113,8 +113,9 @@ Each button has an `application` object that maps application names to actions.
 {
   "application": {
     "": {
-      "command": "notify-send 'Hello'",
-      "icon": "/path/to/icon.png"
+      "layers": [
+        ...
+      ]
     }
   }
 }
@@ -130,16 +131,52 @@ Different actions based on the active application:
 {
   "application": {
     "": {
-      "command": "echo 'default'",
-      "icon": "/path/to/default.png"
+      "layers": [
+        {
+          "handler": "Command",
+          "fields": {
+            "command": "echo 'default'"
+          }
+        },
+        {
+          "handler": "Image",
+          "fields": {
+            "path": "/path/to/default.png"
+          }
+        }
+      ]
     },
     "firefox": {
-      "keybind": "ctrl+t",
-      "icon": "/path/to/firefox.png"
+      "layers": [
+        {
+          "handler": "Keybind",
+          "fields": {
+            "keybind": "ctrl+t"
+          }
+        },
+        {
+          "handler": "Image",
+          "fields": {
+            "path": "/path/to/firefox.png"
+          }
+        }
+      ]
     },
     "spotify": {
-      "keybind": "XF86AudioPlay",
-      "icon": "/path/to/spotify.png"
+      "layers": [
+        {
+          "handler": "Keybind",
+          "fields": {
+            "keybind": "XF86AudioPlay"
+          }
+        },
+        {
+          "handler": "Image",
+          "fields": {
+            "path": "/path/to/spotify.png"
+          }
+        }
+      ]
     }
   }
 }
@@ -162,34 +199,23 @@ Execute shell commands.
 
 ```json
 {
-  "command": "notify-send 'Button Pressed'"
+  "handler": "Command",
+  "fields": {
+    "command": "notify-send 'Button Pressed'"
+  }
 }
 ```
-
-Examples:
-```json
-{ "command": "pactl set-sink-mute @DEFAULT_SINK@ toggle" }
-{ "command": "/home/user/scripts/backup.sh" }
-{ "command": "killall -SIGUSR1 firefox" }
-```
-
 ### Keybind
 
 Simulate keyboard input using xdotool syntax.
 
 ```json
 {
-  "keybind": "ctrl+shift+t"
+  "handler": "Keybind",
+  "fields": {
+    "keybind": "ctrl+t"
+  }
 }
-```
-
-Examples:
-```json
-{ "keybind": "ctrl+c" }
-{ "keybind": "alt+Tab" }
-{ "keybind": "XF86AudioMute" }
-{ "keybind": "super+d" }
-{ "keybind": "ctrl+shift+Escape" }
 ```
 
 **Special Keys:**
@@ -205,14 +231,11 @@ Open URLs in the default browser.
 
 ```json
 {
-  "url": "https://github.com"
+  "handler": "Url",
+  "fields": {
+    "url": "https://github.com"
+  }
 }
-```
-
-Examples:
-```json
-{ "url": "https://reddit.com/r/linux" }
-{ "url": "file:///home/user/documents/notes.html" }
 ```
 
 ### Switch Page
@@ -221,7 +244,10 @@ Navigate to a different button page.
 
 ```json
 {
-  "switch_page": 1
+  "handler": "SwitchPage",
+  "fields": {
+    "page": 1
+  },
 }
 ```
 
@@ -233,7 +259,10 @@ Adjust Stream Deck display brightness (0-100).
 
 ```json
 {
-  "brightness": 50
+  "handler": "Brightness",
+  "fields": {
+    "brightness": 50
+  },
 }
 ```
 
@@ -243,15 +272,11 @@ Set the button icon image.
 
 ```json
 {
-  "icon": "/path/to/image.png"
+  "handler": "Image",
+  "fields": {
+    "path": "/path/to/image.png"
+  },
 }
-```
-
-Supported formats: PNG, JPEG, GIF
-
-Icon paths support `~` for home directory:
-```json
-{ "icon": "~/Pictures/icons/microphone.png" }
 ```
 
 ## Complete Examples
@@ -266,32 +291,80 @@ Icon paths support `~` for home directory:
       {
         "application": {
           "": {
-            "keybind": "XF86AudioPlay",
-            "icon": "~/icons/play-pause.png"
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": ~/icons/play-pause.png"
+                },
+              },
+              {
+                "handler": "Keybind",
+                "fields": {
+                  "keybind": "XF86AudioPlay"
+                }
+              }
+            ]
           }
         }
       },
       {
         "application": {
           "": {
-            "keybind": "XF86AudioPrev",
-            "icon": "~/icons/previous.png"
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/previous.png"
+                },
+              },
+              {
+                "handler": "Keybind",
+                "fields": {
+                  "keybind": "XF86AudioPrev"
+                }
+              }
+            ]
           }
         }
       },
       {
         "application": {
           "": {
-            "keybind": "XF86AudioNext",
-            "icon": "~/icons/next.png"
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/next.png"
+                },
+              },
+              {
+                "handler": "Keybind",
+                "fields": {
+                  "keybind": "XF86AudioNext"
+                }
+              }
+            ]
           }
         }
       },
       {
         "application": {
           "": {
-            "keybind": "XF86AudioMute",
-            "icon": "~/icons/mute.png"
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/mute.png"
+                },
+              },
+              {
+                "handler": "Keybind",
+                "fields": {
+                  "keybind": "XF86AudioMute"
+                }
+              }
+            ]
           }
         }
       }
@@ -311,87 +384,95 @@ Icon paths support `~` for home directory:
         "application": {
           "": {
             "command": "notify-send 'No app active'",
-            "icon": "~/icons/default.png"
+            "icon": "~/icons/default.png",
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/default.png"
+                },
+              },
+              {
+                "handler": "Command",
+                "fields": {
+                  "command": "notify-send 'No app active'"
+                }
+              }
+            ]
           },
           "firefox": {
-            "keybind": "ctrl+t",
-            "icon": "~/icons/new-tab.png"
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/new-tab.png"
+                },
+              },
+              {
+                "handler": "Keybind",
+                "fields": {
+                  "keybind": "ctrl+t"
+                }
+              }
+            ]
           },
           "chrome": {
-            "keybind": "ctrl+t",
-            "icon": "~/icons/new-tab.png"
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/new-tab.png"
+                },
+              },
+              {
+                "handler": "Keybind",
+                "fields": {
+                  "keybind": "ctrl+t"
+                }
+              }
+            ]
           }
         }
       },
       {
         "application": {
-          "firefox": {
-            "keybind": "ctrl+shift+t",
-            "icon": "~/icons/restore-tab.png"
+          "": {
+            "command": "notify-send 'No app active'",
+            "icon": "~/icons/default.png",
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/default.png"
+                },
+              },
+              {
+                "handler": "Command",
+                "fields": {
+                  "command": "notify-send 'No app active'"
+                }
+              }
+            ]
           },
-          "chrome": {
-            "keybind": "ctrl+shift+t",
-            "icon": "~/icons/restore-tab.png"
-          }
-        }
-      },
-      {
-        "application": {
           "code": {
-            "keybind": "ctrl+grave",
-            "icon": "~/icons/terminal.png"
+            "layers": [
+              {
+                "handler": "Image",
+                "fields": {
+                  "path": "~/icons/terminal.png"
+                },
+              },
+              {
+                "handler": "Keybind",
+                "fields": {
+                  "keybind": "ctrl+grave"
+                }
+              }
+            ]
           }
         }
       }
     ]]
-  }]
-}
-```
-
-### Multi-Page Setup
-
-```json
-{
-  "decks": [{
-    "serial": "AB12C3D45678",
-    "pages": [
-      [
-        {
-          "application": {
-            "": {
-              "switch_page": 1,
-              "icon": "~/icons/page2.png"
-            }
-          }
-        },
-        {
-          "application": {
-            "": {
-              "command": "notify-send 'Button 1'",
-              "icon": "~/icons/button1.png"
-            }
-          }
-        }
-      ],
-      [
-        {
-          "application": {
-            "": {
-              "switch_page": 0,
-              "icon": "~/icons/home.png"
-            }
-          }
-        },
-        {
-          "application": {
-            "": {
-              "command": "systemctl suspend",
-              "icon": "~/icons/sleep.png"
-            }
-          }
-        }
-      ]
-    ]
   }]
 }
 ```

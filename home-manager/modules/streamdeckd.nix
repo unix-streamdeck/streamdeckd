@@ -3,463 +3,269 @@
 let
   cfg = config.programs.streamdeckd;
 
-in {
-    options.programs.streamdeckd = {
-    enable = lib.mkEnableOption "Streamdeckd user daemon";
+  inherit (lib) mkOption types;
 
-    package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.streamdeckd;
+  strOption = description:
+    mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      inherit description;
     };
 
-    settings = lib.mkOption {
-      type = lib.types.submodule {
+  attrsOption = description:
+    mkOption {
+      type = types.nullOr types.attrs;
+      default = null;
+      inherit description;
+    };
+
+  inputEventIds = {
+    knob_ccw = 0;
+    knob_cw = 1;
+    knob_press = 2;
+    screen_short_tap = 3;
+    screen_long_tap = 4;
+    screen_swipe = 5;
+    key_press = 6;
+    key_release = 7;
+  };
+
+  layerModule = types.submodule {
+    options = {
+      handler = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          Name of the handler backing this layer, for example "Image", "Text",
+          "Command" or the name of a module. Leave unset only when {option}`global`
+          is true.
+        '';
+      };
+
+      fields = attrsOption "Configuration fields for the handler. Both sides of the layer see the same fields.";
+
+      visual = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Whether this layer draws. Requires a handler that renders.";
+      };
+
+      input = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Whether this layer handles input. Requires a handler that takes input.
+          A layer with both {option}`visual` and {option}`input` set uses one
+          handler instance for both, which is how a handler shares state between
+          what it draws and what it does.
+        '';
+      };
+
+      input_events = mkOption {
+        type = types.nullOr (types.listOf (types.enum (builtins.attrNames inputEventIds)));
+        default = null;
+        example = [ "knob_press" ];
+        description = ''
+          Restricts which events reach this layer. Unset means every event, which
+          for a key means both press and release. This is how a knob's press,
+          clockwise and anticlockwise actions are told apart.
+        '';
+      };
+
+      global = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Marks the position in this stack where the key or knob's application
+          independent layers are spliced in. A layer with this set carries no
+          handler of its own. Without it, those layers are placed at the bottom.
+        '';
+      };
+
+      label = strOption "Optional name for this layer, used by the editor only.";
+    };
+  };
+
+  layersOption = description:
+    mkOption {
+      type = types.listOf layerModule;
+      default = [ ];
+      inherit description;
+    };
+
+  keyBackgroundOptions = {
+    background = strOption "Background image for the key, or the name of a background handler.";
+    key_background_handler_fields = attrsOption "Key background handler configuration fields.";
+  };
+
+  panelBackgroundOptions = {
+    touch_panel_background = strOption "Background image for the touch panel, or the name of a background handler.";
+    touch_panel_background_handler_fields = attrsOption "Touch panel background handler configuration fields.";
+  };
+
+  gridBackgroundOptions = panelBackgroundOptions // {
+    key_grid_background = strOption "Background image spanning the key grid, or the name of a background handler.";
+    key_grid_background_handler_fields = attrsOption "Key grid background handler configuration fields.";
+  };
+
+  applicationOption = profileModule: kind:
+    mkOption {
+      type = types.nullOr (types.attrsOf profileModule);
+      default = null;
+      description = ''
+        Per application ${kind} configuration, keyed by application name. The
+        empty string is the default profile, used when no other profile matches
+        the focused application. A matching profile replaces the default rather
+        than adding to it.
+      '';
+    };
+
+  keyConfigModule = types.submodule {
+    options = keyBackgroundOptions // {
+      layers = layersOption "Foreground layers for this profile, painted bottom first.";
+    };
+  };
+
+  keyModule = types.submodule {
+    options = keyBackgroundOptions // {
+      layers = layersOption ''
+        Foreground layers that apply whichever application is focused. They are
+        spliced into the active profile's stack at its global marker, or placed
+        at the bottom when it has none.
+      '';
+      application = applicationOption keyConfigModule "key";
+    };
+  };
+
+  knobConfigModule = types.submodule {
+    options = panelBackgroundOptions // {
+      layers = layersOption "Foreground layers for this profile, painted bottom first.";
+    };
+  };
+
+  knobModule = types.submodule {
+    options = panelBackgroundOptions // {
+      layers = layersOption ''
+        Foreground layers that apply whichever application is focused. They are
+        spliced into the active profile's stack at its global marker, or placed
+        at the bottom when it has none.
+      '';
+      application = applicationOption knobConfigModule "knob";
+    };
+  };
+
+  pageModule = types.submodule {
+    options = gridBackgroundOptions // {
+      keys = mkOption {
+        type = types.listOf keyModule;
+        default = [ ];
+        description = "Keys on this page, in device order.";
+      };
+      knobs = mkOption {
+        type = types.listOf knobModule;
+        default = [ ];
+        description = "Knobs and LCD segments on this page, in device order.";
+      };
+    };
+  };
+
+  deckModule = types.submodule {
+    options = gridBackgroundOptions // {
+      serial = mkOption {
+        type = types.str;
+        description = "Serial number of the Stream Deck.";
+      };
+      pages = mkOption {
+        type = types.listOf pageModule;
+        default = [ ];
+        description = "Pages for this deck.";
+      };
+    };
+  };
+
+  obsModule = types.submodule {
+    options = {
+      host = strOption "OBS WebSocket host.";
+      port = mkOption {
+        type = types.nullOr types.int;
+        default = null;
+        description = "OBS WebSocket port.";
+      };
+    };
+  };
+
+
+  renderLayer = layer:
+    lib.filterAttrs (_: value: value != null) (
+      layer // lib.optionalAttrs (layer.input_events != null) {
+        input_events = map (name: inputEventIds.${name}) layer.input_events;
+      }
+    );
+
+  renderLayers = map renderLayer;
+
+  renderProfiles = profiles:
+    if profiles == null then
+      null
+    else
+      lib.mapAttrs (_: profile: profile // { layers = renderLayers profile.layers; }) profiles;
+
+  renderElement = element:
+    element // {
+      layers = renderLayers element.layers;
+      application = renderProfiles element.application;
+    };
+
+  renderPage = page:
+    page // {
+      keys = map renderElement page.keys;
+      knobs = map renderElement page.knobs;
+    };
+
+  renderDeck = deck: deck // { pages = map renderPage deck.pages; };
+
+  settingsJson = builtins.toJSON (cfg.settings // {
+    decks = map renderDeck cfg.settings.decks;
+  });
+
+in {
+  options.programs.streamdeckd = {
+    enable = lib.mkEnableOption "Streamdeckd user daemon";
+
+    package = mkOption {
+      type = types.package;
+      default = pkgs.streamdeckd;
+      description = "The streamdeckd package to use.";
+    };
+
+    settings = mkOption {
+      type = types.submodule {
         options = {
-          modules = lib.mkOption {
-            type = lib.types.nullOr (lib.types.listOf lib.types.str);
+          modules = mkOption {
+            type = types.nullOr (types.listOf types.str);
             default = null;
-            description = "List of modules to load";
+            description = "Paths of module plugins to load.";
           };
-          decks = lib.mkOption {
-            type = lib.types.listOf (lib.types.submodule {
-              options = {
-                serial = lib.mkOption {
-                  type = lib.types.str;
-                  description = "Serial number of the Stream Deck";
-                };
-                touch_panel_background = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "Background image for the touch panel";
-                };
-                touch_panel_background_handler_fields = lib.mkOption {
-                  type = lib.types.nullOr lib.types.attrs;
-                  default = null;
-                  description = "Touch panel background handler configuration fields";
-                };
-                key_grid_background = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "Background image for the key grid";
-                };
-                key_grid_background_handler_fields = lib.mkOption {
-                  type = lib.types.nullOr lib.types.attrs;
-                  default = null;
-                  description = "Key grid background handler configuration fields";
-                };
-                pages = lib.mkOption {
-                  type = lib.types.listOf (lib.types.submodule {
-                    options = {
-                      keys = lib.mkOption {
-                        type = lib.types.listOf (lib.types.submodule {
-                          options = {
-                            background = lib.mkOption {
-                              type = lib.types.nullOr lib.types.str;
-                              default = null;
-                              description = "Background image for the key";
-                            };
-                            key_background_handler_fields = lib.mkOption {
-                              type = lib.types.nullOr lib.types.attrs;
-                              default = null;
-                              description = "Key background handler configuration fields";
-                            };
-                            application = lib.mkOption {
-                              type = lib.types.nullOr (lib.types.attrsOf (lib.types.submodule {
-                                options = {
-                                  background = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Background image for the key";
-                                  };
-                                  key_background_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "Key background handler configuration fields";
-                                  };
-                                  icon = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Path to icon file";
-                                  };
-                                  switch_page = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.int;
-                                    default = null;
-                                    description = "Page number to switch to";
-                                  };
-                                  text = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Text to display";
-                                  };
-                                  text_size = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.int;
-                                    default = null;
-                                    description = "Text size";
-                                  };
-                                  text_alignment = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Text alignment (left, center, right)";
-                                  };
-                                  font_face = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Font Face";
-                                  };
-                                  text_colour = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Text colour (hex code)";
-                                  };
-                                  keybind = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Keybind to trigger";
-                                  };
-                                  command = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Command to execute";
-                                  };
-                                  brightness = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.int;
-                                    default = null;
-                                    description = "Brightness level";
-                                  };
-                                  url = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "URL to open";
-                                  };
-                                  key_hold = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.int;
-                                    default = null;
-                                    description = "Key hold duration in milliseconds";
-                                  };
-                                  obs_command = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "OBS command to execute";
-                                  };
-                                  obs_command_params = lib.mkOption {
-                                    type = lib.types.nullOr (lib.types.attrsOf lib.types.str);
-                                    default = null;
-                                    description = "OBS command parameters";
-                                  };
-                                  icon_handler = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Icon handler name";
-                                  };
-                                  key_handler = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Key handler name";
-                                  };
-                                  icon_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "Icon handler configuration fields";
-                                  };
-                                  key_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "Key handler configuration fields";
-                                  };
-                                  shared_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "Shared handler configuration fields";
-                                  };
-                                };
-                              }));
-                              default = null;
-                              description = "Application-specific key configurations";
-                            };
-                          };
-                        });
-                        default = [];
-                        description = "List of keys on this page";
-                      };
-                      knobs = lib.mkOption {
-                        type = lib.types.listOf (lib.types.submodule {
-                          options = {
-                            touch_panel_background = lib.mkOption {
-                              type = lib.types.nullOr lib.types.str;
-                              default = null;
-                              description = "Background image for the touch panel";
-                            };
-                            touch_panel_background_handler_fields = lib.mkOption {
-                              type = lib.types.nullOr lib.types.attrs;
-                              default = null;
-                              description = "Touch panel background handler configuration fields";
-                            };
-                            application = lib.mkOption {
-                              type = lib.types.nullOr (lib.types.attrsOf (lib.types.submodule {
-                                options = {
-                                  touch_panel_background = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Background image for the touch panel";
-                                  };
-                                  touch_panel_background_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "Touch panel background handler configuration fields";
-                                  };
-                                  icon = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Path to icon file";
-                                  };
-                                  text = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Text to display";
-                                  };
-                                  text_size = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.int;
-                                    default = null;
-                                    description = "Text size";
-                                  };
-                                  text_alignment = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Text alignment (left, center, right)";
-                                  };
-                                  font_face = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Font Face";
-                                  };
-                                  text_colour = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Text colour (hex code)";
-                                  };
-                                  lcd_handler = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "LCD handler name";
-                                  };
-                                  knob_or_touch_handler = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.str;
-                                    default = null;
-                                    description = "Knob or touch handler name";
-                                  };
-                                  lcd_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "LCD handler configuration fields";
-                                  };
-                                  knob_or_touch_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "Knob or touch handler configuration fields";
-                                  };
-                                  shared_handler_fields = lib.mkOption {
-                                    type = lib.types.nullOr lib.types.attrs;
-                                    default = null;
-                                    description = "Shared handler configuration fields";
-                                  };
-                                  knob_press_action = lib.mkOption {
-                                    type = lib.types.nullOr (lib.types.submodule {
-                                      options = {
-                                        switch_page = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.int;
-                                          default = null;
-                                          description = "Page number to switch to";
-                                        };
-                                        keybind = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "Keybind to trigger";
-                                        };
-                                        command = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "Command to execute";
-                                        };
-                                        brightness = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.int;
-                                          default = null;
-                                          description = "Brightness level";
-                                        };
-                                        url = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "URL to open";
-                                        };
-                                        obs_command = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "OBS command to execute";
-                                        };
-                                        obs_command_params = lib.mkOption {
-                                          type = lib.types.nullOr (lib.types.attrsOf lib.types.str);
-                                          default = null;
-                                          description = "OBS command parameters";
-                                        };
-                                      };
-                                    });
-                                    default = null;
-                                    description = "Action on knob press";
-                                  };
-                                  knob_turn_up_action = lib.mkOption {
-                                    type = lib.types.nullOr (lib.types.submodule {
-                                      options = {
-                                        switch_page = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.int;
-                                          default = null;
-                                          description = "Page number to switch to";
-                                        };
-                                        keybind = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "Keybind to trigger";
-                                        };
-                                        command = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "Command to execute";
-                                        };
-                                        brightness = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.int;
-                                          default = null;
-                                          description = "Brightness level";
-                                        };
-                                        url = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "URL to open";
-                                        };
-                                        obs_command = lib.mkOption {
-                                          type = lib.types.nullOr lib.types.str;
-                                          default = null;
-                                          description = "OBS command to execute";
-                                        };
-                                        obs_command_params = lib.mkOption {
-                                          type = lib.types.nullOr (lib.types.attrsOf lib.types.str);
-                                          default = null;
-                                          description = "OBS command parameters";
-                                        };
-                                      };
-                                    });
-                                    default = null;
-                                    description = "Action on knob turn up";
-                                  };
-                                  knob_turn_down_action = lib.mkOption {
-                                    type = lib.types.nullOr (lib.types.submodule {
-                                    options = {
-                                      switch_page = lib.mkOption {
-                                        type = lib.types.nullOr lib.types.int;
-                                        default = null;
-                                        description = "Page number to switch to";
-                                      };
-                                      keybind = lib.mkOption {
-                                        type = lib.types.nullOr lib.types.str;
-                                        default = null;
-                                        description = "Keybind to trigger";
-                                      };
-                                      command = lib.mkOption {
-                                        type = lib.types.nullOr lib.types.str;
-                                        default = null;
-                                        description = "Command to execute";
-                                      };
-                                      brightness = lib.mkOption {
-                                        type = lib.types.nullOr lib.types.int;
-                                        default = null;
-                                        description = "Brightness level";
-                                      };
-                                      url = lib.mkOption {
-                                        type = lib.types.nullOr lib.types.str;
-                                        default = null;
-                                        description = "URL to open";
-                                      };
-                                      obs_command = lib.mkOption {
-                                        type = lib.types.nullOr lib.types.str;
-                                        default = null;
-                                        description = "OBS command to execute";
-                                      };
-                                      obs_command_params = lib.mkOption {
-                                        type = lib.types.nullOr (lib.types.attrsOf lib.types.str);
-                                        default = null;
-                                        description = "OBS command parameters";
-                                      };
-                                    };
-                                  });
-                                    default = null;
-                                    description = "Action on knob turn down";
-                                  };
-                                };
-                              }));
-                              default = null;
-                              description = "Application-specific knob configurations";
-                            };
-                          };
-                        });
-                        default = [];
-                        description = "List of knobs on this page";
-                      };
-                      touch_panel_background = lib.mkOption {
-                        type = lib.types.nullOr lib.types.str;
-                        default = null;
-                        description = "Background image for the touch panel";
-                      };
-                      touch_panel_background_handler_fields = lib.mkOption {
-                        type = lib.types.nullOr lib.types.attrs;
-                        default = null;
-                        description = "Touch panel background handler configuration fields";
-                      };
-                      key_grid_background = lib.mkOption {
-                        type = lib.types.nullOr lib.types.str;
-                        default = null;
-                        description = "Background image for the key grid";
-                      };
-                      key_grid_background_handler_fields = lib.mkOption {
-                        type = lib.types.nullOr lib.types.attrs;
-                        default = null;
-                        description = "Key grid background handler configuration fields";
-                      };
-                    };
-                  });
-                  default = [];
-                  description = "List of pages for this deck";
-                };
-              };
-            });
-            default = [];
-            description = "List of Stream Deck configurations";
+          decks = mkOption {
+            type = types.listOf deckModule;
+            default = [ ];
+            description = "Stream Deck configurations.";
           };
-          obs_connection_info = lib.mkOption {
-            type = lib.types.nullOr (lib.types.submodule {
-              options = {
-                host = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "OBS WebSocket host";
-                };
-                port = lib.mkOption {
-                  type = lib.types.nullOr lib.types.int;
-                  default = null;
-                  description = "OBS WebSocket port";
-                };
-              };
-            });
+          obs_connection_info = mkOption {
+            type = types.nullOr obsModule;
             default = null;
-            description = "OBS WebSocket connection information";
+            description = "OBS WebSocket connection information.";
           };
         };
       };
-      default = {};
-      description = "Streamdeckd JSON configuration";
+      default = { };
+      description = "Streamdeckd JSON configuration.";
     };
   };
 
   config = lib.mkIf cfg.enable {
 
-    xdg.configFile."streamdeck-config.json".text =
-      builtins.toJSON cfg.settings;
+    xdg.configFile."streamdeck-config.json".text = settingsJson;
 
     systemd.user.services.streamdeckd = {
       Unit = {
@@ -473,9 +279,7 @@ in {
         Restart = "always";
       };
 
-      Install = {
-        WantedBy = [ "default.target" ];
-      };
+      Install = { WantedBy = [ "default.target" ]; };
     };
   };
 }

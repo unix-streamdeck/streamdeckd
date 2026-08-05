@@ -14,22 +14,22 @@ type VisualHandler interface {
 
 type InputHandler interface {
 	Handler
-	Input(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, event InputEvent)
+	Input(fields map[string]any, handlerType HandlerType, info StreamDeckInfo, event InputEvent, host IHost)
 }
 
 type ForegroundHandler interface {
 	VisualHandler
-	Start(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(image image.Image))
+	Start(fields map[string]any, handlerType HandlerType, info StreamDeckInfo, callback func(image image.Image))
 }
 
 type CombinedHandler interface {
-	VisualHandler
+	ForegroundHandler
 	InputHandler
 }
 
 type BackgroundHandler interface {
 	ForegroundHandler
-	StartGrid(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(images []image.Image))
+	StartGrid(fields map[string]any, handlerType HandlerType, info StreamDeckInfo, callback func(images []image.Image))
 }
 
 type HandlerType uint8
@@ -39,7 +39,7 @@ const (
 	KEY
 )
 
-type InputEventType uint8
+type InputEventType int8
 
 const (
 	KNOB_CCW InputEventType = iota

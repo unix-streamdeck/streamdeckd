@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 	streamdeck "github.com/unix-streamdeck/driver"
 	"golang.org/x/image/draw"
 )
@@ -21,9 +21,9 @@ var Devs map[string]IVirtualDev
 
 type IVirtualDev interface {
 	IsOpen() bool
-	Config() api.DeckV3
-	SetConfig(v3 api.DeckV3)
-	SdInfo() *api.StreamDeckInfoV1
+	Config() api.Deck
+	SetConfig(api.Deck)
+	SdInfo() *api.StreamDeckInfo
 	Serial() string
 	Foregrounder() IForegrounder
 	Backgrounder() IBackgrounder
@@ -34,13 +34,42 @@ type IVirtualDev interface {
 
 	Open(rawDev *streamdeck.Device) error
 	SetKeyBackground(keyIndex int, page int)
-	SetKeyForeground(img image.Image, keyIndex int, page int)
+	SetKeyForeground(keyIndex int, page int)
 	SetPanelBackground(knobIndex int, page int)
-	SetPanelForeground(img image.Image, knobIndex int, page int)
+	SetPanelForeground(knobIndex int, page int)
 	RedrawKey(keyIndex int)
 	SetBrightness(brightness uint8) error
 	HandleScreenLockChange(locked bool)
+	Host() api.IHost
 	Close()
+}
+
+type Host struct {
+	vdev IVirtualDev
+}
+
+func (h *Host) SetPage(page int) {
+	h.vdev.PageManager().SetPage(page)
+}
+
+func (h *Host) SetBrightness(brightness uint8) error {
+	return h.vdev.SetBrightness(brightness)
+}
+
+func (h *Host) RunCommand(command string) {
+	RunCommand(command)
+}
+
+func (h *Host) ExecuteKeybind(keybind string) error {
+	return ExecuteKeybind(keybind)
+}
+
+func (h *Host) KeyDown(keycode int) error {
+	return kb.KeyDown(keycode)
+}
+
+func (h *Host) KeyUp(keycode int) error {
+	return kb.KeyUp(keycode)
 }
 
 func OpenDevice() error {
@@ -89,8 +118,8 @@ type VirtualDev struct {
 
 	//External Properties
 	isOpen        bool
-	config        api.DeckV3
-	sdInfo        *api.StreamDeckInfoV1
+	config        api.Deck
+	sdInfo        *api.StreamDeckInfo
 	deck          *streamdeck.Device
 	foregrounder  IForegrounder
 	backgrounder  IBackgrounder
@@ -162,6 +191,9 @@ func (dev *VirtualDev) Open(rawDev *streamdeck.Device) error {
 		dev.foregrounder.AttachPageChangeListener()
 		dev.foregrounder.AttachAppChangeListener()
 
+		dev.inputManager.AttachPageChangeListener()
+		dev.inputManager.AttachAppChangeListener()
+
 		dev.handlerPruner.OnPageChange()
 		dev.handlerPruner.OnAppSwitch()
 
@@ -192,11 +224,11 @@ func (dev *VirtualDev) IsOpen() bool {
 	return dev.isOpen
 }
 
-func (dev *VirtualDev) Config() api.DeckV3 {
+func (dev *VirtualDev) Config() api.Deck {
 	return dev.config
 }
 
-func (dev *VirtualDev) SetConfig(config api.DeckV3) {
+func (dev *VirtualDev) SetConfig(config api.Deck) {
 	dev.config = config
 
 	go dev.backgrounder.SetKeyBackground(&dev.config)
@@ -213,7 +245,7 @@ func (dev *VirtualDev) SetConfig(config api.DeckV3) {
 	}
 }
 
-func (dev *VirtualDev) SdInfo() *api.StreamDeckInfoV1 {
+func (dev *VirtualDev) SdInfo() *api.StreamDeckInfo {
 	return dev.sdInfo
 }
 
@@ -247,18 +279,18 @@ func (dev *VirtualDev) Logger() *log.Logger {
 
 func (dev *VirtualDev) SetKeyBackground(keyIndex int, page int) {
 	var background image.Image
-	var keyV3 *api.KeyV3
-	var keyConfigV3 *api.KeyConfigV3
+	var key *api.Key
+	var keyConfig *api.KeyConfig
 	if len(dev.config.Pages[page].Keys) > keyIndex {
-		keyV3 = &dev.config.Pages[page].Keys[keyIndex]
-		kcv3, ok := keyV3.Application[keyV3.ActiveApplication]
+		key = &dev.config.Pages[page].Keys[keyIndex]
+		kc, ok := key.Application[key.ActiveApplication]
 		if ok {
-			keyConfigV3 = kcv3
+			keyConfig = kc
 		}
 	}
 
-	if keyConfigV3 != nil {
-		kcbg := keyConfigV3.GetKeyBackgroundBuff()
+	if keyConfig != nil {
+		kcbg := keyConfig.GetKeyBackgroundBuff()
 
 		if kcbg != nil {
 			background = kcbg
@@ -266,8 +298,8 @@ func (dev *VirtualDev) SetKeyBackground(keyIndex int, page int) {
 
 	}
 
-	if background == nil && keyV3 != nil {
-		kbg := keyV3.GetKeyBackgroundBuff()
+	if background == nil && key != nil {
+		kbg := key.GetKeyBackgroundBuff()
 		if kbg != nil {
 			background = kbg
 		}
@@ -299,14 +331,35 @@ func (dev *VirtualDev) RedrawKey(keyIndex int) {
 	dev.keyUpdateChan <- keyIndex
 }
 
-func (dev *VirtualDev) SetKeyForeground(img image.Image, keyIndex int, page int) {
+func (dev *VirtualDev) SetKeyForeground(keyIndex int, page int) {
 	if dev.pageManager.GetPage() != page {
 		return
 	}
 
-	bounds := img.Bounds().Max
-	if bounds.X != dev.sdInfo.IconSize || bounds.Y != dev.sdInfo.IconSize {
-		img = api.ResizeImage(img, dev.sdInfo.IconSize)
+	key := dev.Config().Pages[page].Keys[keyIndex]
+	keyConfig := key.Application[key.ActiveApplication]
+
+	layers := MergeLayers(keyConfig, &key)
+
+	var imgs []image.Image
+
+	for _, layer := range layers {
+		img := layer.Buff
+		if img == nil {
+			continue
+		}
+		bounds := img.Bounds().Max
+		if bounds.X != dev.sdInfo.IconSize || bounds.Y != dev.sdInfo.IconSize {
+			img = api.ResizeImage(img, dev.sdInfo.IconSize)
+		}
+		imgs = append(imgs, img)
+	}
+
+	img, err := api.LayerImages(dev.sdInfo.IconSize, dev.sdInfo.IconSize, imgs...)
+
+	if err != nil {
+		log.Println("[WARN] Error setting image", err)
+		return
 	}
 
 	if dev.keyFGBuffs[keyIndex] != img {
@@ -317,18 +370,18 @@ func (dev *VirtualDev) SetKeyForeground(img image.Image, keyIndex int, page int)
 
 func (dev *VirtualDev) SetPanelBackground(knobIndex int, page int) {
 	var background image.Image
-	var knobV3 *api.KnobV3
-	var knobConfigV3 *api.KnobConfigV3
+	var knob *api.Knob
+	var knobConfig *api.KnobConfig
 	if len(dev.config.Pages[page].Knobs) > knobIndex {
-		knobV3 = &dev.config.Pages[page].Knobs[knobIndex]
-		kcv3, ok := knobV3.Application[knobV3.ActiveApplication]
+		knob = &dev.config.Pages[page].Knobs[knobIndex]
+		kc, ok := knob.Application[knob.ActiveApplication]
 		if ok {
-			knobConfigV3 = kcv3
+			knobConfig = kc
 		}
 	}
 
-	if knobConfigV3 != nil {
-		kcbg := knobConfigV3.GetTouchPanelBackgroundBuff()
+	if knobConfig != nil {
+		kcbg := knobConfig.GetTouchPanelBackgroundBuff()
 
 		if kcbg != nil {
 			background = kcbg
@@ -336,8 +389,8 @@ func (dev *VirtualDev) SetPanelBackground(knobIndex int, page int) {
 
 	}
 
-	if background == nil && knobV3 != nil {
-		kbg := knobV3.GetTouchPanelBackgroundBuff()
+	if background == nil && knob != nil {
+		kbg := knob.GetTouchPanelBackgroundBuff()
 		if kbg != nil {
 			background = kbg
 		}
@@ -363,14 +416,35 @@ func (dev *VirtualDev) SetPanelBackground(knobIndex int, page int) {
 	}
 }
 
-func (dev *VirtualDev) SetPanelForeground(img image.Image, knobIndex int, page int) {
+func (dev *VirtualDev) SetPanelForeground(knobIndex int, page int) {
 	if dev.pageManager.GetPage() != page {
 		return
 	}
 
-	bounds := img.Bounds().Max
-	if bounds.X != dev.sdInfo.LcdWidth || bounds.Y != dev.sdInfo.LcdHeight {
-		img = api.ResizeImageWH(img, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight)
+	knob := dev.Config().Pages[page].Knobs[knobIndex]
+	knobConfig := knob.Application[knob.ActiveApplication]
+
+	layers := MergeLayers(knobConfig, &knob)
+
+	var imgs []image.Image
+
+	for _, layer := range layers {
+		img := layer.Buff
+		if img == nil {
+			continue
+		}
+		bounds := img.Bounds().Max
+		if bounds.X != dev.sdInfo.LcdWidth || bounds.Y != dev.sdInfo.LcdHeight {
+			img = api.ResizeImage(img, dev.sdInfo.IconSize)
+		}
+		imgs = append(imgs, img)
+	}
+
+	img, err := api.LayerImages(dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight, imgs...)
+
+	if err != nil {
+		log.Println("[WARN] Error setting image", err)
+		return
 	}
 
 	if dev.panelFGBuffs[knobIndex] != img {
@@ -394,7 +468,7 @@ func (dev *VirtualDev) setSdInfo() {
 		dev.logger.Println(err)
 	}
 
-	info := api.StreamDeckInfoV1{
+	info := api.StreamDeckInfo{
 		Cols:                    int(dev.deck.Columns),
 		Rows:                    int(dev.deck.Rows),
 		IconSize:                int(dev.deck.Pixels),
@@ -566,6 +640,10 @@ func (dev *VirtualDev) handleInput() {
 			}
 		}
 	})
+}
+
+func (dev *VirtualDev) Host() api.IHost {
+	return &Host{vdev: dev}
 }
 
 func (dev *VirtualDev) disconnect() {

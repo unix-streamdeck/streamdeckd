@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"image"
@@ -37,13 +38,13 @@ func (c *Connection) Close() {
 	c.conn.Close()
 }
 
-func (c *Connection) GetInfo() ([]*StreamDeckInfoV1, error) {
+func (c *Connection) GetInfo() ([]*StreamDeckInfo, error) {
 	var s string
 	err := c.busobj.Call("com.unixstreamdeck.streamdeckd.GetDeckInfo", 0).Store(&s)
 	if err != nil {
 		return nil, err
 	}
-	var info []*StreamDeckInfoV1
+	var info []*StreamDeckInfo
 	err = json.Unmarshal([]byte(s), &info)
 	if err != nil {
 		return nil, err
@@ -59,13 +60,13 @@ func (c *Connection) SetPage(serial string, page int) error {
 	return nil
 }
 
-func (c *Connection) GetConfig() (*ConfigV3, error) {
+func (c *Connection) GetConfig() (*Config, error) {
 	var s string
 	err := c.busobj.Call("com.unixstreamdeck.streamdeckd.GetConfig", 0).Store(&s)
 	if err != nil {
 		return nil, err
 	}
-	var config *ConfigV3
+	var config *Config
 	err = json.Unmarshal([]byte(s), &config)
 	if err != nil {
 		return nil, err
@@ -73,7 +74,7 @@ func (c *Connection) GetConfig() (*ConfigV3, error) {
 	return config, nil
 }
 
-func (c *Connection) SetConfig(config *ConfigV3) error {
+func (c *Connection) SetConfig(config *Config) error {
 	configString, err := json.Marshal(config)
 	if err != nil {
 		return err
@@ -133,40 +134,22 @@ func (c *Connection) GetObsFields() ([]*Field, error) {
 	return fields, nil
 }
 
-func (c *Connection) GetHandlerExample(serial string, keyConfig KeyConfigV3) (image.Image, error) {
-	configString, err := json.Marshal(keyConfig)
+func (c *Connection) GetLayersExample(serial string, layers []*Layer, handlerType HandlerType) (image.Image, error) {
+	layersString, err := json.Marshal(layers)
 	if err != nil {
 		return nil, err
 	}
 	var s string
-	err = c.busobj.Call("com.unixstreamdeck.streamdeckd.GetHandlerExample", 0, string(serial), string(configString)).Store(&s)
+	err = c.busobj.Call("com.unixstreamdeck.streamdeckd.GetLayersExample", 0, serial, string(layersString), handlerType).Store(&s)
 	if err != nil {
 		return nil, err
 	}
 	s = strings.ReplaceAll(s, "data:image/png;base64,", "")
-	bytes, err := base64.StdEncoding.DecodeString(s)
+	raw, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
 		return nil, err
 	}
-	return png.Decode(strings.NewReader(string(bytes)))
-}
-
-func (c *Connection) GetKnobHandlerExample(serial string, knobConfig KnobConfigV3) (image.Image, error) {
-	configString, err := json.Marshal(knobConfig)
-	if err != nil {
-		return nil, err
-	}
-	var s string
-	err = c.busobj.Call("com.unixstreamdeck.streamdeckd.GetKnobHandlerExample", 0, string(serial), string(configString)).Store(&s)
-	if err != nil {
-		return nil, err
-	}
-	s = strings.ReplaceAll(s, "data:image/png;base64,", "")
-	bytes, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		return nil, err
-	}
-	return png.Decode(strings.NewReader(string(bytes)))
+	return png.Decode(bytes.NewReader(raw))
 }
 
 func (c *Connection) RegisterPageListener(cback func(string, int32)) error {

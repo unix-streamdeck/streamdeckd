@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 )
 
 type CounterHandler struct {
@@ -15,7 +15,7 @@ type CounterHandler struct {
 	Update   chan int
 }
 
-func (c *CounterHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (c *CounterHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 	if c.Callback == nil {
 		c.Callback = callback
 	}
@@ -57,7 +57,7 @@ func (c *CounterHandler) Stop() {
 	c.Running = false
 }
 
-func (c *CounterHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
+func (c *CounterHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, event api.InputEvent, host api.IHost) {
 	var delta int
 	if event.EventType == api.KEY_PRESS || event.EventType == api.KNOB_PRESS || event.EventType == api.SCREEN_SHORT_TAP {
 		delta = 1
@@ -78,10 +78,9 @@ func (c *CounterHandler) Input(fields map[string]any, handlerType api.HandlerTyp
 
 func RegisterCounter() api.Module {
 	return api.Module{
-		NewForeground: func() api.ForegroundHandler {
-			return &CounterHandler{Running: true, Count: 0}
+		NewCombined: func() api.Handler {
+			return &CounterHandler{Count: 0}
 		},
-		NewInput: func() api.InputHandler {
-			return &CounterHandler{Running: true, Count: 0}
-		}, Name: "Counter"}
+		Name: "Counter",
+	}
 }

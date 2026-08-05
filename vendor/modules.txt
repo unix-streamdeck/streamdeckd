@@ -24,6 +24,7 @@ github.com/christopher-dG/go-obs-websocket
 # github.com/godbus/dbus/v5 v5.2.2
 ## explicit; go 1.20
 github.com/godbus/dbus/v5
+github.com/godbus/dbus/v5/introspect
 # github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 ## explicit
 github.com/golang/freetype/raster
@@ -40,10 +41,10 @@ github.com/mitchellh/mapstructure
 # github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe
 ## explicit; go 1.19
 github.com/the-jonsey/pulseaudio
-# github.com/unix-streamdeck/api/v2 v2.0.21
+# github.com/unix-streamdeck/api/v3 v3.0.0
 ## explicit; go 1.25.7
-github.com/unix-streamdeck/api/v2
-# github.com/unix-streamdeck/driver v0.0.0-20260803212311-a3d246275d93
+github.com/unix-streamdeck/api/v3
+# github.com/unix-streamdeck/driver v0.0.0-20260805105646-16ea199be4c4
 ## explicit; go 1.25.0
 github.com/unix-streamdeck/driver
 # github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9

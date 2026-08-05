@@ -10,17 +10,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 	"golang.org/x/sync/semaphore"
 )
 
 func RegisterGif() api.Module {
 	return api.Module{
 		Name: "Gif",
-		NewForeground: func() api.ForegroundHandler {
-			return &GifHandler{Running: true, Lock: semaphore.NewWeighted(1)}
+		NewCombined: func() api.Handler {
+			return &GifHandler{Lock: semaphore.NewWeighted(1)}
 		},
-		ForegroundFields: []api.Field{
+		CombinedFields: []api.Field{
 			{Title: "Icon", Name: "icon", Type: api.File, FileTypes: []string{".gif"}},
 			{Title: "Text", Name: "text", Type: api.Text},
 			{Title: "Text Size", Name: "text_size", Type: api.Number},
@@ -29,7 +29,7 @@ func RegisterGif() api.Module {
 			{Title: "Text Colour", Name: "text_colour", Type: api.Colour},
 		},
 		NewBackground: func() api.BackgroundHandler {
-			return &GifHandler{Running: true, Lock: semaphore.NewWeighted(1)}
+			return &GifHandler{Lock: semaphore.NewWeighted(1)}
 		},
 		BackgroundFields: []api.Field{
 			{Title: "Icon", Name: "icon", Type: api.File, FileTypes: []string{".gif"}},
@@ -49,7 +49,7 @@ type GifHandler struct {
 	Gifs    []*image.Paletted
 }
 
-func (s *GifHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (s *GifHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 	if s.Quit == nil {
 		s.Quit = make(chan bool)
 	}
@@ -82,7 +82,7 @@ func (s *GifHandler) Start(fields map[string]any, handlerType api.HandlerType, i
 	go loop(s, frames, timeDelay, callback)
 }
 
-func (s *GifHandler) StartGrid(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image []image.Image)) {
+func (s *GifHandler) StartGrid(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image []image.Image)) {
 	if s.Quit == nil {
 		s.Quit = make(chan bool)
 	}

@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"image"
-	"image/color"
 	"log"
 	"math"
 	"os"
 	"strconv"
 
 	"github.com/the-jonsey/pulseaudio"
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -30,7 +29,7 @@ type VolumeHandler struct {
 	client     *pulseaudio.Client
 }
 
-func (v *VolumeHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (v *VolumeHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 
 	if v.Quit == nil {
 		v.Quit = make(chan bool)
@@ -92,7 +91,7 @@ func (v *VolumeHandler) Stop() {
 	v.Volume = 0
 }
 
-func (v *VolumeHandler) GetImage(index string, fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1) image.Image {
+func (v *VolumeHandler) GetImage(index string, fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo) image.Image {
 	path, ok := fields[index]
 	w, h := info.GetDimensions(handlerType)
 	if !ok {
@@ -113,7 +112,7 @@ func (v *VolumeHandler) GetImage(index string, fields map[string]any, handlerTyp
 	return api.ResizeImageWH(img, w, h)
 }
 
-func (v *VolumeHandler) Run(handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (v *VolumeHandler) Run(handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 	ctx := context.Background()
 	err := v.Lock.Acquire(ctx, 1)
 	if err != nil {
@@ -152,7 +151,7 @@ func (v *VolumeHandler) Run(handlerType api.HandlerType, info api.StreamDeckInfo
 	}
 }
 
-func update(v *VolumeHandler, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) error {
+func update(v *VolumeHandler, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) error {
 	var device pulseaudio.Device
 	var devFound = true
 	var err error
@@ -245,7 +244,7 @@ func update(v *VolumeHandler, handlerType api.HandlerType, info api.StreamDeckIn
 	return nil
 }
 
-func (v *VolumeHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
+func (v *VolumeHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, event api.InputEvent, host api.IHost) {
 	dev, ok := fields["device_type"]
 	if !ok {
 		dev, ok = fields["device_type"]
@@ -265,7 +264,7 @@ func (v *VolumeHandler) Input(fields map[string]any, handlerType api.HandlerType
 				log.Println("No Input Name or Props")
 				return
 			}
-			for key, value := range propss.(map[string]interface{}) {
+			for key, value := range propss.(map[string]any) {
 				if value == nil {
 					continue
 				}
@@ -320,11 +319,6 @@ func (v *VolumeHandler) Input(fields map[string]any, handlerType api.HandlerType
 	}
 }
 
-func HexColor(hex string) color.RGBA {
-	values, _ := strconv.ParseUint(string(hex[1:]), 16, 32)
-	return color.RGBA{R: uint8(values >> 16), G: uint8((values >> 8) & 0xFF), B: uint8(values & 0xFF), A: 255}
-}
-
 func updateDevice(device pulseaudio.Device, event api.InputEvent) {
 	muted := device.IsMute()
 	if event.EventType == api.KNOB_CCW {
@@ -342,28 +336,16 @@ func updateDevice(device pulseaudio.Device, event api.InputEvent) {
 
 func RegisterVolume() api.Module {
 	return api.Module{
-		NewForeground: func() api.ForegroundHandler {
+		NewCombined: func() api.Handler {
 			client, err := pulseaudio.NewClient()
 			if err != nil {
 				panic(err)
 			}
-			return &VolumeHandler{Running: true, Lock: semaphore.NewWeighted(1), FirstLoop: true, client: client}
+			return &VolumeHandler{Lock: semaphore.NewWeighted(1), FirstLoop: true, client: client}
 		},
-		ForegroundFields: []api.Field{
+		CombinedFields: []api.Field{
 			{Title: "Unmuted Icon", Name: "unmute_icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Muted Icon", Name: "mute_icon", Type: api.File},
-			{Title: "Device Type", Name: "device_type", Type: api.Text},
-			{Title: "Input Name", Name: "input_name", Type: api.Text},
-			{Title: "Props", Name: "props", Type: api.Text},
-		},
-		NewInput: func() api.InputHandler {
-			client, err := pulseaudio.NewClient()
-			if err != nil {
-				panic(err)
-			}
-			return &VolumeHandler{client: client}
-		},
-		InputFields: []api.Field{
 			{Title: "Device Type", Name: "device_type", Type: api.Text},
 			{Title: "Input Name", Name: "input_name", Type: api.Text},
 			{Title: "Props", Name: "props", Type: api.Text},

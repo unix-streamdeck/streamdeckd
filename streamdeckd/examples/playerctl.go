@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 	"golang.org/x/image/draw"
 	"golang.org/x/sync/semaphore"
 
@@ -129,7 +129,7 @@ type PlayerCtlHandler struct {
 	InputChan                chan int
 }
 
-func (v *PlayerCtlHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (v *PlayerCtlHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 	if v.Quit == nil {
 		v.Quit = make(chan bool)
 	}
@@ -188,7 +188,7 @@ func (v *PlayerCtlHandler) Stop() {
 	v.ActivePlayer = nil
 }
 
-func (v *PlayerCtlHandler) GetImage(index string, fields map[string]any, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
+func (v *PlayerCtlHandler) GetImage(index string, fields map[string]any, info api.StreamDeckInfo, handlerType api.HandlerType) image.Image {
 	path, ok := fields[index]
 	if !ok {
 		return nil
@@ -207,7 +207,7 @@ func (v *PlayerCtlHandler) GetImage(index string, fields map[string]any, info ap
 	return resizeThumbnail(img, info, handlerType)
 }
 
-func (v *PlayerCtlHandler) Run(info api.StreamDeckInfoV1, handlerType api.HandlerType, callback func(image image.Image)) {
+func (v *PlayerCtlHandler) Run(info api.StreamDeckInfo, handlerType api.HandlerType, callback func(image image.Image)) {
 	ctx := context.Background()
 	err := v.Lock.Acquire(ctx, 1)
 	defer v.Lock.Release(1)
@@ -226,7 +226,7 @@ func (v *PlayerCtlHandler) Run(info api.StreamDeckInfoV1, handlerType api.Handle
 	}
 }
 
-func (v *PlayerCtlHandler) update(info api.StreamDeckInfoV1, handlerType api.HandlerType, callback func(image image.Image)) {
+func (v *PlayerCtlHandler) update(info api.StreamDeckInfo, handlerType api.HandlerType, callback func(image image.Image)) {
 	var err error
 	if playerNeedsRefreshing(v.ActivePlayer, v.PlayerName) {
 		v.ActivePlayer = choosePlayer(v.Client, v.PlayerName, v.PreviousPlayer, playerFilters[v.Type])
@@ -341,7 +341,7 @@ func (v *PlayerCtlHandler) update(info api.StreamDeckInfoV1, handlerType api.Han
 	}
 }
 
-func (v *PlayerCtlHandler) FindImage(player *mpris.Player, info api.StreamDeckInfoV1, handlerType api.HandlerType) (image.Image, error) {
+func (v *PlayerCtlHandler) FindImage(player *mpris.Player, info api.StreamDeckInfo, handlerType api.HandlerType) (image.Image, error) {
 	metadata, err := player.GetMetadata()
 	if err == nil && metadata != nil {
 		artUrl, err := metadata.ArtURL()
@@ -430,7 +430,7 @@ func loadImage(path string) (image.Image, error) {
 	return img, nil
 }
 
-func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
+func (v *PlayerCtlHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, event api.InputEvent, host api.IHost) {
 
 	handlerTypeString, ok := fields["type"]
 
@@ -655,7 +655,7 @@ func pad(timeSegment string) string {
 	return timeSegment
 }
 
-func resizeThumbnail(img image.Image, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
+func resizeThumbnail(img image.Image, info api.StreamDeckInfo, handlerType api.HandlerType) image.Image {
 	_, height := info.GetDimensions(handlerType)
 	newSize := float64(height - 40)
 	scaleDimension := img.Bounds().Dy()
@@ -669,7 +669,7 @@ func resizeThumbnail(img image.Image, info api.StreamDeckInfoV1, handlerType api
 	return img
 }
 
-func overlayImage(img image.Image, info api.StreamDeckInfoV1, handlerType api.HandlerType) image.Image {
+func overlayImage(img image.Image, info api.StreamDeckInfo, handlerType api.HandlerType) image.Image {
 	width, height := info.GetDimensions(handlerType)
 	bg := image.NewNRGBA(image.Rect(0, 0, width, height))
 
@@ -752,7 +752,7 @@ func RegisterPlayerCtl() api.Module {
 
 	return api.Module{
 		Name: "Playerctl",
-		NewForeground: func() api.ForegroundHandler {
+		NewCombined: func() api.Handler {
 			client, err := dbus.SessionBus()
 			if err != nil {
 				panic(err)
@@ -762,26 +762,10 @@ func RegisterPlayerCtl() api.Module {
 				InputChan: make(chan int),
 			}
 		},
-		ForegroundFields: []api.Field{
+		CombinedFields: []api.Field{
 			{Title: "Icon", Name: "icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Accent Colour", Name: "colour", Type: api.Colour},
-		},
-		NewInput: func() api.InputHandler {
-			client, err := dbus.SessionBus()
-			if err != nil {
-				panic(err)
-			}
-			return &PlayerCtlHandler{
-				Running:   true,
-				Lock:      semaphore.NewWeighted(1),
-				Client:    client,
-				InputChan: make(chan int),
-			}
-		},
-		InputFields: []api.Field{
 			{Title: "Operation", Name: "operation", Type: api.Select, ListItems: slices.Collect(maps.Keys(operationsMap))},
-		},
-		LinkedFields: []api.Field{
 			{Title: "Player Name", Name: "player_name", Type: api.Text},
 			{Title: "Type", Name: "type", Type: api.Select, ListItems: []string{string(Playback), string(Volume)}},
 		},

@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 )
 
 type TimeHandler struct {
@@ -13,7 +13,7 @@ type TimeHandler struct {
 	Quit    chan bool
 }
 
-func (t *TimeHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (t *TimeHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 	t.Running = true
 	if t.Quit == nil {
 		t.Quit = make(chan bool)
@@ -34,7 +34,7 @@ func (t *TimeHandler) Stop() {
 	t.Quit <- true
 }
 
-func (t *TimeHandler) timeLoop(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (t *TimeHandler) timeLoop(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 	for {
 		select {
 		case <-t.Quit:
@@ -56,7 +56,7 @@ func (t *TimeHandler) timeLoop(fields map[string]any, handlerType api.HandlerTyp
 }
 
 func RegisterTime() api.Module {
-	return api.Module{NewForeground: func() api.ForegroundHandler {
-		return &TimeHandler{Running: true}
+	return api.Module{NewCombined: func() api.Handler {
+		return &TimeHandler{}
 	}, Name: "Time"}
 }

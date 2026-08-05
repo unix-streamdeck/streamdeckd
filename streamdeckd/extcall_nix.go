@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/godbus/dbus/v5/introspect"
 )
 
 func reInitDBus() {
@@ -27,6 +28,7 @@ func InitDBUS() {
 
 	sDbus = &StreamDeckDBus{}
 	conn.ExportAll(sDbus, "/com/unixstreamdeck/streamdeckd", "com.unixstreamdeck.streamdeckd")
+	conn.Export(introspect.Introspectable(intro), "/com/unixstreamdeck/streamdeckd", "org.freedesktop.DBus.Introspectable")
 	reply, err := conn.RequestName("com.unixstreamdeck.streamdeckd",
 		dbus.NameFlagDoNotQueue)
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"log"
 	"plugin"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 )
 
 var modules []api.Module
@@ -21,10 +21,12 @@ func RegisterModule(m api.Module) {
 		}
 	}
 	log.Println("Loaded module " + m.Name)
-	m.IsForeground = m.NewForeground != nil
-	m.IsInput = m.NewInput != nil
+	if m.NewCombined != nil {
+		handler := m.NewCombined()
+		_, m.IsForeground = handler.(api.ForegroundHandler)
+		_, m.IsInput = handler.(api.InputHandler)
+	}
 	m.IsBackground = m.NewBackground != nil
-	m.IsLinkedHandlers = m.LinkedFields != nil && len(m.LinkedFields) != 0
 	modules = append(modules, m)
 }
 

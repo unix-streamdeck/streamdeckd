@@ -7,6 +7,7 @@ A Linux daemon for Elgato Stream Deck devices. Control your Stream Deck with cus
 streamdeckd runs in the background and manages your Elgato Stream Deck devices on Linux. It lets you:
 
 - **Create custom button layouts** with icons and actions
+- **Multi layered configs** for each key and LCD segment
 - **Switch between pages** for unlimited buttons
 - **Set per-application profiles** - buttons change based on what app you're using
 - **Control multiple Stream Decks** at once
@@ -55,8 +56,20 @@ Each button can perform different actions:
       {
         "application": {
           "": {
-            "command": "notify-send 'Hello!'",
-            "icon": "~/icons/hello.png"
+             "layers": [
+                {
+                   "handler": "Command",
+                   "fields": {
+                      "command": "notify-send 'Hello!'"
+                   }
+                },
+                {
+                   "handler": "Image",
+                   "fields": {
+                      "path": "~/icons/hello.png"
+                   }
+                }
+             ]
           }
         }
       }

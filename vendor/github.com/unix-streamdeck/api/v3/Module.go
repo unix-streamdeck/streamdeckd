@@ -3,20 +3,15 @@ package api
 type Module struct {
 	Name string `json:"name,omitempty"`
 
-	NewForeground func() ForegroundHandler `json:"-"`
-	NewInput      func() InputHandler      `json:"-"`
+	NewCombined   func() Handler           `json:"-"`
 	NewBackground func() BackgroundHandler `json:"-"`
 
-	ForegroundFields []Field `json:"icon_fields,omitempty"`
-	InputFields      []Field `json:"key_fields,omitempty"`
+	CombinedFields   []Field `json:"combined_fields,omitempty"`
 	BackgroundFields []Field `json:"lcd_fields,omitempty"`
-	LinkedFields     []Field `json:"linked_fields,omitempty"`
 
-	IsForeground     bool `json:"is_foreground,omitempty"`
-	IsInput          bool `json:"is_input,omitempty"`
-	IsBackground     bool `json:"is_background,omitempty"`
-	IsLinkedHandlers bool `json:"is_linked_handlers,omitempty"`
-	Linked           bool `json:"linked,omitempty"`
+	IsForeground bool `json:"is_foreground,omitempty"`
+	IsInput      bool `json:"is_input,omitempty"`
+	IsBackground bool `json:"is_background,omitempty"`
 }
 
 type FieldType string

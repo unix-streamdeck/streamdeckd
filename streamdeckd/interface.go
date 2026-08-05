@@ -11,7 +11,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 )
 
 var applicationManager IApplicationManager = &ApplicationManager{}
@@ -85,20 +85,6 @@ func HandlePanic(cback func()) {
 	}
 }
 
-func mergeSharedConfig(sharedConfig map[string]any, individualConfig map[string]any) map[string]any {
-	merged := make(map[string]any)
-
-	for k, v := range sharedConfig {
-		merged[k] = v
-	}
-
-	for k, v := range individualConfig {
-		merged[k] = v
-	}
-
-	return merged
-}
-
 func getRoundedCornersImage(iconSize int) (image.Image, error) {
 	img, err := png.Decode(bytes.NewBuffer(roundedCorners))
 	if err != nil {
@@ -107,4 +93,31 @@ func getRoundedCornersImage(iconSize int) (image.Image, error) {
 	}
 
 	return api.ResizeImage(img, iconSize), nil
+}
+
+func MergeLayers(applicationLayers api.Layerable, globalLayers api.Layerable) []*api.Layer {
+	var layers []*api.Layer
+	globalsAdded := false
+	for _, layer := range applicationLayers.GetLayers() {
+		if layer == nil {
+			continue
+		}
+		if layer.Global {
+			if globalsAdded {
+				log.Println("[Warn] Attempt to add global layers more than once ignored")
+				continue
+			}
+			layers = append(layers, globalLayers.GetLayers()...)
+			globalsAdded = true
+			continue
+		}
+		layers = append(layers, layer)
+	}
+	if !globalsAdded {
+		globals := globalLayers.GetLayers()
+		merged := make([]*api.Layer, 0, len(globals)+len(layers))
+		merged = append(merged, globals...)
+		return append(merged, layers...)
+	}
+	return layers
 }

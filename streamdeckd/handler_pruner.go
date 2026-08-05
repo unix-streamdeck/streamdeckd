@@ -3,7 +3,7 @@ package streamdeckd
 import (
 	"fmt"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 )
 
 type IHandlerPruner interface {
@@ -41,13 +41,20 @@ func (hp *HandlerPruner) stopPageHandlers(pageNo int) {
 			go hp.stopHandler(key.KeyBackgroundHandler, key.KeyBackground, fmt.Sprintf("page %d, key %d background", pageNo, i))
 		}
 
+		for j, layer := range key.Layers {
+			go hp.stopHandler(layer.HandlerStruct, layer.Handler, fmt.Sprintf("page %d, key %d, global layer %d", pageNo, i, j))
+		}
+
 		for _, keyConfig := range key.Application {
 			if keyConfig.KeyBackgroundHandler != nil {
 				go hp.stopHandler(keyConfig.KeyBackgroundHandler, keyConfig.KeyBackground, fmt.Sprintf("page %d, key %d background", pageNo, i))
 			}
 
-			if keyConfig.IconHandlerStruct != nil {
-				go hp.stopHandler(keyConfig.IconHandlerStruct, keyConfig.IconHandler, fmt.Sprintf("page %d, key %d", pageNo, i))
+			for j, layer := range keyConfig.Layers {
+				if layer.Global {
+					continue
+				}
+				go hp.stopHandler(layer.HandlerStruct, layer.Handler, fmt.Sprintf("page %d, key %d, layer %d", pageNo, i, j))
 			}
 		}
 	}
@@ -58,14 +65,21 @@ func (hp *HandlerPruner) stopPageHandlers(pageNo int) {
 			go hp.stopHandler(knob.TouchPanelBackgroundHandler, knob.TouchPanelBackground, fmt.Sprintf("page %d, knob %d background", pageNo, i))
 		}
 
+		for j, layer := range knob.Layers {
+			go hp.stopHandler(layer.HandlerStruct, layer.Handler, fmt.Sprintf("page %d, knob %d, global layer %d", pageNo, i, j))
+		}
+
 		for _, knobConfig := range knob.Application {
 
 			if knobConfig.TouchPanelBackgroundHandler != nil {
 				go hp.stopHandler(knobConfig.TouchPanelBackgroundHandler, knobConfig.TouchPanelBackground, fmt.Sprintf("page %d, knob %d background", pageNo, i))
 			}
 
-			if knobConfig.LcdHandlerStruct != nil {
-				go hp.stopHandler(knobConfig.LcdHandlerStruct, knobConfig.LcdHandler, fmt.Sprintf("page %d, knob %d", pageNo, i))
+			for j, layer := range knobConfig.Layers {
+				if layer.Global {
+					continue
+				}
+				go hp.stopHandler(layer.HandlerStruct, layer.Handler, fmt.Sprintf("page %d, knob %d, layer %d", pageNo, i, j))
 			}
 		}
 	}
@@ -95,8 +109,11 @@ func (hp *HandlerPruner) OnAppSwitch() {
 					go hp.stopHandler(keyConfig.KeyBackgroundHandler, keyConfig.KeyBackground, fmt.Sprintf("key %d app `%s`", i, appName))
 				}
 
-				if keyConfig.IconHandlerStruct != nil {
-					go hp.stopHandler(keyConfig.IconHandlerStruct, keyConfig.IconHandler, fmt.Sprintf("key %d app `%s`", i, appName))
+				for j, layer := range keyConfig.Layers {
+					if layer.Global {
+						continue
+					}
+					go hp.stopHandler(layer.HandlerStruct, layer.Handler, fmt.Sprintf("key %d app %s layer %d", i, appName, j))
 				}
 			}
 		}
@@ -122,8 +139,11 @@ func (hp *HandlerPruner) OnAppSwitch() {
 					go hp.stopHandler(knobConfig.TouchPanelBackgroundHandler, knobConfig.TouchPanelBackground, fmt.Sprintf("knob %d app `%s`", i, appName))
 				}
 
-				if knobConfig.LcdHandlerStruct != nil {
-					go hp.stopHandler(knobConfig.LcdHandlerStruct, knobConfig.LcdHandler, fmt.Sprintf("knob %d app `%s`", i, appName))
+				for j, layer := range knobConfig.Layers {
+					if layer.Global {
+						continue
+					}
+					go hp.stopHandler(layer.HandlerStruct, layer.Handler, fmt.Sprintf("knob %d app %s layer %d", i, appName, j))
 				}
 			}
 		}
@@ -142,11 +162,18 @@ func (hp *HandlerPruner) StopAllHandlers() {
 	}
 }
 
-func (hp *HandlerPruner) stopHandler(handler api.VisualHandler, name, context string) {
-	if !handler.IsRunning() {
+func (hp *HandlerPruner) stopHandler(handler api.Handler, name, context string) {
+	if handler == nil {
+		return
+	}
+	visHandler, ok := handler.(api.VisualHandler)
+	if !ok {
+		return
+	}
+	if !visHandler.IsRunning() {
 		return
 	}
 	hp.vdev.Logger().Printf("Stopping handler: %s on %s\n", name, context)
-	handler.Stop()
+	visHandler.Stop()
 	hp.vdev.Logger().Printf("Stopped handler: %s on %s\n", name, context)
 }

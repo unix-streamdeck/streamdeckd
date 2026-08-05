@@ -9,8 +9,8 @@ require (
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe
-	github.com/unix-streamdeck/api/v2 v2.0.21
-	github.com/unix-streamdeck/driver v0.0.0-20260803212311-a3d246275d93
+	github.com/unix-streamdeck/api/v3 v3.0.0
+	github.com/unix-streamdeck/driver v0.0.0-20260805105646-16ea199be4c4
 	golang.org/x/image v0.44.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.47.0

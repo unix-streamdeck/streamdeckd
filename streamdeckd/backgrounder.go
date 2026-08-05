@@ -4,7 +4,7 @@ import (
 	"image"
 	"log"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 )
 
 type IBackgrounder interface {

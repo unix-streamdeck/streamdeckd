@@ -39,7 +39,7 @@ const (
 	PID_STREAMDECK_PLUS_XL  = 0x00c6
 )
 
-type InputEventType uint8
+type InputEventType int8
 
 const (
 	KNOB_CCW InputEventType = iota

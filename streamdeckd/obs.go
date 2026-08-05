@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	obsws "github.com/christopher-dG/go-obs-websocket"
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 )
 
 var paramlessObsCommands = map[string]func() obsws.Request{
@@ -185,35 +185,35 @@ func getObsHandlerFields() ([]api.Module, error) {
 		}
 	}
 
-	modules = append(modules, api.Module{
-		Name:         "SetVolume",
-		IsForeground: false,
-		IsInput:      true,
-		InputFields: []api.Field{
-			{Title: "Volume", Name: "volume", Type: "Number"},
-			{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
-		},
-	})
-
-	modules = append(modules, api.Module{
-		Name:         "SetMute",
-		IsForeground: false,
-		IsInput:      true,
-		InputFields: []api.Field{
-			{Title: "Mute", Name: "mute", Type: "Checkbox"},
-			{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
-		},
-	})
-
-	modules = append(modules, api.Module{
-		Name:         "ToggleMute",
-		IsForeground: false,
-		IsInput:      true,
-		InputFields: []api.Field{
-			{Title: "Mute", Name: "mute", Type: "Checkbox"},
-			{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
-		},
-	})
+	//modules = append(modules, api.Module{
+	//	Name:         "SetVolume",
+	//	IsForeground: false,
+	//	IsInput:      true,
+	//	InputFields: []api.Field{
+	//		{Title: "Volume", Name: "volume", Type: "Number"},
+	//		{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
+	//	},
+	//})
+	//
+	//modules = append(modules, api.Module{
+	//	Name:         "SetMute",
+	//	IsForeground: false,
+	//	IsInput:      true,
+	//	InputFields: []api.Field{
+	//		{Title: "Mute", Name: "mute", Type: "Checkbox"},
+	//		{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
+	//	},
+	//})
+	//
+	//modules = append(modules, api.Module{
+	//	Name:         "ToggleMute",
+	//	IsForeground: false,
+	//	IsInput:      true,
+	//	InputFields: []api.Field{
+	//		{Title: "Mute", Name: "mute", Type: "Checkbox"},
+	//		{Title: "Audio Source", Name: "source", Type: "List", ListItems: sources},
+	//	},
+	//})
 
 	return modules, nil
 }

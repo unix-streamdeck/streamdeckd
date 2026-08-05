@@ -71,7 +71,7 @@ type MyHandler struct{
 	running bool
 }
 
-func (h *MyHandler) Input(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, event InputEvent) {
+func (h *MyHandler) Input(fields map[string]any, handlerType HandlerType, info StreamDeckInfo, event InputEvent, host IHost) {
     switch event.EventType {
     case api.KNOB_CW:
         // Handle clockwise rotation
@@ -84,7 +84,7 @@ func (h *MyHandler) Input(fields map[string]any, handlerType HandlerType, info S
     }
 }
 
-func (h *MyHandler) Start(fields map[string]any, handlerType HandlerType, info StreamDeckInfoV1, callback func(image image.Image)) {
+func (h *MyHandler) Start(fields map[string]any, handlerType HandlerType, info StreamDeckInfo, callback func(image image.Image)) {
 	// Generate image and send it back via callback
 }
 

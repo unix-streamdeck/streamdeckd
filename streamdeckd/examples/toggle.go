@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -23,7 +23,7 @@ type ToggleHandler struct {
 	FirstLoop    bool
 }
 
-func (c *ToggleHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, callback func(image image.Image)) {
+func (c *ToggleHandler) Start(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(image image.Image)) {
 	if c.Lock == nil {
 		c.Lock = semaphore.NewWeighted(1)
 	}
@@ -40,7 +40,7 @@ func (c *ToggleHandler) Start(fields map[string]any, handlerType api.HandlerType
 	go c.loop(fields, callback)
 }
 
-func (c *ToggleHandler) GetImage(index string, fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1) image.Image {
+func (c *ToggleHandler) GetImage(index string, fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo) image.Image {
 	path, ok := fields[index]
 	w, h := info.GetDimensions(handlerType)
 	if !ok {
@@ -121,7 +121,10 @@ func (c *ToggleHandler) Stop() {
 	c.Quit <- true
 }
 
-func (t *ToggleHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfoV1, event api.InputEvent) {
+func (t *ToggleHandler) Input(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, event api.InputEvent, host api.IHost) {
+	if event.EventType == api.KEY_RELEASE {
+		return
+	}
 	sharedStatus := fields["status"].(bool)
 	index := "down_command"
 	if !sharedStatus {
@@ -152,16 +155,13 @@ func RegisterToggle() api.Module {
 
 	return api.Module{
 		Name: "Toggle",
-		NewForeground: func() api.ForegroundHandler {
-			return &ToggleHandler{Running: true, Lock: semaphore.NewWeighted(1), FirstLoop: true}
+		NewCombined: func() api.Handler {
+			return &ToggleHandler{Lock: semaphore.NewWeighted(1), FirstLoop: true}
 		},
-		NewInput: func() api.InputHandler { return &ToggleHandler{} },
-		ForegroundFields: []api.Field{
+		CombinedFields: []api.Field{
 			{Title: "Up Icon", Name: "up_icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Down Icon", Name: "down_icon", Type: api.File, FileTypes: []string{".png", ".jpg", ".jpeg"}},
 			{Title: "Check Command", Name: "check_command", Type: api.Text},
-		},
-		InputFields: []api.Field{
 			{Title: "Up Command", Name: "up_command", Type: api.Text},
 			{Title: "Down Command", Name: "down_command", Type: api.Text},
 		},

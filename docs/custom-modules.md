@@ -15,7 +15,7 @@ Modules are loaded at startup and can be configured through the standard JSON co
 ### Prerequisites
 
 - Go 1.25+
-- streamdeckd API package: `github.com/unix-streamdeck/api/v2`
+- streamdeckd API package: `github.com/unix-streamdeck/api/v3`
 
 ### Basic Module Structure
 
@@ -30,15 +30,13 @@ Every module must implement the `GetModule()` function:
 ```go
 package main
 
-import "github.com/unix-streamdeck/api/v2"
+import "github.com/unix-streamdeck/api/v3"
 
 func GetModule() api.Module {
     return api.Module{
         Name:       "MyModule",
-        NewForeground:    func() api.ForegroundHandler { return &MyForegroundHandler{} },
-        NewInput:     func() api.InputHandler { return &MyInputHandler{} },
-        ForegroundFields: []api.Field{ /* ... */ },
-        InputFields:  []api.Field{ /* ... */ },
+        NewCombined:    func() api.Handler { return &MyForegroundHandler{} },
+        CombinedFields: []api.Field{ /* ... */ },
     }
 }
 ```

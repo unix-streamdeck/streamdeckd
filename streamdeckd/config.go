@@ -7,18 +7,18 @@ import (
 	"os"
 	"sync"
 
-	"github.com/unix-streamdeck/api/v2"
+	"github.com/unix-streamdeck/api/v3"
 	streamdeck "github.com/unix-streamdeck/driver"
 )
 
 var configPath string
-var basicConfig = api.ConfigV3{
+var basicConfig = api.Config{
 	Modules: []string{},
-	Decks: []api.DeckV3{
+	Decks: []api.Deck{
 		{},
 	},
 }
-var config *api.ConfigV3
+var config *api.Config
 
 var configSem sync.Mutex
 
@@ -50,16 +50,16 @@ func LoadConfig() {
 	tryConnectObs()
 }
 
-func readConfig() (*api.ConfigV3, error) {
+func readConfig() (*api.Config, error) {
 	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		return &api.ConfigV3{}, err
+		return &api.Config{}, err
 	}
-	var config api.ConfigV3
+	var config api.Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		log.Fatalln("Could not parse config, shutting down", err)
-		return &api.ConfigV3{}, err
+		return &api.Config{}, err
 	}
 	return &config, nil
 }
@@ -141,7 +141,7 @@ func SetConfigPath(path string) {
 	}
 }
 
-func findConfig(device *streamdeck.Device) api.DeckV3 {
+func findConfig(device *streamdeck.Device) api.Deck {
 	for _, deck := range config.Decks {
 		if deck.Serial == device.Serial {
 			return deck
@@ -151,28 +151,28 @@ func findConfig(device *streamdeck.Device) api.DeckV3 {
 	return makeEmptyDeckConfig(device)
 }
 
-func makeEmptyDeckConfig(device *streamdeck.Device) api.DeckV3 {
-	var pages []api.PageV3
+func makeEmptyDeckConfig(device *streamdeck.Device) api.Deck {
+	var pages []api.Page
 	pages = append(pages, makeEmptyPageConfig(device))
-	devConf := api.DeckV3{Serial: device.Serial, Pages: pages}
+	devConf := api.Deck{Serial: device.Serial, Pages: pages}
 	config.Decks = append(config.Decks, devConf)
 	_ = SaveConfig()
 	return devConf
 }
 
-func makeEmptyPageConfig(device *streamdeck.Device) api.PageV3 {
-	page := api.PageV3{}
+func makeEmptyPageConfig(device *streamdeck.Device) api.Page {
+	page := api.Page{}
 	for i := 0; i < int(device.Rows)*int(device.Columns); i++ {
-		applications := make(map[string]*api.KeyConfigV3)
-		applications[""] = &api.KeyConfigV3{}
-		page.Keys = append(page.Keys, api.KeyV3{
+		applications := make(map[string]*api.KeyConfig)
+		applications[""] = &api.KeyConfig{}
+		page.Keys = append(page.Keys, api.Key{
 			Application: applications,
 		})
 	}
 	for i := 0; i < int(device.Knobs); i++ {
-		applications := make(map[string]*api.KnobConfigV3)
-		applications[""] = &api.KnobConfigV3{}
-		page.Knobs = append(page.Knobs, api.KnobV3{
+		applications := make(map[string]*api.KnobConfig)
+		applications[""] = &api.KnobConfig{}
+		page.Knobs = append(page.Knobs, api.Knob{
 			Application: applications,
 		})
 	}
