@@ -2,6 +2,10 @@
 
 A Linux daemon for Elgato Stream Deck devices. Control your Stream Deck with custom buttons, macros, and per-application configurations.
 
+## Config Migration
+
+For anyone with config created before the recent config migration (5th August), there is a python script I created to migrate your config [here](https://gist.github.com/The-Jonsey/82cc4decc3970f99072bda1500c57c26) 
+
 ## What is it?
 
 streamdeckd runs in the background and manages your Elgato Stream Deck devices on Linux. It lets you:

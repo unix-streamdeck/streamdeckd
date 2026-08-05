@@ -90,7 +90,9 @@ func (f *Foregrounder) AttachPageChangeListener() {
 
 			if key.Application == nil {
 				key.Application = map[string]*api.KeyConfig{}
-				key.Application[""] = &api.KeyConfig{}
+				key.Application[""] = &api.KeyConfig{
+					Layers: make([]*api.Layer, 0),
+				}
 				currentPage.Keys[i] = *key
 				f.vdev.Logger().Println(fmt.Sprintf("Setting empty application on key: %d on page: %d", i, newPage))
 				SaveConfig()
@@ -102,6 +104,7 @@ func (f *Foregrounder) AttachPageChangeListener() {
 			if keyHasApp {
 				key.ActiveApplication = applicationManager.GetApplication()
 			}
+			f.vdev.SetKeyForeground(i, newPage)
 			go f.SetKey(key, i, newPage, key.ActiveApplication)
 		}
 		for i, _ := range currentPage.Knobs {
@@ -109,7 +112,9 @@ func (f *Foregrounder) AttachPageChangeListener() {
 
 			if knob.Application == nil {
 				knob.Application = map[string]*api.KnobConfig{}
-				knob.Application[""] = &api.KnobConfig{}
+				knob.Application[""] = &api.KnobConfig{
+					Layers: make([]*api.Layer, 0),
+				}
 				currentPage.Knobs[i] = *knob
 				f.vdev.Logger().Println(fmt.Sprintf("Setting empty application on knob: %d on page: %d", i, newPage))
 				SaveConfig()
@@ -121,6 +126,7 @@ func (f *Foregrounder) AttachPageChangeListener() {
 			if knobHasApp {
 				knob.ActiveApplication = applicationManager.GetApplication()
 			}
+			f.vdev.SetPanelForeground(i, newPage)
 			go f.SetKnob(knob, i, newPage, knob.ActiveApplication)
 		}
 	})
@@ -140,6 +146,7 @@ func (f *Foregrounder) AttachAppChangeListener() {
 				key.ActiveApplication = application
 			}
 			if key.ActiveApplication != activeApp {
+				f.vdev.SetKeyForeground(i, f.vdev.PageManager().GetPage())
 				go f.SetKey(key, i, f.vdev.PageManager().GetPage(), key.ActiveApplication)
 			}
 		}
@@ -154,6 +161,7 @@ func (f *Foregrounder) AttachAppChangeListener() {
 				knob.ActiveApplication = application
 			}
 			if knob.ActiveApplication != activeApp {
+				f.vdev.SetPanelForeground(i, f.vdev.PageManager().GetPage())
 				go f.SetKnob(knob, i, f.vdev.PageManager().GetPage(), knob.ActiveApplication)
 			}
 		}

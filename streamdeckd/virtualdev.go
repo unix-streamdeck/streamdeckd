@@ -343,6 +343,10 @@ func (dev *VirtualDev) SetKeyForeground(keyIndex int, page int) {
 
 	var imgs []image.Image
 
+	baseImage := image.NewRGBA(image.Rect(0, 0, dev.sdInfo.IconSize, dev.sdInfo.IconSize))
+
+	imgs = append(imgs, baseImage)
+
 	for _, layer := range layers {
 		img := layer.Buff
 		if img == nil {
@@ -427,6 +431,10 @@ func (dev *VirtualDev) SetPanelForeground(knobIndex int, page int) {
 	layers := MergeLayers(knobConfig, &knob)
 
 	var imgs []image.Image
+
+	baseImage := image.NewRGBA(image.Rect(0, 0, dev.sdInfo.LcdWidth, dev.sdInfo.LcdHeight))
+
+	imgs = append(imgs, baseImage)
 
 	for _, layer := range layers {
 		img := layer.Buff
