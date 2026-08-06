@@ -112,7 +112,6 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 
 	col := color.RGBA{0xff, 0xff, 0xff, 0xff}
 
-	//img.SetRGB(1, 1, 1)
 	matched, _ := regexp.MatchString(`#?([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})`, options.Colour)
 	if matched {
 		col = HexColor(options.Colour)
@@ -147,7 +146,10 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 	lines := text
 
 	if options.Overflow == Wrap {
-		lines = wrapString(text, availableWidth, face)
+		wrapped := wrapMultilineString(text, availableWidth, face)
+		if wrapped != "" {
+			lines = wrapped
+		}
 	}
 
 	lineCount := strings.Count(lines, "\n") + 1
@@ -180,6 +182,44 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 
 	linesSplit := strings.Split(lines, "\n")
 
+	if options.Overflow == Fade {
+		textLayer := image.NewRGBA(image.Rect(0, 0, width, height))
+		td := &font.Drawer{
+			Dst:  textLayer,
+			Src:  image.NewUniform(col),
+			Face: face,
+		}
+
+		if len(linesSplit) == 1 {
+			td.Dot = d.Dot
+			td.DrawString(lines)
+		} else {
+			startingLineY := y - float64(lineCount-1)*fSize/2
+			for i, line := range linesSplit {
+				lw, _ := getTextBounds(line, face)
+
+				var lx int
+				if options.Anchor != nil {
+					lx = calculateHorizonalAlignment(options.HorizontalAlignment, int(lw), options.Anchor.X, true)
+				} else {
+					lx = calculateHorizonalAlignment(options.HorizontalAlignment, int(lw), width, false)
+				}
+
+				td.Dot = fixed.Point26_6{
+					X: fixed.I(lx),
+					Y: fixed.I(int(startingLineY+(float64(i)*fSize))) + (metrics.Ascent-metrics.Descent)/2,
+				}
+				td.DrawString(line)
+			}
+		}
+
+		applyFadeEdges(textLayer, width, height)
+
+		draw.Draw(drawImg, img.Bounds(), textLayer, textLayer.Bounds().Min, draw.Over)
+
+		return img, nil
+	}
+
 	if len(linesSplit) == 1 {
 		d.DrawString(lines)
 		return img, nil
@@ -203,6 +243,34 @@ func DrawText(img image.Image, text string, options DrawTextOptions) (image.Imag
 		d.DrawString(line)
 	}
 	return img, nil
+}
+
+func applyFadeEdges(img *image.RGBA, width, height int) {
+	const fadeSize = 12
+
+	for y := range height {
+		for x := range width {
+			dist := min(x, y, width-1-x, height-1-y)
+			if dist >= fadeSize {
+				continue
+			}
+			capAlpha(img, x, y, uint8(255*dist/fadeSize))
+		}
+	}
+}
+
+func capAlpha(img *image.RGBA, x, y int, maxAlpha uint8) {
+	c := img.RGBAAt(x, y)
+	if c.A == 0 || c.A <= maxAlpha {
+		return
+	}
+	scale := float64(maxAlpha) / float64(c.A)
+	img.SetRGBA(x, y, color.RGBA{
+		R: uint8(float64(c.R) * scale),
+		G: uint8(float64(c.G) * scale),
+		B: uint8(float64(c.B) * scale),
+		A: maxAlpha,
+	})
 }
 
 // TODO Support loading fonts via fontconfig on linux and whatever the equivalent is on darwin
@@ -280,11 +348,22 @@ func calculateHorizonalAlignment(alignment HorizontalAlignment, textWidth, width
 	return width - (textWidth / 2)
 }
 
+func maxLineWidth(text string, face font.Face) float64 {
+	maxW := 0.0
+	for line := range strings.SplitSeq(text, "\n") {
+		w, _ := getTextBounds(line, face)
+		if w > maxW {
+			maxW = w
+		}
+	}
+	return maxW
+}
+
 func calculateFontSize(f *truetype.Font, text string, width, height int, overflow Overflow) float64 {
 	fontSize := float64(width) / 3
 	face := truetype.NewFace(f, &truetype.Options{Size: fontSize})
 	defer face.Close()
-	w, _ := getTextBounds(text, face)
+	w := maxLineWidth(text, face)
 	fSize := fontSize
 	if w >= float64(width-BorderClearance) {
 		oversizeRatio := float64(width-BorderClearance) / w
@@ -302,29 +381,34 @@ func calculateFontSize(f *truetype.Font, text string, width, height int, overflo
 func attemptFontSize(f *truetype.Font, text string, width, height int, fSize float64, overflow Overflow) bool {
 	face := truetype.NewFace(f, &truetype.Options{Size: fSize})
 	defer face.Close()
-	w, h := getTextBounds(text, face)
-	if w <= float64(width-BorderClearance) {
+	w := maxLineWidth(text, face)
+	lineCount := strings.Count(text, "\n") + 1
+	textHeight := float64(lineCount) * fSize
+	if w <= float64(width-BorderClearance) && textHeight <= float64(height-BorderClearance) {
 		return true
 	}
-	if h > float64(height) {
+	if textHeight > float64(height) {
 		return false
+	}
+	if overflow == Fade {
+		return textHeight <= float64(height-BorderClearance) && w <= float64(width-BorderClearance)
 	}
 	if overflow != Wrap {
 		return false
 	}
-	lines := wrapString(text, width, face)
+	lines := wrapMultilineString(text, width, face)
 	if lines == "" {
 		return false
 	}
 	maxTextWidth := 0.0
-	for _, s := range strings.Split(lines, "\n") {
+	for s := range strings.SplitSeq(lines, "\n") {
 		textWidth, _ := getTextBounds(s, face)
 		if textWidth > maxTextWidth {
 			maxTextWidth = textWidth
 		}
 	}
-	textHeight := float64(strings.Count(lines, "\n")+1) * fSize
-	if textHeight < float64(height-BorderClearance) && maxTextWidth < float64(width-BorderClearance) {
+	wrappedHeight := float64(strings.Count(lines, "\n")+1) * fSize
+	if wrappedHeight < float64(height-BorderClearance) && maxTextWidth < float64(width-BorderClearance) {
 		return true
 	}
 	return false
@@ -344,7 +428,14 @@ func wrapString(text string, width int, face font.Face) string {
 		for lineLength <= float64(width-BorderClearance) && nextWordIndex < len(splitMessage) {
 			w, _ := getTextBounds(splitMessage[nextWordIndex], face)
 			if w > float64(width-BorderClearance) {
-				return ""
+				if len(line) > 0 {
+					lines = append(lines, strings.Join(line, " "))
+				}
+				lines = append(lines, splitMessage[nextWordIndex])
+				nextWordIndex += 1
+				line = nil
+				lineLength = 0.0
+				continue
 			}
 			if w+lineLength > float64(width-BorderClearance) {
 				break
@@ -356,6 +447,16 @@ func wrapString(text string, width int, face font.Face) string {
 		lines = append(lines, strings.Join(line, " "))
 	}
 	return strings.Join(lines, "\n")
+}
+
+func wrapMultilineString(text string, width int, face font.Face) string {
+	existingLines := strings.Split(text, "\n")
+	var result []string
+	for _, line := range existingLines {
+		wrapped := wrapString(line, width, face)
+		result = append(result, wrapped)
+	}
+	return strings.Join(result, "\n")
 }
 
 func getTextBounds(text string, face font.Face) (float64, float64) {
