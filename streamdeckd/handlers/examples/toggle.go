@@ -154,7 +154,8 @@ func (t *ToggleHandler) Input(fields map[string]any, handlerType api.HandlerType
 func RegisterToggle() api.Module {
 
 	return api.Module{
-		Name: "Toggle",
+		Name:        "Toggle",
+		Description: "Toggles between two states with separate icons and commands",
 		NewCombined: func() api.Handler {
 			return &ToggleHandler{Lock: semaphore.NewWeighted(1), FirstLoop: true}
 		},

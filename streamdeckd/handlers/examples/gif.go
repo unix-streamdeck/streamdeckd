@@ -16,7 +16,9 @@ import (
 
 func RegisterGif() api.Module {
 	return api.Module{
-		Name: "Gif",
+		Name:        "Gif",
+		DisplayName: "GIF",
+		Description: "Displays an animated GIF",
 		NewCombined: func() api.Handler {
 			return &GifHandler{Lock: semaphore.NewWeighted(1)}
 		},

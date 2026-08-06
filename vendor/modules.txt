@@ -41,7 +41,7 @@ github.com/mitchellh/mapstructure
 # github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe
 ## explicit; go 1.19
 github.com/the-jonsey/pulseaudio
-# github.com/unix-streamdeck/api/v3 v3.0.0
+# github.com/unix-streamdeck/api/v3 v3.0.1
 ## explicit; go 1.25.7
 github.com/unix-streamdeck/api/v3
 # github.com/unix-streamdeck/driver v0.0.0-20260805105646-16ea199be4c4

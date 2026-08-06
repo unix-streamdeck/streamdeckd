@@ -102,13 +102,13 @@ func (c *Connection) CommitConfig() error {
 	return nil
 }
 
-func (c *Connection) GetModules() ([]*Module, error) {
+func (c *Connection) GetModules() (*AvailableModules, error) {
 	var s string
 	err := c.busobj.Call("com.unixstreamdeck.streamdeckd.GetModules", 0).Store(&s)
 	if err != nil {
 		return nil, err
 	}
-	var modules []*Module
+	var modules *AvailableModules
 	err = json.Unmarshal([]byte(s), &modules)
 	if err != nil {
 		return nil, err
@@ -118,6 +118,10 @@ func (c *Connection) GetModules() ([]*Module, error) {
 
 func (c *Connection) PressButton(serial string, keyIndex int) error {
 	return c.busobj.Call("com.unixstreamdeck.streamdeckd.PressButton", 0, serial, keyIndex).Err
+}
+
+func (c *Connection) SendKnobEvent(serial string, knobIndex int, event InputEventType) error {
+	return c.busobj.Call("com.unixstreamdeck.streamdeckd.SendKnobEvent", 0, serial, knobIndex, int(event)).Err
 }
 
 func (c *Connection) GetObsFields() ([]*Field, error) {
@@ -134,6 +138,14 @@ func (c *Connection) GetObsFields() ([]*Field, error) {
 	return fields, nil
 }
 
+func decodePNGDataURL(dataURL string) (image.Image, error) {
+	raw, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(dataURL, "data:image/png;base64,", ""))
+	if err != nil {
+		return nil, err
+	}
+	return png.Decode(bytes.NewReader(raw))
+}
+
 func (c *Connection) GetLayersExample(serial string, layers []*Layer, handlerType HandlerType) (image.Image, error) {
 	layersString, err := json.Marshal(layers)
 	if err != nil {
@@ -144,12 +156,34 @@ func (c *Connection) GetLayersExample(serial string, layers []*Layer, handlerTyp
 	if err != nil {
 		return nil, err
 	}
-	s = strings.ReplaceAll(s, "data:image/png;base64,", "")
-	raw, err := base64.StdEncoding.DecodeString(s)
+	return decodePNGDataURL(s)
+}
+
+func (c *Connection) GetBackgroundExample(serial string, handler string, fields map[string]any, handlerType HandlerType, grid bool) ([]image.Image, error) {
+	fieldsString, err := json.Marshal(fields)
 	if err != nil {
 		return nil, err
 	}
-	return png.Decode(bytes.NewReader(raw))
+	var s string
+	err = c.busobj.Call("com.unixstreamdeck.streamdeckd.GetBackgroundExample", 0, serial, handler, string(fieldsString), handlerType, grid).Store(&s)
+	if err != nil {
+		return nil, err
+	}
+
+	var dataURLs []string
+	if err := json.Unmarshal([]byte(s), &dataURLs); err != nil {
+		return nil, err
+	}
+
+	images := make([]image.Image, 0, len(dataURLs))
+	for _, dataURL := range dataURLs {
+		img, err := decodePNGDataURL(dataURL)
+		if err != nil {
+			return nil, err
+		}
+		images = append(images, img)
+	}
+	return images, nil
 }
 
 func (c *Connection) RegisterPageListener(cback func(string, int32)) error {

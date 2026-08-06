@@ -14,7 +14,6 @@ import (
 
 	process "github.com/mitchellh/go-ps"
 	"github.com/unix-streamdeck/streamdeckd/streamdeckd"
-	"github.com/unix-streamdeck/streamdeckd/streamdeckd/examples"
 )
 
 var isRunning = true
@@ -35,8 +34,6 @@ func main() {
 
 	go streamdeckd.UpdateApplication()
 	go streamdeckd.EnableVirtualKeyboard()
-
-	examples.RegisterBaseModules()
 
 	streamdeckd.LoadConfig()
 

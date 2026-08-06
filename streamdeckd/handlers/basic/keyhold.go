@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"log"
@@ -85,7 +85,9 @@ func keyHoldCodes(fields map[string]any) ([]int, bool) {
 
 func RegisterKeyHold() api.Module {
 	return api.Module{
-		Name: "KeyHold",
+		Name:        "KeyHold",
+		DisplayName: "Key Hold",
+		Description: "Holds keys down while the button is pressed",
 		NewCombined: func() api.Handler {
 			return &KeyHoldHandler{}
 		},

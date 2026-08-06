@@ -1,7 +1,9 @@
 package api
 
 type Module struct {
-	Name string `json:"name,omitempty"`
+	Name        string `json:"name,omitempty"`
+	DisplayName string `json:"display_name"`
+	Description string `json:"description"`
 
 	NewCombined   func() Handler           `json:"-"`
 	NewBackground func() BackgroundHandler `json:"-"`
@@ -12,6 +14,18 @@ type Module struct {
 	IsForeground bool `json:"is_foreground,omitempty"`
 	IsInput      bool `json:"is_input,omitempty"`
 	IsBackground bool `json:"is_background,omitempty"`
+}
+
+type ModuleGroup struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"display_name"`
+	Description string   `json:"description"`
+	Modules     []Module `json:"modules"`
+}
+
+type AvailableModules struct {
+	GroupModules      []ModuleGroup `json:"group_modules"`
+	IndividualModules []Module      `json:"individual_modules"`
 }
 
 type FieldType string

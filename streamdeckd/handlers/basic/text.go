@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"image"
@@ -61,7 +61,8 @@ func (t *TextHandler) Start(fields map[string]any, handlerType api.HandlerType, 
 
 func RegisterText() api.Module {
 	return api.Module{
-		Name: "Text",
+		Name:        "Text",
+		Description: "Renders text on the key",
 		NewCombined: func() api.Handler {
 			return &TextHandler{}
 		},

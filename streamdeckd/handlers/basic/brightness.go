@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"log"
@@ -36,7 +36,8 @@ func (b *BrightnessHandler) Input(fields map[string]any, handlerType api.Handler
 
 func RegisterBrightness() api.Module {
 	return api.Module{
-		Name: "Brightness",
+		Name:        "Brightness",
+		Description: "Sets the deck brightness on press",
 		NewCombined: func() api.Handler {
 			return &BrightnessHandler{}
 		},

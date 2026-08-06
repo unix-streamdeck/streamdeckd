@@ -15,6 +15,10 @@ type PageManager struct {
 
 func (pm *PageManager) SetPage(page int) {
 
+	if page >= len(pm.vdev.Config().Pages) || page < 0 {
+		return
+	}
+
 	if page != pm.page || page == 0 {
 
 		oldPage := pm.page
@@ -27,6 +31,7 @@ func (pm *PageManager) SetPage(page int) {
 		for _, listener := range pm.listeners {
 			go listener(pm.page, oldPage)
 		}
+
 	}
 }
 

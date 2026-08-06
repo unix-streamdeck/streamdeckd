@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"log"
@@ -26,7 +26,8 @@ func (k *KeybindHandler) Input(fields map[string]any, handlerType api.HandlerTyp
 
 func RegisterKeybind() api.Module {
 	return api.Module{
-		Name: "Keybind",
+		Name:        "Keybind",
+		Description: "Simulates a keyboard shortcut on press",
 		NewCombined: func() api.Handler {
 			return &KeybindHandler{}
 		},

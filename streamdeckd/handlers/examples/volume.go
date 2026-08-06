@@ -336,6 +336,8 @@ func updateDevice(device pulseaudio.Device, event api.InputEvent) {
 
 func RegisterVolume() api.Module {
 	return api.Module{
+		Name:        "Volume",
+		Description: "Controls and displays PulseAudio/Pipewire volume",
 		NewCombined: func() api.Handler {
 			client, err := pulseaudio.NewClient()
 			if err != nil {
@@ -350,6 +352,5 @@ func RegisterVolume() api.Module {
 			{Title: "Input Name", Name: "input_name", Type: api.Text},
 			{Title: "Props", Name: "props", Type: api.Text},
 		},
-		Name: "Volume",
 	}
 }

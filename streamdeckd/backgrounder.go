@@ -27,11 +27,13 @@ func (bg *Backgrounder) SetLcdBackground(backgrounder api.LcdBackgrounder) {
 	if backgrounder.GetTouchPanelBackgroundHandler() == nil {
 		var handler api.BackgroundHandler
 
-		for _, module := range modules {
-			if module.Name == backgrounder.GetTouchPanelBackground() {
-				handler = module.NewBackground()
-			}
+		module, err := GetModule(backgrounder.GetTouchPanelBackground(), BACKGROUND)
+		if err != nil {
+			log.Println(err)
+			return
 		}
+
+		handler = module.NewBackground()
 
 		backgrounder.SetTouchPanelBackgroundHandler(handler)
 	}
@@ -48,26 +50,6 @@ func (bg *Backgrounder) SetLcdBackground(backgrounder api.LcdBackgrounder) {
 		})
 		return
 	}
-
-	if backgrounder.GetTouchPanelBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetTouchPanelBackground())
-	if err != nil {
-		bg.vdev.Logger().Println(err)
-		return
-	}
-
-	img = api.ResizeImageWH(img, bg.vdev.SdInfo().LcdBackgroundWidth, bg.vdev.SdInfo().LcdBackgroundHeight)
-
-	imgs := bg.vdev.SdInfo().SplitBackgroundImage(img, api.LCD)
-
-	backgrounder.SetTouchPanelBackgroundBuff(imgs)
-
-	for index, _ := range imgs {
-		bg.vdev.SetPanelBackground(index, bg.vdev.PageManager().GetPage())
-	}
 }
 
 func (bg *Backgrounder) SetKeyBackground(backgrounder api.KeyGridBackgrounder) {
@@ -78,11 +60,13 @@ func (bg *Backgrounder) SetKeyBackground(backgrounder api.KeyGridBackgrounder) {
 	if backgrounder.GetKeyGridBackgroundHandler() == nil {
 		var handler api.BackgroundHandler
 
-		for _, module := range modules {
-			if module.Name == backgrounder.GetKeyGridBackground() {
-				handler = module.NewBackground()
-			}
+		module, err := GetModule(backgrounder.GetKeyGridBackground(), BACKGROUND)
+		if err != nil {
+			log.Println(err)
+			return
 		}
+
+		handler = module.NewBackground()
 
 		backgrounder.SetKeyGridBackgroundHandler(handler)
 	}
@@ -99,26 +83,6 @@ func (bg *Backgrounder) SetKeyBackground(backgrounder api.KeyGridBackgrounder) {
 		})
 		return
 	}
-
-	if backgrounder.GetKeyGridBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetKeyGridBackground())
-	if err != nil {
-		bg.vdev.Logger().Println(err)
-		return
-	}
-
-	img = api.ResizeImageWH(img, bg.vdev.SdInfo().KeyGridBackgroundWidth, bg.vdev.SdInfo().KeyGridBackgroundHeight)
-
-	imgs := bg.vdev.SdInfo().SplitBackgroundImage(img, api.KEY)
-
-	backgrounder.SetKeyGridBackgroundBuff(imgs)
-
-	for index, _ := range imgs {
-		bg.vdev.SetKeyBackground(index, bg.vdev.PageManager().GetPage())
-	}
 }
 
 func (bg *Backgrounder) SetIndividualLcdBackground(backgrounder api.LcdSegmentBackgrounder, index int) {
@@ -129,11 +93,13 @@ func (bg *Backgrounder) SetIndividualLcdBackground(backgrounder api.LcdSegmentBa
 	if backgrounder.GetTouchPanelBackgroundHandler() == nil {
 		var handler api.BackgroundHandler
 
-		for _, module := range modules {
-			if module.Name == backgrounder.GetTouchPanelBackground() {
-				handler = module.NewBackground()
-			}
+		module, err := GetModule(backgrounder.GetTouchPanelBackground(), BACKGROUND)
+		if err != nil {
+			log.Println(err)
+			return
 		}
+
+		handler = module.NewBackground()
 
 		backgrounder.SetTouchPanelBackgroundHandler(handler)
 	}
@@ -146,22 +112,6 @@ func (bg *Backgrounder) SetIndividualLcdBackground(backgrounder api.LcdSegmentBa
 		})
 		return
 	}
-
-	if backgrounder.GetTouchPanelBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetTouchPanelBackground())
-	if err != nil {
-		bg.vdev.Logger().Println(err)
-		return
-	}
-
-	img = api.ResizeImageWH(img, bg.vdev.SdInfo().LcdWidth, bg.vdev.SdInfo().LcdHeight)
-
-	backgrounder.SetTouchPanelBackgroundBuff(img)
-
-	bg.vdev.SetPanelBackground(index, bg.vdev.PageManager().GetPage())
 }
 
 func (bg *Backgrounder) SetIndividualKeyBackground(backgrounder api.KeyBackgrounder, index int) {
@@ -172,37 +122,16 @@ func (bg *Backgrounder) SetIndividualKeyBackground(backgrounder api.KeyBackgroun
 	if backgrounder.GetKeyBackgroundHandler() == nil {
 		var handler api.BackgroundHandler
 
-		for _, module := range modules {
-			if module.Name == backgrounder.GetKeyBackground() {
-				handler = module.NewBackground()
-			}
+		module, err := GetModule(backgrounder.GetKeyBackground(), BACKGROUND)
+		if err != nil {
+			log.Println(err)
+			return
 		}
+
+		handler = module.NewBackground()
 
 		backgrounder.SetKeyBackgroundHandler(handler)
 	}
-
-	if backgrounder.GetKeyBackgroundHandler() != nil {
-		go backgrounder.GetKeyBackgroundHandler().Start(backgrounder.GetKeyBackgroundHandlerFields(), api.KEY, *bg.vdev.SdInfo(), func(img image.Image) {
-			backgrounder.SetKeyBackgroundBuff(img)
-
-			bg.vdev.SetKeyBackground(index, bg.vdev.PageManager().GetPage())
-		})
-		return
-	}
-
-	if backgrounder.GetKeyBackgroundBuff() != nil {
-		return
-	}
-
-	img, err := LoadImage(backgrounder.GetKeyBackground())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	img = api.ResizeImage(img, bg.vdev.SdInfo().IconSize)
-
-	bg.vdev.SetKeyBackground(index, bg.vdev.PageManager().GetPage())
 }
 
 func (bg *Backgrounder) AttachPageChangeListener() {

@@ -9,6 +9,8 @@ import (
 
 	"github.com/unix-streamdeck/api/v3"
 	streamdeck "github.com/unix-streamdeck/driver"
+	"github.com/unix-streamdeck/streamdeckd/streamdeckd/handlers/basic"
+	"github.com/unix-streamdeck/streamdeckd/streamdeckd/handlers/examples"
 )
 
 var configPath string
@@ -42,6 +44,8 @@ func LoadConfig() {
 			log.Println(err)
 		}
 	}
+	RegisterModuleGroup(basic.GetModuleGroup())
+	RegisterModuleGroup(examples.GetModuleGroup())
 	if len(config.Modules) > 0 {
 		for _, module := range config.Modules {
 			LoadModule(module)

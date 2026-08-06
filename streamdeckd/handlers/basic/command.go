@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"log"
@@ -24,7 +24,8 @@ func (c *CommandHandler) Input(fields map[string]any, handlerType api.HandlerTyp
 
 func RegisterCommand() api.Module {
 	return api.Module{
-		Name: "Command",
+		Name:        "Command",
+		Description: "Runs a shell command on press",
 		NewCombined: func() api.Handler {
 			return &CommandHandler{}
 		},

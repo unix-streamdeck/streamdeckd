@@ -8,7 +8,6 @@ import (
 	"image"
 	"image/png"
 	"log"
-	"os"
 	"os/exec"
 
 	"github.com/unix-streamdeck/api/v3"
@@ -20,21 +19,6 @@ var locked = false
 
 //go:embed rounded-corners.png
 var roundedCorners []byte
-
-func LoadImage(path string) (image.Image, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	img, _, err := image.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return img, nil
-}
 
 func RunCommand(command string) {
 	go func() {

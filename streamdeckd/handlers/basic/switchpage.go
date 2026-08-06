@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"log"
@@ -30,7 +30,9 @@ func (s *SwitchPageHandler) Input(fields map[string]any, handlerType api.Handler
 
 func RegisterSwitchPage() api.Module {
 	return api.Module{
-		Name: "SwitchPage",
+		Name:        "SwitchPage",
+		DisplayName: "Switch Page",
+		Description: "Switches to a specified page",
 		NewCombined: func() api.Handler {
 			return &SwitchPageHandler{}
 		},

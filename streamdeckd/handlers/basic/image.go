@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"image"
@@ -41,13 +41,40 @@ func (i *ImageHandler) Start(fields map[string]any, handlerType api.HandlerType,
 	callback(img)
 }
 
+func (i *ImageHandler) StartGrid(fields map[string]any, handlerType api.HandlerType, info api.StreamDeckInfo, callback func(images []image.Image)) {
+	i.Running = true
+
+	icon, ok := fieldString(fields, "path")
+	if !ok {
+		log.Println("[WARN] Image handler: no icon specified")
+		return
+	}
+	img, err := LoadImage(icon)
+	if err != nil {
+		log.Println("[ERROR] Image handler: error loading image", err)
+		return
+	}
+	w, h := info.GetGridDimensions(handlerType)
+	img = api.ResizeImageWH(img, w, h)
+
+	imgs := info.SplitBackgroundImage(img, handlerType)
+	callback(imgs)
+}
+
 func RegisterImage() api.Module {
 	return api.Module{
-		Name: "Image",
+		Name:        "Image",
+		Description: "Displays a static image",
 		NewCombined: func() api.Handler {
 			return &ImageHandler{}
 		},
 		CombinedFields: []api.Field{
+			{Title: "Path", Name: "path", Type: api.File, FileTypes: []string{".jpg", ".jpeg", ".png", ".bmp"}},
+		},
+		NewBackground: func() api.BackgroundHandler {
+			return &ImageHandler{}
+		},
+		BackgroundFields: []api.Field{
 			{Title: "Path", Name: "path", Type: api.File, FileTypes: []string{".jpg", ".jpeg", ".png", ".bmp"}},
 		},
 	}

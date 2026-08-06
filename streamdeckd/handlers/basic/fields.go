@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"encoding/json"

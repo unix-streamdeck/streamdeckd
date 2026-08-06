@@ -29,8 +29,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe h1:XRhh69KkeyyLzLa8H6m0zQHctvL5fB8MXRl9bJg2sVM=
 github.com/the-jonsey/pulseaudio v0.0.2-0.20260222211608-58a869b098fe/go.mod h1:vvRrWQB86WzgsUafGkEPXCHoYgdze2Z8h9A18a82NbA=
-github.com/unix-streamdeck/api/v3 v3.0.0 h1:9ALOErjOfRRTPBVJQISNu7m0oEkSYWoP0r6cMWPPTsk=
-github.com/unix-streamdeck/api/v3 v3.0.0/go.mod h1:DGadYG2VCQVPe3svt9zLX6p4GDEABtmNS3504qD2TZo=
+github.com/unix-streamdeck/api/v3 v3.0.1 h1:4FgXPNN3Nh1Xy2ZtMHikSNkXJKkVQE/yreS72UdR/dc=
+github.com/unix-streamdeck/api/v3 v3.0.1/go.mod h1:DGadYG2VCQVPe3svt9zLX6p4GDEABtmNS3504qD2TZo=
 github.com/unix-streamdeck/driver v0.0.0-20260805105646-16ea199be4c4 h1:ldj/UzWtAh/LbCOLQ0eG9jpmYaIlOZsQqlQunoPizf0=
 github.com/unix-streamdeck/driver v0.0.0-20260805105646-16ea199be4c4/go.mod h1:j+EcbZCm90tpee3/HC+Ka4tMkGUUspaS9UxfwaccmCU=
 github.com/unix-streamdeck/gg v0.0.0-20260313120600-9d60d38ce9f9 h1:sVzoJvwd1QtjQPsfsRYM+R7Ff0TxeWI6GunRqNH+w3U=

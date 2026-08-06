@@ -57,12 +57,14 @@ func (f *Foregrounder) setHandler(layer *api.Layer, handlerType api.HandlerType,
 	}
 	if layer.HandlerStruct == nil {
 		var handler api.Handler
-		modules := AvailableModules()
-		for _, module := range modules {
-			if module.Name == layer.Handler {
-				handler = module.NewCombined()
-			}
+		module, err := GetModule(layer.Handler, FOREGROUND)
+		if err != nil {
+			f.vdev.Logger().Println(err)
+			return
 		}
+
+		handler = module.NewCombined()
+
 		if handler == nil {
 			f.vdev.Logger().Println("Could not find handler:", layer.Handler)
 			return

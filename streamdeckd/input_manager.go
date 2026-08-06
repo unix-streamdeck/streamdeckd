@@ -65,12 +65,14 @@ func (im *InputManager) handleHandlerAction(layer *api.Layer, handlerType api.Ha
 		deckInfo = *im.vdev.SdInfo()
 		if layer.HandlerStruct == nil {
 			var handler api.Handler
-			modules := AvailableModules()
-			for _, module := range modules {
-				if module.Name == layer.Handler {
-					handler = module.NewCombined()
-				}
+
+			module, err := GetModule(layer.Handler, INPUT)
+			if err != nil {
+				im.vdev.Logger().Println(err)
+				return
 			}
+
+			handler = module.NewCombined()
 			if handler == nil {
 				im.vdev.Logger().Println("Could not find handler:", layer.Handler)
 				return

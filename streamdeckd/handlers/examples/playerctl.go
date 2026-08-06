@@ -751,7 +751,9 @@ func playerNeedsRefreshing(player *mpris.Player, playerName string) bool {
 func RegisterPlayerCtl() api.Module {
 
 	return api.Module{
-		Name: "Playerctl",
+		Name:        "Playerctl",
+		DisplayName: "Player Control",
+		Description: "Controls media players via MPRIS D-Bus",
 		NewCombined: func() api.Handler {
 			client, err := dbus.SessionBus()
 			if err != nil {

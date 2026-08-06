@@ -56,7 +56,11 @@ func (t *TimeHandler) timeLoop(fields map[string]any, handlerType api.HandlerTyp
 }
 
 func RegisterTime() api.Module {
-	return api.Module{NewCombined: func() api.Handler {
-		return &TimeHandler{}
-	}, Name: "Time"}
+	return api.Module{
+		Name:        "Time",
+		Description: "Displays a live clock",
+		NewCombined: func() api.Handler {
+			return &TimeHandler{}
+		},
+	}
 }

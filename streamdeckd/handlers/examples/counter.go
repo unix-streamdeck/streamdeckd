@@ -78,9 +78,10 @@ func (c *CounterHandler) Input(fields map[string]any, handlerType api.HandlerTyp
 
 func RegisterCounter() api.Module {
 	return api.Module{
+		Name:        "Counter",
+		Description: "Increments a counter on each press",
 		NewCombined: func() api.Handler {
 			return &CounterHandler{Count: 0}
 		},
-		Name: "Counter",
 	}
 }

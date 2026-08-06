@@ -1,4 +1,4 @@
-package examples
+package basic
 
 import (
 	"log"
@@ -24,7 +24,9 @@ func (u *UrlHandler) Input(fields map[string]any, handlerType api.HandlerType, i
 
 func RegisterUrl() api.Module {
 	return api.Module{
-		Name: "Url",
+		Name:        "Url",
+		DisplayName: "URL",
+		Description: "Opens a URL in the default browser",
 		NewCombined: func() api.Handler {
 			return &UrlHandler{}
 		},
